@@ -291,7 +291,7 @@ static char *getSelectedFont(_Panel * panel, FcChar8 * curfont)
 {
 	WMListItem *item;
 	FcPattern *pat;
-	char *name;
+	char *name, *copy;
 
 	if (curfont)
 		pat = FcNameParse(curfont);
@@ -326,8 +326,12 @@ static char *getSelectedFont(_Panel * panel, FcChar8 * curfont)
 
 	name = (char *)FcNameUnparse(pat);
 	FcPatternDestroy(pat);
+	if (!name)
+		return NULL;
+	copy = wstrdup(name);
+	FcStrFree((FcChar8 *) name);
 
-	return name;
+	return copy;
 }
 
 static void updateSampleFont(_Panel * panel)

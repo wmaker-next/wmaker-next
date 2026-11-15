@@ -145,13 +145,27 @@ static FcPattern *xlfdToFcPattern(const char *xlfd)
 	return W_XlfdToFcPattern(xlfd);
 }
 
+/* FcNameUnparse() memory is fontconfig-owned, callers release with wfree() */
+static char *dupFcName(FcPattern *pattern)
+{
+	char *name, *copy;
+
+	name = (char *)FcNameUnparse(pattern);
+	if (!name)
+		return NULL;
+	copy = wstrdup(name);
+	FcStrFree((FcChar8 *) name);
+
+	return copy;
+}
+
 static char *xlfdToFcName(const char *xlfd)
 {
 	FcPattern *pattern;
 	char *fname;
 
 	pattern = xlfdToFcPattern(xlfd);
-	fname = (char *)FcNameUnparse(pattern);
+	fname = dupFcName(pattern);
 	FcPatternDestroy(pattern);
 
 	return fname;
@@ -200,7 +214,7 @@ static char *makeFontOfSize(const char *font, int size, const char *fallback)
 		FcPatternAddDouble(pattern, FC_PIXEL_SIZE, (double)DEFAULT_SIZE);
 	}
 
-	result = (char *)FcNameUnparse(pattern);
+	result = dupFcName(pattern);
 	FcPatternDestroy(pattern);
 
 	return result;
@@ -553,7 +567,7 @@ WMFont *WMCopyFontWithStyle(WMScreen * scrPtr, WMFont * font, WMFontStyle style)
 		break;
 	}
 
-	name = (char *)FcNameUnparse(pattern);
+	name = dupFcName(pattern);
 	copy = WMCreateFont(scrPtr, name);
 	FcPatternDestroy(pattern);
 	wfree(name);
