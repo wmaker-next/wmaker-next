@@ -562,6 +562,7 @@ static void handle_inotify_events(void)
 	/* Make room for at lease 5 simultaneous events, with path + filenames */
 	char buff[ (sizeof(struct inotify_event) + NAME_MAX + 1) * 5 ];
 	int j, fire_n, fired[WINOTIFY_MAX_EXTRA] = {0};
+	int keybinds_changed = 0;
 	void (*fire_cb[WINOTIFY_MAX_EXTRA])(void);
 
 	/*
@@ -632,8 +633,11 @@ static void handle_inotify_events(void)
 
 			if (matched) {
 				/* react to events that indicate a file was created/moved/written */
-				if (pevent->mask & (IN_MODIFY | IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE))
+				if (pevent->mask & (IN_MODIFY | IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE)) {
+					if (strcmp(fname, "WindowMaker") == 0)
+						keybinds_changed = 1;
 					schedule_defaults_reload();
+				}
 			}
 		}
 
@@ -651,10 +655,15 @@ static void handle_inotify_events(void)
 		if (fire_cb[j])
 			(*fire_cb[j])();
 
-	for (i = 0; i < wdisp->screen_count; i++) {
-		WScreen *scr = wScreenWithNumber(i);
-		if (scr)
-			wKeyTreeRebuild(scr);
+	/* a rebuild tears down any armed key chain, so do it only when
+	 * the WindowMaker domain changed */
+	if (keybinds_changed) {
+		for (i = 0; i < wdisp->screen_count; i++) {
+			WScreen *scr = wScreenWithNumber(i);
+
+			if (scr)
+				wKeyTreeRebuild(scr);
+		}
 	}
 }
 
