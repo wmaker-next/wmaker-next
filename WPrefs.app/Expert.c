@@ -158,6 +158,9 @@ static struct expert_option {
 	{ N_("Keep dock on primary head."),
 	  OPTION_WMAKER, "KeepDockOnPrimaryHead"},
 
+	{ N_("Keep a separate dock icon list per screen resolution."),
+	  OPTION_WMAKER, "DockPerResolution"},
+
 	{ N_("Allow windows to take focus using mouse wheel."),
 	  OPTION_WMAKER, "MouseWheelFocus"},
 

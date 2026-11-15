@@ -1522,17 +1522,9 @@ WDock *wDockCreate(WScreen *scr, int type, const char *name)
 
 	dock = wmalloc(sizeof(WDock));
 
-	switch (type) {
-	case WM_CLIP:
-		dock->max_icons = DOCK_MAX_ICONS;
-		break;
-	case WM_DRAWER:
-	case WM_DOCK:
-	default:
-		/* the widest axis, so an edge switch never needs a
-		 * realloc in the drag loop */
-		dock->max_icons = dock_capacity(scr);
-	}
+	/* the widest axis, so an edge switch never needs a
+	 * realloc in the drag loop */
+	dock->max_icons = dock_capacity(scr);
 
 	/* a tiny screen or a large icon_size can yield 0, which
 	 * wmalloc(sizeof(*) * 0) trips assert(size > 0) on */
@@ -1786,17 +1778,19 @@ static WMPropList *dockSaveState(WDock *dock)
 	dock_state = WMCreatePLDictionary(dApplications, list, NULL);
 
 	if (dock->type == WM_DOCK) {
-		snprintf(buffer, sizeof(buffer), "Applications%i", dock->screen_ptr->scr_height);
-		key = WMCreatePLString(buffer);
-		WMPutInPLDictionary(dock_state, key, list);
-		WMReleasePropList(key);
-
-		if (wDockEdgeHorizontal(dock->edge)) {
-			snprintf(buffer, sizeof(buffer), "ApplicationsW%i",
-				 dock->screen_ptr->scr_width);
+		if (w_global.config->dock_per_resolution) {
+			snprintf(buffer, sizeof(buffer), "Applications%i", dock->screen_ptr->scr_height);
 			key = WMCreatePLString(buffer);
 			WMPutInPLDictionary(dock_state, key, list);
 			WMReleasePropList(key);
+
+			if (wDockEdgeHorizontal(dock->edge)) {
+				snprintf(buffer, sizeof(buffer), "ApplicationsW%i",
+					 dock->screen_ptr->scr_width);
+				key = WMCreatePLString(buffer);
+				WMPutInPLDictionary(dock_state, key, list);
+				WMReleasePropList(key);
+			}
 		}
 
 		value = wDockEdgeName(dock->edge) ? WMCreatePLString(wDockEdgeName(dock->edge)) : NULL;
@@ -1847,23 +1841,28 @@ void wDockSaveState(WScreen *scr, WMPropList *old_state)
 	dock_state = dockSaveState(scr->dock);
 
 	/*
-	 * Copy saved states of docks with different sizes.
+	 * Copy the resolution-keyed icon lists of other screen sizes
+	 * forward from the old Dock node.
 	 */
-	if (old_state) {
+	if (old_state && w_global.config->dock_per_resolution) {
 		int i;
 		WMPropList *tmp;
+		WMPropList *old_dock;
 
-		keys = WMGetPLDictionaryKeys(old_state);
-		for (i = 0; i < WMGetPropListItemCount(keys); i++) {
+		old_dock = WMGetFromPLDictionary(old_state, dDock);
+		keys = (old_dock && WMIsPLDictionary(old_dock)) ?
+			WMGetPLDictionaryKeys(old_dock) : NULL;
+		for (i = 0; keys && i < WMGetPropListItemCount(keys); i++) {
 			tmp = WMGetFromPLArray(keys, i);
 
 			if (strncasecmp(WMGetFromPLString(tmp), "applications", 12) == 0
 			    && !WMGetFromPLDictionary(dock_state, tmp)) {
 
-				WMPutInPLDictionary(dock_state, tmp, WMGetFromPLDictionary(old_state, tmp));
+				WMPutInPLDictionary(dock_state, tmp, WMGetFromPLDictionary(old_dock, tmp));
 			}
 		}
-		WMReleasePropList(keys);
+		if (keys)
+			WMReleasePropList(keys);
 	}
 
 	WMPutInPLDictionary(scr->session_state, dDock, dock_state);
@@ -2067,16 +2066,27 @@ WAppIcon *wClipRestoreState(WScreen *scr, WMPropList *clip_state)
 	return icon;
 }
 
+static WMPropList *dock_keyed_apps(WMPropList *dock_state, const char *prefix, int value)
+{
+	WMPropList *key, *apps;
+	char buffer[64];
+
+	snprintf(buffer, sizeof(buffer), "%s%i", prefix, value);
+	key = WMCreatePLString(buffer);
+	apps = WMGetFromPLDictionary(dock_state, key);
+	WMReleasePropList(key);
+
+	return apps;
+}
+
 WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 {
 	WDock *dock;
 	WMPropList *apps;
 	WMPropList *value;
-	WMPropList *tmp;
 	WAppIcon *aicon, *old_top;
 	bool have_edge = false;
 	int count, i;
-	char buffer[64];
 
 	dock = wDockCreate(scr, type, NULL);
 
@@ -2250,33 +2260,31 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 	/* application list */
 
 	/*
-	 * When saving, it saves the dock state in
-	 * Applications and Applicationsnnn (or ApplicationsWnnn for a
-	 * horizontal dock).
-	 *
-	 * When loading, it will first try Applicationsnnn (or the
-	 * width-keyed one when the edge is horizontal, so a stale
-	 * height-keyed list cannot win). If it does not exist, use
-	 * Applications as default.
+	 * With DockPerResolution each resolution keeps its own list: the
+	 * width-keyed one wins on a horizontal edge, so a stale
+	 * height-keyed list cannot win. Otherwise one list is shared and
+	 * the keyed lists only migrate state written by older versions.
 	 */
 
 	apps = NULL;
-	if (wDockEdgeHorizontal(dock->edge)) {
-		snprintf(buffer, sizeof(buffer), "ApplicationsW%i", scr->scr_width);
-		tmp = WMCreatePLString(buffer);
-		apps = WMGetFromPLDictionary(dock_state, tmp);
-		WMReleasePropList(tmp);
-	}
+	if (w_global.config->dock_per_resolution) {
+		if (wDockEdgeHorizontal(dock->edge))
+			apps = dock_keyed_apps(dock_state, "ApplicationsW", scr->scr_width);
 
-	if (!apps) {
-		snprintf(buffer, sizeof(buffer), "Applications%i", scr->scr_height);
-		tmp = WMCreatePLString(buffer);
-		apps = WMGetFromPLDictionary(dock_state, tmp);
-		WMReleasePropList(tmp);
-	}
+		if (!apps)
+			apps = dock_keyed_apps(dock_state, "Applications", scr->scr_height);
 
-	if (!apps)
+		if (!apps)
+			apps = WMGetFromPLDictionary(dock_state, dApplications);
+	} else {
 		apps = WMGetFromPLDictionary(dock_state, dApplications);
+
+		if (!apps)
+			apps = dock_keyed_apps(dock_state, "Applications", scr->scr_height);
+
+		if (!apps && wDockEdgeHorizontal(dock->edge))
+			apps = dock_keyed_apps(dock_state, "ApplicationsW", scr->scr_width);
+	}
 
 	if (!apps)
 		goto finish;
@@ -2290,6 +2298,9 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 	if (count == 0)
 		goto finish;
 
+	/* the saved dock list includes the main tile, the clip list does not */
+	dock_grow_array(dock, type == WM_DOCK ? count : count + 1);
+
 	old_top = dock->icon_array[0];
 
 	/* dock->icon_count is set to 1 when dock is created.
@@ -2300,11 +2311,6 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 		dock->icon_count = 0;
 
 	for (i = 0; i < count; i++) {
-		if (dock->icon_count >= dock->max_icons) {
-			wwarning(_("there are too many icons stored in dock. Ignoring what doesn't fit"));
-			break;
-		}
-
 		value = WMGetFromPLArray(apps, i);
 		aicon = restore_icon_state(scr, value, type, dock->icon_count,
 					   dock->edge);
@@ -6270,12 +6276,10 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 	if (count == 0)
 		goto finish;
 
-	for (i=0; i<count; i++) {
-		if (drawer->icon_count >= drawer->max_icons) {
-			wwarning(_("there are too many icons stored in drawer. Ignoring what doesn't fit"));
-			break;
-		}
+	/* the saved list excludes the drawer tile kept at slot 0 */
+	dock_grow_array(drawer, count + 1);
 
+	for (i = 0; i < count; i++) {
 		value = WMGetFromPLArray(apps, i);
 		aicon = restore_icon_state(scr, value, WM_DRAWER, drawer->icon_count,
 					   drawer->edge);

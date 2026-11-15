@@ -150,6 +150,8 @@
 	  NULL, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(KEEP_DOCK_ON_PRIMARY_HEAD, "KeepDockOnPrimaryHead", BOOL, keep_dock_on_primary_head, "NO", \
 	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
+	_(DOCK_PER_RESOLUTION, "DockPerResolution", BOOL, dock_per_resolution, "NO", \
+	  NULL, 0, 1, WCFG_RUNTIME_RELOAD, 0) \
 	_(DOCK_EDGE, "DockEdge", ENUM, dock_edge, "Right", \
 	  dock_edges, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(SCREENSHOT_FILENAME_TEMPLATE, "ScreenshotFilenameTemplate", STRING, \

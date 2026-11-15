@@ -171,6 +171,7 @@
 	MiniPreviewSize = 128;
 	IgnoreGtkHints = NO;
 	KeepDockOnPrimaryHead = NO;
+	DockPerResolution = NO;
 	DockEdge = Right;
 	KeychainTimeoutDelay = 500;
 	KeychainDisplayPosition = none;

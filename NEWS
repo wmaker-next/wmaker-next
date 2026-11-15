@@ -3,6 +3,21 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Dock state across resolution changes
+------------------------------------
+
+The dock icon list no longer follows the screen resolution: one list is
+used at every size, the `Applications<height>` duplicates are removed
+from WMState on the next save, and the new `DockPerResolution` option
+restores the per-resolution behaviour for those who want a different
+dock per screen size.
+
+Dock, drawer, and clip icons are kept even when they do not fit the
+current screen. They return into reach when the screen grows.
+
+The clip capacity now scales with the screen like the dock, instead of
+being fixed at 32 icons.
+
 Window menu geometry entries
 ----------------------------
 

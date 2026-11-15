@@ -910,6 +910,7 @@ static void test_defaults(void)
 	CHECK(config->window_place_origin.x == 64);
 	CHECK(config->window_place_origin.y == 0);
 	CHECK(config->keep_dock_on_primary_head == 0);
+	CHECK(config->dock_per_resolution == 0);
 	CHECK(config->dock_edge == WDOCK_EDGE_RIGHT);
 	CHECK(strcmp(config->screenshot_filename_template,
 		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);
@@ -1199,6 +1200,7 @@ static void test_valid_parse(void)
 			      "WrapAppiconsInDock = NO; "
 			      "WindowPlaceOrigin = (600, \"-3\"); "
 			      "KeepDockOnPrimaryHead = YES; "
+			      "DockPerResolution = YES; "
 			      "ScreenshotFilenameTemplate = \"shot_%H\"; "
 			      "ClipboardFilenameTemplate = \"clip_%H\"; "
 			      "MenuStyle = flat; TitleJustify = Right; "
@@ -1330,6 +1332,7 @@ static void test_valid_parse(void)
 	CHECK(config->window_place_origin.x == 600);
 	CHECK(config->window_place_origin.y == -3);
 	CHECK(config->keep_dock_on_primary_head == 1);
+	CHECK(config->dock_per_resolution == 1);
 	CHECK(strcmp(config->screenshot_filename_template, "shot_%H") == 0);
 	CHECK_STR(config->clipboard_filename_template, "clip_%H");
 	CHECK(config->menu_style == MS_FLAT);
@@ -1535,6 +1538,7 @@ static void test_invalid_fallback(void)
 			      "WrapAppiconsInDock = maybe; "
 			      "WindowPlaceOrigin = (bad, 2); "
 			      "KeepDockOnPrimaryHead = maybe; "
+			      "DockPerResolution = maybe; "
 			      "DockEdge = nowhere; "
 			      "ScreenshotFilenameTemplate = (bad); "
 			      "ClipboardFilenameTemplate = (bad); "
@@ -1584,6 +1588,7 @@ static void test_invalid_fallback(void)
 	CHECK(config->window_place_origin.x == 64);
 	CHECK(config->window_place_origin.y == 0);
 	CHECK(config->keep_dock_on_primary_head == 0);
+	CHECK(config->dock_per_resolution == 0);
 	CHECK(config->dock_edge == WDOCK_EDGE_RIGHT);
 	CHECK(strcmp(config->screenshot_filename_template,
 		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);

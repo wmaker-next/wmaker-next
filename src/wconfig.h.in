@@ -294,9 +294,6 @@
  * a docked icon must be dragged out to detach it */
 #define DOCK_DETTACH_THRESHOLD	3
 
-/* Max. number of icons the dock and clip can have */
-#define DOCK_MAX_ICONS		32
-
 #ifdef VIRTUAL_DESKTOP
 /* Edge-scroll pan step (pixels) when the pointer rests on a viewport
  * edge InputOnly window. */
