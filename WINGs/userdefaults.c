@@ -776,7 +776,11 @@ WMPropList *WMGetUDSearchList(WMUserDefaults * database)
 
 void WMSetUDSearchList(WMUserDefaults * database, WMPropList * list)
 {
+	WMPropList *copy;
 	int i, c;
+
+	/* list may alias the old searchListArray, copy before releasing */
+	copy = list ? WMDeepCopyPropList(list) : WMCreatePLArray(NULL);
 
 	if (database->searchList) {
 		i = 0;
@@ -790,13 +794,13 @@ void WMSetUDSearchList(WMUserDefaults * database, WMPropList * list)
 		WMReleasePropList(database->searchListArray);
 	}
 
-	c = WMGetPropListItemCount(list);
+	c = WMGetPropListItemCount(copy);
 	database->searchList = wmalloc(sizeof(WMPropList *) * (c + 1));
 
 	for (i = 0; i < c; i++) {
-		database->searchList[i] = WMGetFromPLArray(list, i);
+		database->searchList[i] = WMRetainPropList(WMGetFromPLArray(copy, i));
 	}
 	database->searchList[c] = NULL;
 
-	database->searchListArray = WMDeepCopyPropList(list);
+	database->searchListArray = copy;
 }
