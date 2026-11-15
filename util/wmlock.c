@@ -30,9 +30,11 @@
 
 #include "config.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
 #include <langinfo.h>
+#include <limits.h>
 #include <locale.h>
 #include <pwd.h>
 #include <stdarg.h>
@@ -148,6 +150,8 @@ static char clock_shown[128];
 static WMScreen *wscr;
 static WMInputPanel *panel;
 static WMHandlerID idle_timer;
+static WMHandlerID dpms_timer;
+static WMHandlerID clock_timer;
 static WMFont *font_time;
 static WMFont *font_date;
 static WMColor *col_clock;
@@ -578,6 +582,8 @@ static void draw_clock(void)
 	snprintf(clock_shown, sizeof(clock_shown), "%s", key);
 }
 
+static void arm_clock_timer(void);
+
 static void enter_idle(void)
 {
 	WMSetTextFieldText(panel->text, "");
@@ -585,38 +591,110 @@ static void enter_idle(void)
 	idle_mode = 1;
 	clock_shown[0] = '\0';
 	draw_clock();
+	if (!dpms_forced_off)
+		arm_clock_timer();
 }
 
 static void leave_idle(void)
 {
 	idle_mode = 0;
+	WMDeleteTimerHandlerPtr(&clock_timer);
 	wXClearArea(xc, covers[lock_sn].win, 0, 0, 0, 0, false);
 	WMMapWidget(panel->win);
 	WMSetFocusToWidget(panel->text);
 	wXFlush(xc);
 }
 
-static void idle_tick(void *data)
+/* sub-minute display changes come from the seconds conversions, with
+ * the flags, width and E/O modifiers that may precede them */
+static bool fmt_ticks_per_second(const char *fmt)
 {
-	time_t now;
+	const char *p = fmt;
 
-	(void)data;
-	now = time(NULL);
-
-	if (!idle_mode && idle_clock && now - last_activity >= idle_timeout)
-		enter_idle();
-	if (idle_mode)
-		draw_clock();
-	if (dpms_timeout > 0 && dpms_capable && !dpms_forced_off &&
-	    now - last_activity >= dpms_timeout) {
-		dpms_force(1);
-		/* nothing left to count down to and the panel is dark,
-		 * stop waking every second so the locker parks in
-		 * epoll on the X fd alone, note_activity() re-arms on
-		 * the first key, button or motion event */
-		WMDeleteTimerHandler(idle_timer);
-		idle_timer = NULL;
+	while ((p = strchr(p, '%')) != NULL) {
+		p++;
+		if (*p == '%') {
+			p++;
+			continue;
+		}
+		while (*p == '-' || *p == '_' || *p == '0' || *p == '^' ||
+		       *p == '#' || (*p >= '1' && *p <= '9') || *p == 'E' || *p == 'O')
+			p++;
+		switch (*p) {
+		case 'S':
+		case 's':
+		case 'N':
+		case 'T':
+		case 'c':
+		case 'X':
+		case 'r':
+			return true;
+		default:
+			break;
+		}
 	}
+	return false;
+}
+
+static int clock_period_sec(void)
+{
+	if (fmt_ticks_per_second(time_fmt) || fmt_ticks_per_second(date_fmt))
+		return 1;
+	return 60;
+}
+
+static void clock_tick(void *data)
+{
+	(void)data;
+	clock_timer = NULL;
+	if (!idle_mode)
+		return;
+	draw_clock();
+	arm_clock_timer();
+}
+
+static void arm_clock_timer(void)
+{
+	int period = clock_period_sec();
+	int delay = period - (int)(time(NULL) % period);
+
+	if (delay < 1)
+		delay = 1;
+	WMDeleteTimerHandlerPtr(&clock_timer);
+	clock_timer = WMAddTimerHandler(delay * 1000, clock_tick, NULL);
+}
+
+static void idle_deadline(void *data)
+{
+	(void)data;
+	idle_timer = NULL;
+	if (idle_clock && !idle_mode)
+		enter_idle();
+}
+
+static void dpms_deadline(void *data)
+{
+	(void)data;
+	dpms_timer = NULL;
+	if (dpms_forced_off)
+		return;
+	dpms_force(1);
+	/* the panel is dark, drop the clock refresh as well */
+	WMDeleteTimerHandlerPtr(&clock_timer);
+}
+
+static void arm_deadlines(void)
+{
+	if (idle_clock)
+		idle_timer = WMAddTimerHandler(idle_timeout * 1000, idle_deadline, NULL);
+	if (dpms_timeout > 0 && dpms_capable)
+		dpms_timer = WMAddTimerHandler(dpms_timeout * 1000, dpms_deadline, NULL);
+}
+
+static void disarm_deadlines(void)
+{
+	WMDeleteTimerHandlerPtr(&idle_timer);
+	WMDeleteTimerHandlerPtr(&dpms_timer);
 }
 
 static void note_activity(void)
@@ -624,14 +702,17 @@ static void note_activity(void)
 	last_activity = time(NULL);
 
 	/* the X server wakes DPMS on any input-device event, mirror
-	 * that in our own state and restart the per-second countdown
-	 * that idle_tick() dropped when it forced the panel off, this
-	 * also covers the --dpms-timeout < --idle-timeout corner where
+	 * that in our own state and restart the countdowns and the
+	 * clock refresh that the DPMS-off path dropped, this also
+	 * covers the --dpms-timeout < --idle-timeout corner where
 	 * leave_idle() would not have run */
-	if (dpms_forced_off)
+	if (dpms_forced_off) {
 		dpms_force(0);
-	if (!idle_timer)
-		idle_timer = WMAddPersistentTimerHandler(1000, idle_tick, NULL);
+		if (idle_mode)
+			arm_clock_timer();
+	}
+	disarm_deadlines();
+	arm_deadlines();
 }
 
 static void run_lock(WMScreen *scr, const char *user)
@@ -676,7 +757,7 @@ static void run_lock(WMScreen *scr, const char *user)
 		WMMapWidget(panel->win);
 		WMSetFocusToWidget(panel->text);
 	}
-	idle_timer = WMAddPersistentTimerHandler(1000, idle_tick, NULL);
+	arm_deadlines();
 
 	wXSync(xc);
 	fails = 0;
@@ -822,7 +903,8 @@ static void run_lock(WMScreen *scr, const char *user)
 		wXSync(xc);
 	}
 
-	WMDeleteTimerHandler(idle_timer);
+	disarm_deadlines();
+	WMDeleteTimerHandlerPtr(&clock_timer);
 	WMDestroyInputPanel(panel);
 	WMReleaseFont(font_time);
 	WMReleaseFont(font_date);
@@ -877,6 +959,20 @@ static void cleanup(void)
 		wscr = NULL;
 		WMShutdownFonts();
 	}
+}
+
+static int parse_timeout(const char *opt, const char *arg, int min)
+{
+	char *end;
+	long long val;
+
+	if (!arg || !isdigit((unsigned char)*arg))
+		fatal("%s must be between %d and %d seconds", opt, min, INT_MAX / 1000);
+	errno = 0;
+	val = strtoll(arg, &end, 10);
+	if (*end != '\0' || errno == ERANGE || val < min || val > INT_MAX / 1000)
+		fatal("%s must be between %d and %d seconds", opt, min, INT_MAX / 1000);
+	return (int)val;
 }
 
 static void usage(int status) __attribute__((noreturn));
@@ -947,14 +1043,10 @@ int main(int argc, char **argv)
 			idle_clock = 0;
 			break;
 		case OPT_IDLE_TIMEOUT:
-			idle_timeout = atoi(optarg);
-			if (idle_timeout <= 0)
-				fatal("--idle-timeout must be a positive number of seconds");
+			idle_timeout = parse_timeout("--idle-timeout", optarg, 1);
 			break;
 		case OPT_DPMS_TIMEOUT:
-			dpms_timeout = atoi(optarg);
-			if (dpms_timeout < 0)
-				fatal("--dpms-timeout must be zero or a positive number of seconds");
+			dpms_timeout = parse_timeout("--dpms-timeout", optarg, 0);
 			break;
 		case OPT_TIME_FORMAT:
 			time_fmt = optarg;
