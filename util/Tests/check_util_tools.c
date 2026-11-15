@@ -352,6 +352,108 @@ static void test_wmmenugen_xdg(void)
 	}
 }
 
+static void test_wmmenugen_locale(void)
+{
+	char file[PATH_MAX + 32];
+	char *out, *saved_lc;
+	int status;
+
+	snprintf(file, sizeof(file), "%s/xdg/locale.desktop", tmpdir);
+	saved_lc = getenv("LC_MESSAGES") ? wstrdup(getenv("LC_MESSAGES")) : NULL;
+
+	/* a language-only fallback must reject a mismatched territory,
+	 * in both key orders */
+	CHECK(write_file(file, "[Desktop Entry]\n"
+			       "Type=Application\n"
+			       "Name=Default\n"
+			       "Name[en_GB]=British\n"
+			       "Exec=/bin/true\n"));
+	setenv("LC_MESSAGES", "en_US.UTF-8", 1);
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", file, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "Default") != NULL);
+	CHECK(out && strstr(out, "British") == NULL);
+	wfree(out);
+
+	CHECK(write_file(file, "[Desktop Entry]\n"
+			       "Type=Application\n"
+			       "Name[en_GB]=British\n"
+			       "Name=Default\n"
+			       "Exec=/bin/true\n"));
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", file, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "Default") != NULL);
+	CHECK(out && strstr(out, "British") == NULL);
+	wfree(out);
+
+	/* a country fallback must reject a residual modifier */
+	CHECK(write_file(file, "[Desktop Entry]\n"
+			       "Type=Application\n"
+			       "Name=Default\n"
+			       "Name[en_US@euro]=Euro\n"
+			       "Exec=/bin/true\n"));
+	setenv("LC_MESSAGES", "en_US@euro", 1);
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", file, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "Euro") != NULL);
+	CHECK(out && strstr(out, "Default") == NULL);
+	wfree(out);
+
+	setenv("LC_MESSAGES", "en_US@other", 1);
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", file, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "Default") != NULL);
+	CHECK(out && strstr(out, "Euro") == NULL);
+	wfree(out);
+
+	/* a modifier fallback must reject a mismatched territory */
+	CHECK(write_file(file, "[Desktop Entry]\n"
+			       "Type=Application\n"
+			       "Name=Default\n"
+			       "Name[en_GB@euro]=BritishEuro\n"
+			       "Exec=/bin/true\n"));
+	setenv("LC_MESSAGES", "en_US@euro", 1);
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", file, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "Default") != NULL);
+	CHECK(out && strstr(out, "BritishEuro") == NULL);
+	wfree(out);
+
+	/* the exact territory still wins over the language fallback */
+	CHECK(write_file(file, "[Desktop Entry]\n"
+			       "Type=Application\n"
+			       "Name=Default\n"
+			       "Name[en]=English\n"
+			       "Name[en_US]=American\n"
+			       "Exec=/bin/true\n"));
+	setenv("LC_MESSAGES", "en_US.UTF-8", 1);
+	out = run_tool_capture((char *[]){ (char *)tool_path("wmmenugen"),
+					   "-parser:xdg", file, NULL }, &status);
+	CHECK(status == 0);
+	CHECK(out != NULL);
+	CHECK(out && strstr(out, "American") != NULL);
+	CHECK(out && strstr(out, "Default") == NULL);
+	CHECK(out && strstr(out, "English") == NULL);
+	wfree(out);
+
+	if (saved_lc) {
+		setenv("LC_MESSAGES", saved_lc, 1);
+		wfree(saved_lc);
+	} else {
+		unsetenv("LC_MESSAGES");
+	}
+}
+
 static void test_wmmenugen_wmconfig(void)
 {
 	char file[PATH_MAX + 32];
@@ -431,6 +533,55 @@ static void test_getstyle_pack_success(void)
 	free(data);
 }
 
+static void test_wmlock_timeout_args(void)
+{
+	const char *saved_display;
+	int status;
+
+	if (access(tool_path("wmlock"), X_OK) != 0)
+		return;
+
+	/* --version must come after the option under test so a value that
+	 * parses is never handed to the locker, and DISPLAY is cleared so
+	 * nothing can grab the screen even if it were */
+	saved_display = getenv("DISPLAY");
+	unsetenv("DISPLAY");
+
+	status = run_tool_timeout((char *[]){ (char *)tool_path("wmlock"),
+					     "--idle-timeout", "4294967297",
+					     "--version", NULL }, 10);
+	CHECK(status == 1);
+	status = run_tool_timeout((char *[]){ (char *)tool_path("wmlock"),
+					     "--idle-timeout", "12abc",
+					     "--version", NULL }, 10);
+	CHECK(status == 1);
+	status = run_tool_timeout((char *[]){ (char *)tool_path("wmlock"),
+					     "--idle-timeout", "0",
+					     "--version", NULL }, 10);
+	CHECK(status == 1);
+	status = run_tool_timeout((char *[]){ (char *)tool_path("wmlock"),
+					     "--idle-timeout", "-5",
+					     "--version", NULL }, 10);
+	CHECK(status == 1);
+	status = run_tool_timeout((char *[]){ (char *)tool_path("wmlock"),
+					     "--dpms-timeout", "4294967297",
+					     "--version", NULL }, 10);
+	CHECK(status == 1);
+	status = run_tool_timeout((char *[]){ (char *)tool_path("wmlock"),
+					     "--idle-timeout", "5",
+					     "--version", NULL }, 10);
+	CHECK(status == 0);
+	status = run_tool_timeout((char *[]){ (char *)tool_path("wmlock"),
+					     "--dpms-timeout", "0",
+					     "--version", NULL }, 10);
+	CHECK(status == 0);
+
+	if (saved_display)
+		setenv("DISPLAY", saved_display, 1);
+	else
+		unsetenv("DISPLAY");
+}
+
 static void test_getstyle_non_string_texture(void)
 {
 	char cfg[] = "{\n"
@@ -469,10 +620,12 @@ int main(void)
 	test_icons_non_dictionary();
 	test_wmmenugen_fifo();
 	test_wmmenugen_xdg();
+	test_wmmenugen_locale();
 	test_wmmenugen_wmconfig();
 	test_getstyle_pack_failure();
 	test_getstyle_pack_success();
 	test_getstyle_non_string_texture();
+	test_wmlock_timeout_args();
 
 	wspawnvp_wait((char *[]){ "rm", "-rf", tmpdir, NULL });
 

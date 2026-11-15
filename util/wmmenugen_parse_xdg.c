@@ -644,7 +644,7 @@ static bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_enc);
 			wfree(key_mod);
 			return true;
-		} else if (key_lang && key_ctry &&	/* lang_COUNTRY */
+		} else if (key_lang && key_ctry && !key_mod &&	/* lang_COUNTRY */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    strcmp(env_ctry, key_ctry) == 0 &&
 		    *current_level < MATCH_LANG_COUNTRY) {
@@ -654,7 +654,7 @@ static bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_enc);
 			wfree(key_mod);
 			return true;
-		} else if (key_lang && key_mod &&	/* lang@MODIFIER */
+		} else if (key_lang && key_mod && !key_ctry &&	/* lang@MODIFIER */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    strcmp(env_mod,  key_mod) == 0 &&
 		    *current_level < MATCH_LANG_MODIFIER) {
@@ -664,7 +664,7 @@ static bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_enc);
 			wfree(key_mod);
 			return true;
-		} else if (key_lang &&			/* lang */
+		} else if (key_lang && !key_ctry && !key_mod &&	/* lang */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    *current_level < MATCH_LANG) {
 			*current_level = MATCH_LANG;
@@ -684,7 +684,7 @@ static bool compare_matchlevel(int *current_level, const char *found_locale)
 
 	/* LC_MESSAGES value: lang_COUNTRY */
 	if (env_lang && env_ctry) {			/* lang_COUNTRY */
-		if (key_lang && key_ctry &&
+		if (key_lang && key_ctry && !key_mod &&
 		    strcmp(env_lang, key_lang) == 0 &&
 		    strcmp(env_ctry, key_ctry) == 0 &&
 		    *current_level < MATCH_LANG_COUNTRY) {
@@ -694,7 +694,7 @@ static bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_enc);
 			wfree(key_mod);
 			return true;
-		} else if (key_lang &&			/* lang */
+		} else if (key_lang && !key_ctry && !key_mod &&	/* lang */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    *current_level < MATCH_LANG) {
 			*current_level = MATCH_LANG;
@@ -714,7 +714,7 @@ static bool compare_matchlevel(int *current_level, const char *found_locale)
 
 	/* LC_MESSAGES value: lang@MODIFIER */
 	if (env_lang && env_mod) {			/* lang@MODIFIER */
-		if (key_lang && key_mod &&
+		if (key_lang && key_mod && !key_ctry &&
 		    strcmp(env_lang, key_lang) == 0 &&
 		    strcmp(env_mod,  key_mod) == 0 &&
 		    *current_level < MATCH_LANG_MODIFIER) {
@@ -724,7 +724,7 @@ static bool compare_matchlevel(int *current_level, const char *found_locale)
 			wfree(key_enc);
 			wfree(key_mod);
 			return true;
-		} else if (key_lang &&			/* lang */
+		} else if (key_lang && !key_ctry && !key_mod &&	/* lang */
 		    strcmp(env_lang, key_lang) == 0 &&
 		    *current_level < MATCH_LANG) {
 			*current_level = MATCH_LANG;
@@ -744,7 +744,7 @@ static bool compare_matchlevel(int *current_level, const char *found_locale)
 
 	/* LC_MESSAGES value: lang */
 	if (env_lang) {					/* lang */
-		if (key_lang &&
+		if (key_lang && !key_ctry && !key_mod &&
 		    strcmp(env_lang, key_lang) == 0 &&
 		    *current_level < MATCH_LANG) {
 			*current_level = MATCH_LANG;
