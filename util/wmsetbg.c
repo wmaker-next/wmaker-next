@@ -94,6 +94,12 @@ typedef struct BackgroundTexture {
 	int height;
 } BackgroundTexture;
 
+/* the texture whose duplicate is published on the root and the
+ * published pixmap itself, cleared by freeTexture() so a rebuilt
+ * texture always re-publishes */
+static BackgroundTexture *applied_texture;
+static xcb_pixmap_t applied_pixmap;
+
 static noreturn void quit(int rcode)
 {
 	WMReleaseApplication();
@@ -858,6 +864,11 @@ static BackgroundTexture *parseTexture(RContext * rc, char *text)
 
 static void freeTexture(RContext *rc, BackgroundTexture *texture)
 {
+	if (applied_texture == texture) {
+		applied_texture = NULL;
+		applied_pixmap = XCB_NONE;
+	}
+
 	if (texture->solid) {
 		uint32_t pixel;
 
@@ -1167,6 +1178,26 @@ static void setPixmapProperty(xcb_pixmap_t pixmap)
 	wXFlush(xc);
 }
 
+static bool publishStillCurrent(xcb_pixmap_t pixmap)
+{
+	static xcb_atom_t prop = XCB_ATOM_NONE;
+	static xcb_atom_t eprop = XCB_ATOM_NONE;
+	uint32_t v;
+
+	if (prop == XCB_ATOM_NONE) {
+		prop = WXInternAtom(xc, "_XROOTPMAP_ID");
+		eprop = WXInternAtom(xc, "ESETROOT_PMAP_ID");
+	}
+	if (pixmap == XCB_NONE)
+		return false;
+	if (!WXGetFormat32N(xc, root, prop, XCB_ATOM_PIXMAP, &v, 1) || v != (uint32_t)pixmap)
+		return false;
+	if (!WXGetFormat32N(xc, root, eprop, XCB_ATOM_PIXMAP, &v, 1) || v != (uint32_t)pixmap)
+		return false;
+
+	return true;
+}
+
 static void changeTexture(RContext *rc, BackgroundTexture * texture)
 {
 	uint32_t back_pixel;
@@ -1188,9 +1219,20 @@ static void changeTexture(RContext *rc, BackgroundTexture * texture)
 
 	wXSync(xc);
 
+	/* the expensive duplicate is only needed when the texture
+	 * changed or another setter replaced the published pixmap */
+	if (texture == applied_texture && publishStillCurrent(applied_pixmap))
+		return;
+
 	copy = duplicatePixmap(rc, texture->pixmap);
-	if (copy != XCB_NONE)
+	if (copy != XCB_NONE) {
 		setPixmapProperty(copy);
+		applied_texture = texture;
+		applied_pixmap = copy;
+	} else {
+		applied_texture = NULL;
+		applied_pixmap = XCB_NONE;
+	}
 }
 
 static bool refreshTextures(RContext *rc, BackgroundTexture **textures, int maxTextures)
