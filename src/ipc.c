@@ -845,12 +845,27 @@ static verb_rc verb_set_viewport(WScreen *scr, WMPropList *args,
 }
 #endif
 
-static verb_rc set_layout_pairs(WScreen *scr, WMPropList *args, long *widx,
-				bool apply, char **err)
+typedef struct {
+	long widx;
+	int master_count;
+	float master_ratio;
+	bool have_count;
+	bool have_ratio;
+} LayoutPairs;
+
+static verb_rc set_layout_pairs(WScreen *scr, WMPropList *args, LayoutPairs *lp, char **err)
 {
 	WMPropList *k, *v;
 	char *end;
+	double ratio;
+	long count;
 	int i;
+
+	lp->widx = scr->current_workspace;
+	lp->master_count = 0;
+	lp->master_ratio = 0.0f;
+	lp->have_count = false;
+	lp->have_ratio = false;
 
 	for (i = 2; i + 1 < WMGetPropListItemCount(args); i += 2) {
 		k = WMGetFromPLArray(args, i);
@@ -858,25 +873,30 @@ static verb_rc set_layout_pairs(WScreen *scr, WMPropList *args, long *widx,
 		if (!k || !WMIsPLString(k) || !v || !WMIsPLString(v))
 			continue;
 		if (strcmp(WMGetFromPLString(k), "workspace") == 0) {
-			*widx = strtol(WMGetFromPLString(v), &end, 10);
-			if (*end || *widx < 0 || *widx >= scr->workspace_count) {
+			lp->widx = strtol(WMGetFromPLString(v), &end, 10);
+			if (*end || lp->widx < 0 || lp->widx >= scr->workspace_count) {
 				*err = wstrdup("set-layout: invalid workspace index");
 				return VERB_FAIL;
 			}
 		} else if (strcmp(WMGetFromPLString(k), "master_count") == 0) {
-			if (apply)
-				scr->workspaces[*widx]->master_count =
-					(int)strtol(WMGetFromPLString(v), NULL, 10);
+			count = strtol(WMGetFromPLString(v), &end, 10);
+
+			if (end == WMGetFromPLString(v) || *end) {
+				*err = wstrdup("set-layout: invalid master_count");
+				return VERB_FAIL;
+			}
+			lp->master_count = (int)count;
+			lp->have_count = true;
 		} else if (strcmp(WMGetFromPLString(k), "master_ratio") == 0) {
-			double ratio = wstrtod(WMGetFromPLString(v), &end);
+			ratio = wstrtod(WMGetFromPLString(v), &end);
 
 			if (end == WMGetFromPLString(v) || *end || !isfinite(ratio)
 			    || ratio < -(double)FLT_MAX || ratio > (double)FLT_MAX) {
 				*err = wstrdup("set-layout: invalid master_ratio");
 				return VERB_FAIL;
 			}
-			if (apply)
-				scr->workspaces[*widx]->master_ratio = (float)ratio;
+			lp->master_ratio = (float)ratio;
+			lp->have_ratio = true;
 		}
 	}
 	return VERB_OK;
@@ -887,7 +907,7 @@ static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
 {
 	WMPropList *a;
 	WWorkspace *ws;
-	long widx;
+	LayoutPairs lp;
 	verb_rc rc;
 
 	(void)reply;
@@ -901,21 +921,21 @@ static verb_rc verb_set_layout(WScreen *scr, WMPropList *args,
 		return VERB_FAIL;
 	}
 
-	widx = scr->current_workspace;
-	rc = set_layout_pairs(scr, args, &widx, false, err);
-	if (rc != VERB_OK)
-		return rc;
-	widx = scr->current_workspace;
-	rc = set_layout_pairs(scr, args, &widx, true, err);
+	rc = set_layout_pairs(scr, args, &lp, err);
 	if (rc != VERB_OK)
 		return rc;
 
-	ws = scr->workspaces[widx];
+	if (lp.have_count)
+		scr->workspaces[lp.widx]->master_count = lp.master_count;
+	if (lp.have_ratio)
+		scr->workspaces[lp.widx]->master_ratio = lp.master_ratio;
+
+	ws = scr->workspaces[lp.widx];
 	if (ws->layout == wLayoutFromName(WMGetFromPLString(a))
 	    && strcasecmp(WMGetFromPLString(a), "float") != 0)
-		wLayoutApply(scr, (int)widx);
+		wLayoutApply(scr, (int)lp.widx);
 	else
-		wLayoutSetWorkspace(scr, (int)widx, wLayoutFromName(WMGetFromPLString(a)));
+		wLayoutSetWorkspace(scr, (int)lp.widx, wLayoutFromName(WMGetFromPLString(a)));
 	wXSync(wdisp->conn);
 	return VERB_OK;
 }
