@@ -12,6 +12,11 @@ from WMState on the next save, and the new `DockPerResolution` option
 restores the per-resolution behaviour for those who want a different
 dock per screen size.
 
+The dock keeps its screen edge across resolution changes. State files
+written before the edge was stored used to infer the side from the
+saved position compared with the current screen, which moved the dock
+to the opposite edge after the resolution had changed.
+
 Dock, drawer, and clip icons are kept even when they do not fit the
 current screen. They return into reach when the screen grows.
 

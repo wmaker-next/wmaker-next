@@ -2152,22 +2152,18 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 					wScreenKeepInside(scr, &ox, &dock->y_pos,
 							  ICON_SIZE, ICON_SIZE);
 				} else {
-					/* A state file written before
-					 * the edge existed must not
-					 * snap to the nearest edge: a
-					 * right-side dock parked at
-					 * the top of a wide screen is
-					 * closer to the top edge than
-					 * to the right one. Keep the
-					 * X-midpoint test and never
-					 * look at Y. */
-					int left, right, midpoint;
+					/* Legacy files stored the side's
+					 * pinned origin on the screen at
+					 * save time. Only the left origin
+					 * is stable across a resolution
+					 * change: classify by it instead
+					 * of the current midpoint. */
+					int left, right;
 
 					dock_origin(scr, WDOCK_EDGE_LEFT, &left, NULL);
 					dock_origin(scr, WDOCK_EDGE_RIGHT, &right, NULL);
-					midpoint = (left + right) / 2;
 
-					if (dock->x_pos < midpoint) {
+					if (dock->x_pos < left + ICON_SIZE) {
 						dock->edge = WDOCK_EDGE_LEFT;
 						dock->x_pos = left;
 					} else {

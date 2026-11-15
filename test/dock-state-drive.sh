@@ -2,11 +2,12 @@
 # Drive the dock state across resolution changes
 # (PLAN-dock-state-resolution.md): seed WMState with per-resolution icon
 # lists and assert which one wins on restore, that the keyed duplicates
-# are dropped or preserved as DockPerResolution says, and that icon lists
+# are dropped or preserved as DockPerResolution says, that icon lists
 # longer than the screen capacity survive a save/restore round trip for
-# the dock, a drawer and a workspace clip. Runs wmaker under Xvfb on an
-# isolated display and WMAKER_USER_ROOT, tracks every PID it spawns and
-# kills only those.
+# the dock, a drawer and a workspace clip, and that a legacy state file
+# without an Edge key keeps its screen edge. Runs wmaker under Xvfb on
+# an isolated display and WMAKER_USER_ROOT, tracks every PID it spawns
+# and kills only those.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -353,6 +354,53 @@ check "migration: saved under Applications alone" \
 	state_has 'Applications = ($'
 check "migration: Applications768 dropped from WMState" \
 	state_lacks 'Applications768'
+
+# ---- case 8: legacy state keeps its side over a resolution change ----
+# Position 448 is the right origin of a 512 wide screen: on the 1024
+# wide test screen a midpoint test would read it as a left dock.
+
+note "case 8: legacy right-side position keeps the right edge"
+printf '{\n}\n' > "$WMHOME/Defaults/WindowMaker"
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+$(emit_icons 1 legacyR "0," "")
+    );
+    Position = "448,128";
+    Lowered = No;
+  };
+  Workspaces = ( { Name = Main; } );
+}
+WMEOD
+start_wmaker
+stop_wmaker
+check "legacy right position stays on the right edge" \
+	state_has 'Edge = Right;'
+check "legacy right position re-pinned to the right origin" \
+	state_has 'Position = "960,128";'
+
+# ---- case 9: legacy left position keeps the left edge ----------------
+
+note "case 9: legacy left-side position keeps the left edge"
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+$(emit_icons 1 legacyL "0," "")
+    );
+    Position = "0,128";
+    Lowered = No;
+  };
+  Workspaces = ( { Name = Main; } );
+}
+WMEOD
+start_wmaker
+stop_wmaker
+check "legacy left position stays on the left edge" \
+	state_has 'Edge = Left;'
+check "legacy left position re-pinned to the left origin" \
+	state_has 'Position = "0,128";'
 
 note "dock state drive summary"
 printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"
