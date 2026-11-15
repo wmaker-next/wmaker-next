@@ -2865,11 +2865,61 @@ static WMDragDestinationProcs _DragDestinationProcs = {
 	NULL
 };
 
-static char *getStream(WMText * tPtr, int sel, int array)
+/* Array-stream record: 0xFA, STREAM_ESC_TAG, 0xFA is a literal byte;
+ * 0xFA, STREAM_OBJ_TAG, len32-be, alloc-byte, payload is an object */
+#define STREAM_ESC_TAG	0x00
+#define STREAM_OBJ_TAG	0x01
+#define STREAM_OBJ_HDR	7
+
+static unsigned long streamPutBytes(char **text, unsigned long where, const void *src, unsigned long len)
+{
+	if (len == 0)
+		return where;
+	*text = wrealloc(*text, where + len);
+	memcpy(*text + where, src, len);
+	return where + len;
+}
+
+static unsigned long streamPutEscaped(char **text, unsigned long where, const char *src, unsigned long len)
+{
+	static const unsigned char esc[2] = { 0xFA, STREAM_ESC_TAG };
+	unsigned long i, run = 0;
+
+	for (i = 0; i < len; i++) {
+		if ((unsigned char)src[i] != 0xFA)
+			continue;
+		where = streamPutBytes(text, where, src + run, i - run);
+		where = streamPutBytes(text, where, esc, 2);
+		run = i + 1;
+	}
+	return streamPutBytes(text, where, src + run, len - run);
+}
+
+static unsigned long streamPutObject(char **text, unsigned long where, const char *src,
+				     unsigned long len, unsigned int alloc)
+{
+	unsigned char header[STREAM_OBJ_HDR];
+
+	header[0] = 0xFA;
+	header[1] = STREAM_OBJ_TAG;
+	header[2] = (len >> 24) & 0xff;
+	header[3] = (len >> 16) & 0xff;
+	header[4] = (len >> 8) & 0xff;
+	header[5] = len & 0xff;
+	header[6] = alloc & 0xff;
+	where = streamPutBytes(text, where, header, sizeof(header));
+
+	return streamPutBytes(text, where, src, len);
+}
+
+static char *getStream(WMText *tPtr, int sel, int array, unsigned long *size)
 {
 	TextBlock *tb = NULL;
 	char *text = NULL;
 	unsigned long where = 0;
+
+	if (size)
+		*size = 0;
 
 	if (!tPtr)
 		return NULL;
@@ -2899,15 +2949,14 @@ static char *getStream(WMText * tPtr, int sel, int array)
 					goto _gSnext;
 
 				if (tb->graphic && array) {
-					text = wrealloc(text, where + 4);
-					text[where++] = 0xFA;
-					text[where++] = (tb->used >> 8) & 0x0ff;
-					text[where++] = tb->used & 0x0ff;
-					text[where++] = tb->allocated;	/* extra info */
+					where = streamPutObject(&text, where, tb->text, tb->used, tb->allocated);
+				} else if (array) {
+					where = streamPutEscaped(&text, where, tb->text, tb->used);
+				} else {
+					text = wrealloc(text, where + tb->used);
+					memcpy(&text[where], tb->text, tb->used);
+					where += tb->used;
 				}
-				text = wrealloc(text, where + tb->used);
-				memcpy(&text[where], tb->text, tb->used);
-				where += tb->used;
 
 			} else if (sel && tb->selected) {
 
@@ -2919,9 +2968,14 @@ static char *getStream(WMText * tPtr, int sel, int array)
 				if (tb->blank)
 					goto _gSnext;
 
-				text = wrealloc(text, where + (tb->s_end - tb->s_begin));
-				memcpy(&text[where], &tb->text[tb->s_begin], tb->s_end - tb->s_begin);
-				where += tb->s_end - tb->s_begin;
+				if (array) {
+					where = streamPutEscaped(&text, where, &tb->text[tb->s_begin],
+								tb->s_end - tb->s_begin);
+				} else {
+					text = wrealloc(text, where + (tb->s_end - tb->s_begin));
+					memcpy(&text[where], &tb->text[tb->s_begin], tb->s_end - tb->s_begin);
+					where += tb->s_end - tb->s_begin;
+				}
 
 			}
 
@@ -2932,58 +2986,82 @@ static char *getStream(WMText * tPtr, int sel, int array)
 	/* +1 for the end of string, let's be nice */
 	text = wrealloc(text, where + 1);
 	text[where] = 0;
+	if (size)
+		*size = where;
 	return text;
 }
 
 static void releaseStreamObjects(void *data)
 {
 	if (data)
-		wfree(data);
+		WMReleaseData(data);
 }
 
 static WMArray *getStreamObjects(WMText * tPtr, int sel)
 {
 	WMArray *array;
 	WMData *data;
-	char *stream;
-	unsigned int len;
-	char *start, *fa, *desc;
+	char *stream, *run;
+	unsigned long slen, pos, rpos, len;
+	int isObject;
 
-	stream = getStream(tPtr, sel, 1);
+	stream = getStream(tPtr, sel, 1, &slen);
 	if (!stream)
 		return NULL;
 
 	array = WMCreateArrayWithDestructor(4, releaseStreamObjects);
+	run = wmalloc(slen > 0 ? slen : 1);
+	rpos = 0;
+	pos = 0;
+	while (pos < slen) {
 
-	start = stream;
-	while (start) {
-
-		fa = strchr(start, 0xFA);
-		if (fa) {
-			if ((int)(fa - start) > 0) {
-				desc = start;
-				desc[(int)(fa - start)] = 0;
-				data = WMCreateDataWithBytes((void *)desc, (int)(fa - start));
-				WMSetDataFormat(data, TYPETEXT);
-				WMAddToArray(array, (void *)data);
-			}
-
-			len = *(fa + 1) * 0xff + *(fa + 2);
-			data = WMCreateDataWithBytes((void *)(fa + 4), len);
-			WMSetDataFormat(data, *(fa + 3));
-			WMAddToArray(array, (void *)data);
-			start = fa + len + 4;
-
-		} else {
-			if (start && strlen(start)) {
-				data = WMCreateDataWithBytes((void *)start, strlen(start));
-				WMSetDataFormat(data, TYPETEXT);
-				WMAddToArray(array, (void *)data);
-			}
-			start = fa;
+		if ((unsigned char)stream[pos] != 0xFA) {
+			run[rpos++] = stream[pos++];
+			continue;
 		}
+
+		if (pos + 1 < slen && (unsigned char)stream[pos + 1] == STREAM_ESC_TAG) {
+			run[rpos++] = (char)0xFA;
+			pos += 2;
+			continue;
+		}
+
+		isObject = 0;
+		len = 0;
+		if (pos + STREAM_OBJ_HDR <= slen && (unsigned char)stream[pos + 1] == STREAM_OBJ_TAG) {
+			len = ((unsigned long)(unsigned char)stream[pos + 2] << 24) |
+			    ((unsigned long)(unsigned char)stream[pos + 3] << 16) |
+			    ((unsigned long)(unsigned char)stream[pos + 4] << 8) |
+			    (unsigned long)(unsigned char)stream[pos + 5];
+			if (pos + STREAM_OBJ_HDR + len <= slen)
+				isObject = 1;
+		}
+
+		if (!isObject) {
+			run[rpos++] = (char)0xFA;
+			pos++;
+			continue;
+		}
+
+		if (rpos > 0) {
+			data = WMCreateDataWithBytes(run, rpos);
+			WMSetDataFormat(data, TYPETEXT);
+			WMAddToArray(array, (void *)data);
+			rpos = 0;
+		}
+		data = WMCreateDataWithBytes(stream + pos + STREAM_OBJ_HDR, len);
+		WMSetDataFormat(data, (unsigned char)stream[pos + 6]);
+		WMAddToArray(array, (void *)data);
+		pos += STREAM_OBJ_HDR + len;
 	}
 
+	if (rpos > 0) {
+		data = WMCreateDataWithBytes(run, rpos);
+		WMSetDataFormat(data, TYPETEXT);
+		WMAddToArray(array, (void *)data);
+	}
+
+	wfree(run);
 	wfree(stream);
 	return array;
 }
@@ -3184,14 +3262,14 @@ char *WMGetTextStream(WMText * tPtr)
 {
 	CHECK_CLASS(tPtr, WC_Text);
 
-	return getStream(tPtr, 0, 0);
+	return getStream(tPtr, 0, 0, NULL);
 }
 
 char *WMGetTextSelectedStream(WMText * tPtr)
 {
 	CHECK_CLASS(tPtr, WC_Text);
 
-	return getStream(tPtr, 1, 0);
+	return getStream(tPtr, 1, 0, NULL);
 }
 
 WMArray *WMGetTextObjects(WMText * tPtr)
