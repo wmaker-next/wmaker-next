@@ -186,7 +186,7 @@ int wWsLayoutIndex(int rows, int cols, int orientation, int corner, int r, int c
 int wWsNeighbour(int rows, int cols, int orientation, int corner,
 		 int workspace_count, bool cycle, int from, int dcol, int drow)
 {
-	int r, c, to;
+	int r, c, to, steps, maxsteps;
 
 	if (!wWsLayoutPosition(rows, cols, orientation, corner, from, &r, &c))
 		return -1;
@@ -194,20 +194,30 @@ int wWsNeighbour(int rows, int cols, int orientation, int corner,
 	c += dcol;
 	r += drow;
 
-	if (cycle) {
-		c = ((c % cols) + cols) % cols;
-		r = ((r % rows) + rows) % rows;
-	} else if (c < 0 || c >= cols || r < 0 || r >= rows) {
-		return -1;
-	}
+	/* keep stepping along the row or column until an existing
+	 * workspace cell is reached */
+	maxsteps = rows * cols;
+	if (maxsteps < 1)
+		maxsteps = 1;
 
-	to = wWsLayoutIndex(rows, cols, orientation, corner, r, c);
-	if (to >= workspace_count) {
+	for (steps = 0; steps < maxsteps; steps++) {
+		if (cycle) {
+			c = ((c % cols) + cols) % cols;
+			r = ((r % rows) + rows) % rows;
+		} else if (c < 0 || c >= cols || r < 0 || r >= rows) {
+			return -1;
+		}
+
+		to = wWsLayoutIndex(rows, cols, orientation, corner, r, c);
+		if (to < workspace_count)
+			return to;
 		if (!cycle)
 			return -1;
-		to %= workspace_count;
+
+		c += dcol;
+		r += drow;
 	}
-	return to;
+	return -1;
 }
 
 int wWsRelativeOccupiedTarget(int workspace_count, int from_ws, int amount,

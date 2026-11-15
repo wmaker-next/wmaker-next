@@ -272,6 +272,29 @@ static void test_neighbour(void)
 	CHECK(wWsNeighbour(2, 2, 0, 0, 4, true, 1, 1, 0) == 0);
 	CHECK(wWsNeighbour(2, 2, 0, 0, 4, true, 2, 0, 1) == 0);
 	CHECK(wWsNeighbour(2, 2, 0, 0, 4, true, 2, 0, -1) == 0);
+
+	/* incomplete row-major 2x3 grid (cell 5 unused): wrap along the axis */
+	CHECK(wWsNeighbour(2, 3, 0, 0, 5, true, 4, 1, 0) == 3);
+	CHECK(wWsNeighbour(2, 3, 0, 0, 5, true, 3, -1, 0) == 4);
+	CHECK(wWsNeighbour(2, 3, 0, 0, 5, true, 2, 1, 0) == 0);
+	CHECK(wWsNeighbour(2, 3, 0, 0, 5, true, 0, -1, 0) == 2);
+	CHECK(wWsNeighbour(2, 3, 0, 0, 5, true, 4, 0, 1) == 1);
+	CHECK(wWsNeighbour(2, 3, 0, 0, 5, true, 1, 0, -1) == 4);
+	/* a column whose only workspace is the start wraps to itself */
+	CHECK(wWsNeighbour(2, 3, 0, 0, 5, true, 2, 0, 1) == 2);
+	/* without cycling an unused cell stops */
+	CHECK(wWsNeighbour(2, 3, 0, 0, 5, false, 4, 1, 0) == -1);
+
+	/* incomplete column-major 2x3 grid */
+	CHECK(wWsNeighbour(2, 3, 1, 0, 5, true, 1, 1, 0) == 3);
+	CHECK(wWsNeighbour(2, 3, 1, 0, 5, true, 3, 1, 0) == 1);
+	CHECK(wWsNeighbour(2, 3, 1, 0, 5, true, 4, 0, 1) == 4);
+
+	/* corner mirrors keep the wrap on the same screen row */
+	CHECK(wWsNeighbour(2, 3, 0, 1, 5, true, 3, 1, 0) == 4);
+	CHECK(wWsNeighbour(2, 3, 0, 1, 5, true, 4, 1, 0) == 3);
+	CHECK(wWsNeighbour(2, 3, 0, 3, 5, true, 4, 1, 0) == 3);
+	CHECK(wWsNeighbour(2, 3, 1, 2, 5, true, 0, 1, 0) == 4);
 }
 
 static void test_occupied_target(void)
