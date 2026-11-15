@@ -118,6 +118,27 @@ void wCancelKeyChain(WScreen *scr)
 	w_global.shortcut.curpos = NULL;
 }
 
+/* A menu teardown can take away the children of the node the key chain
+ * is armed at. When nothing is left to chain into, end the chain and
+ * drop the node so it cannot keep masking a shorter binding stored
+ * toward the root. */
+void wCancelStalledKeyChain(void)
+{
+	WKeyNode *pos = w_global.shortcut.curpos;
+	int i;
+
+	if (pos == NULL || pos->first_child != NULL)
+		return;
+
+	for (i = 0; i < wdisp->screen_count; i++) {
+		WScreen *scr = wScreenWithNumber(i);
+
+		if (scr)
+			wCancelKeyChain(scr);
+	}
+	wKeyTreePruneEmpty(pos);
+}
+
 /* ------------------------------------------------------------------ *
  * Key-chain prefix OSD                                               *
  *                                                                    *

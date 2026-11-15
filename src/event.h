@@ -100,6 +100,12 @@ void wRereadKeybindings(void);
  * Safe to call when no chain is active. */
 void wCancelKeyChain(WScreen *scr);
 
+/* End the key chain when the armed position lost its children, pruning
+ * the nodes it leaves empty back toward the root so a shorter binding
+ * on an ancestor matches again. Safe to call when the chain is idle or
+ * still has keys to grow into. */
+void wCancelStalledKeyChain(void);
+
 /* Re-evaluate the key-chain prefix OSD on scr against the current
  * KeychainDisplayPosition setting and curpos: hide it for "none" or
  * idle, otherwise rebuild the label and move/map at the configured

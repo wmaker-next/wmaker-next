@@ -19,6 +19,7 @@
  */
 
 #include "wconfig.h"
+#include <stdint.h>
 #include <string.h>
 #include <WINGs/WUtil.h>
 #include "keytree.h"
@@ -103,4 +104,84 @@ WKeyAction *wKeyNodeAddAction(WKeyNode *leaf, WKeyActionType type)
 		p->next = act;
 	}
 	return act;
+}
+
+/* 'menus' is sorted in ascending address order */
+static int menuInSet(void *const *menus, int nmenus, const void *menu)
+{
+	uintptr_t key = (uintptr_t)menu;
+	int lo = 0, hi = nmenus;
+
+	while (lo < hi) {
+		int mid = lo + (hi - lo) / 2;
+		uintptr_t cur = (uintptr_t)menus[mid];
+
+		if (cur < key)
+			lo = mid + 1;
+		else if (cur > key)
+			hi = mid;
+		else
+			return 1;
+	}
+	return 0;
+}
+
+void wKeyTreeRemoveMenus(WKeyNode **list, void **menus, int nmenus, const WKeyNode *keep)
+{
+	WKeyNode **slot;
+
+	for (slot = list; *slot != NULL; ) {
+		WKeyNode *node = *slot;
+		WKeyAction *act, *prev, *next;
+
+		wKeyTreeRemoveMenus(&node->first_child, menus, nmenus, keep);
+
+		prev = NULL;
+		for (act = node->actions; act != NULL; act = next) {
+			next = act->next;
+
+			if (act->type == WKN_MENU && menuInSet(menus, nmenus, act->u.menu.menu)) {
+				if (prev != NULL)
+					prev->next = next;
+				else
+					node->actions = next;
+				wfree(act);
+			} else {
+				prev = act;
+			}
+		}
+
+		if (node->actions == NULL && node->first_child == NULL &&
+		    node != keep) {
+			*slot = node->next_sibling;
+			wfree(node);
+		} else {
+			slot = &node->next_sibling;
+		}
+	}
+}
+
+void wKeyTreeRemoveMenu(WKeyNode **list, const void *menu, const WKeyNode *keep)
+{
+	void *menus[1];
+
+	menus[0] = (void *)menu;
+	wKeyTreeRemoveMenus(list, menus, 1, keep);
+}
+
+void wKeyTreePruneEmpty(WKeyNode *node)
+{
+	while (node != NULL && node->actions == NULL && node->first_child == NULL) {
+		WKeyNode *parent = node->parent;
+		WKeyNode **slot = (parent != NULL) ? &parent->first_child : &wKeyTreeRoot;
+		WKeyNode *next = node->next_sibling;
+
+		while (*slot != NULL && *slot != node)
+			slot = &(*slot)->next_sibling;
+		if (*slot != node)
+			return;
+		*slot = next;
+		wfree(node);
+		node = parent;
+	}
 }

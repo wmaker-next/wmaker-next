@@ -94,4 +94,30 @@ void wKeyTreeDestroy(WKeyNode *node);
  */
 WKeyAction *wKeyNodeAddAction(WKeyNode *leaf, WKeyActionType type);
 
+/*
+ * Remove every WKN_MENU action bound to 'menu' from the sibling list at
+ * *list, recursing into children, then drop nodes left with neither
+ * actions nor children so removed key sequences stop matching.  'keep'
+ * is never freed even when empty: callers pass the current key-chain
+ * position, which must stay valid across the removal.
+ */
+void wKeyTreeRemoveMenu(WKeyNode **list, const void *menu, const WKeyNode *keep);
+
+/*
+ * Same as wKeyTreeRemoveMenu() for a whole set of menus in a single
+ * traversal, so tearing down many shortcut-bearing menus at once does
+ * not re-walk the trie per menu.  'menus' points to 'nmenus' menu
+ * pointers sorted in ascending address order.  Surviving actions keep
+ * their relative order and 'keep' is never freed even when empty.
+ */
+void wKeyTreeRemoveMenus(WKeyNode **list, void **menus, int nmenus, const WKeyNode *keep);
+
+/*
+ * Drop 'node' when it holds neither actions nor children and repeat on
+ * its parent, pruning toward the root so a torn-down chain cannot keep
+ * masking a shorter binding stored further up.  Nodes holding an
+ * action survive, even without children.
+ */
+void wKeyTreePruneEmpty(WKeyNode *node);
+
 #endif /* WMKEYTREE_H */

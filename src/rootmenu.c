@@ -23,6 +23,7 @@
 #include "wconfig.h"
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -46,6 +47,7 @@
 #include "stacking.h"
 #include "workspace.h"
 #include "defaults.h"
+#include "event.h"
 #include "framewin.h"
 #include "session.h"
 #include "shutdown.h"
@@ -78,6 +80,7 @@ typedef struct Shortcut {
 } Shortcut;
 
 static Shortcut *shortcutList = NULL;
+static Shortcut *shortcutListTail;
 
 /*
  * Syntax:
@@ -342,40 +345,45 @@ static char *getLocalizedMenuFile(const char *menu)
  * Insert all root-menu shortcuts into the
  * global key-binding trie (wKeyTreeRoot)
  */
+static void shortcutInsertIntoTree(const Shortcut *ptr)
+{
+	unsigned int *mods;
+	xcb_keycode_t *keys;
+	int len, j;
+	WKeyNode *leaf;
+
+	if (ptr->keycode == 0)
+		return;
+
+	len  = (ptr->chain_length > 1) ? ptr->chain_length : 1;
+	mods = wmalloc(len * sizeof(unsigned int));
+	keys = wmalloc(len * sizeof(xcb_keycode_t));
+	mods[0] = ptr->modifier;
+	keys[0] = ptr->keycode;
+
+	for (j = 1; j < len; j++) {
+		mods[j] = ptr->chain_modifiers[j - 1];
+		keys[j] = ptr->chain_keycodes[j - 1];
+	}
+
+	leaf = wKeyTreeInsert(&wKeyTreeRoot, mods, keys, len);
+	wfree(mods);
+	wfree(keys);
+
+	if (leaf) {
+		WKeyAction *act = wKeyNodeAddAction(leaf, WKN_MENU);
+
+		act->u.menu.menu  = ptr->menu;
+		act->u.menu.entry = ptr->entry;
+	}
+}
+
 void wRootMenuInsertIntoTree(void)
 {
 	Shortcut *ptr;
 
-	for (ptr = shortcutList; ptr != NULL; ptr = ptr->next) {
-		unsigned int *mods;
-		xcb_keycode_t *keys;
-		int len, j;
-		WKeyNode *leaf;
-
-		if (ptr->keycode == 0)
-			continue;
-
-		len  = (ptr->chain_length > 1) ? ptr->chain_length : 1;
-		mods = wmalloc(len * sizeof(unsigned int));
-		keys = wmalloc(len * sizeof(xcb_keycode_t));
-		mods[0] = ptr->modifier;
-		keys[0] = ptr->keycode;
-
-		for (j = 1; j < len; j++) {
-			mods[j] = ptr->chain_modifiers[j - 1];
-			keys[j] = ptr->chain_keycodes[j - 1];
-		}
-
-		leaf = wKeyTreeInsert(&wKeyTreeRoot, mods, keys, len);
-		wfree(mods);
-		wfree(keys);
-
-		if (leaf) {
-			WKeyAction *act = wKeyNodeAddAction(leaf, WKN_MENU);
-			act->u.menu.menu  = ptr->menu;
-			act->u.menu.entry = ptr->entry;
-		}
-	}
+	for (ptr = shortcutList; ptr != NULL; ptr = ptr->next)
+		shortcutInsertIntoTree(ptr);
 }
 
 void wRootMenuBindShortcuts(xcb_window_t window)
@@ -424,22 +432,119 @@ static void freeShortcut(Shortcut *s)
 
 static void removeShortcutsForMenu(WMenu * menu)
 {
-	Shortcut *ptr, *tmp;
-	Shortcut *newList = NULL;
+	Shortcut *ptr, *prev, *next;
+	int removed = 0;
 
-	ptr = shortcutList;
-	while (ptr != NULL) {
-		tmp = ptr->next;
-		if (ptr->menu == menu) {
-			freeShortcut(ptr);
-		} else {
-			ptr->next = newList;
-			newList = ptr;
+	prev = NULL;
+	for (ptr = shortcutList; ptr != NULL; ptr = next) {
+		next = ptr->next;
+		if (ptr->menu != menu) {
+			prev = ptr;
+			continue;
 		}
-		ptr = tmp;
+		if (prev != NULL)
+			prev->next = next;
+		else
+			shortcutList = next;
+		if (shortcutListTail == ptr)
+			shortcutListTail = prev;
+		freeShortcut(ptr);
+		removed = 1;
 	}
-	shortcutList = newList;
-	menu->menu->screen_ptr->flags.root_menu_changed_shortcuts = 1;
+	if (removed) {
+		menu->menu->screen_ptr->flags.root_menu_changed_shortcuts = 1;
+		/* the key trie caches pointers into this menu's entries */
+		wKeyTreeRemoveMenu(&wKeyTreeRoot, menu, w_global.shortcut.curpos);
+		w_global.shortcut.action_generation++;
+		wCancelStalledKeyChain();
+	}
+}
+
+static int compareMenuPtr(const void *a, const void *b)
+{
+	uintptr_t x = (uintptr_t)*(WMenu *const *)a;
+	uintptr_t y = (uintptr_t)*(WMenu *const *)b;
+
+	return (x > y) - (x < y);
+}
+
+static void collectMenusInSubtree(WMenu *menu, WMenu ***items, int *count, int *capacity)
+{
+	int i;
+
+	if (*count == *capacity) {
+		*capacity = (*capacity > 0) ? *capacity * 2 : 16;
+		*items = wrealloc(*items, *capacity * sizeof(WMenu *));
+	}
+	(*items)[(*count)++] = menu;
+
+	for (i = 0; i < menu->cascade_no; i++) {
+		WMenu *cascade = menu->cascades[i];
+
+		if (cascade == NULL)
+			continue;
+		/* wMenuDestroy() visits a brother-marked cascade through
+		 * its twin, so collect the twin's subtree instead */
+		if (cascade->flags.brother)
+			collectMenusInSubtree(cascade->brother, items, count, capacity);
+		else
+			collectMenusInSubtree(cascade, items, count, capacity);
+	}
+}
+
+/*
+ * Destroy a whole menu subtree, dropping its shortcuts from
+ * shortcutList and the key trie in one pass each first so the entries
+ * the trie actions point at are never freed under them. Menus torn
+ * down outside a subtree keep the removeShortcutsForMenu() on_destroy
+ * path.
+ */
+static void destroyMenuSubtree(WMenu *menu)
+{
+	WMenu **items = NULL;
+	int count = 0, capacity = 0;
+	Shortcut *ptr, *prev, *next;
+	int i, removed = 0;
+
+	collectMenusInSubtree(menu, &items, &count, &capacity);
+	qsort(items, count, sizeof(items[0]), compareMenuPtr);
+
+	prev = NULL;
+	for (ptr = shortcutList; ptr != NULL; ptr = next) {
+		WMenu *key = ptr->menu;
+
+		next = ptr->next;
+		if (bsearch(&key, items, count, sizeof(items[0]), compareMenuPtr) == NULL) {
+			prev = ptr;
+			continue;
+		}
+		if (prev != NULL)
+			prev->next = next;
+		else
+			shortcutList = next;
+		if (shortcutListTail == ptr)
+			shortcutListTail = prev;
+		freeShortcut(ptr);
+		removed = 1;
+	}
+
+	if (removed) {
+		menu->menu->screen_ptr->flags.root_menu_changed_shortcuts = 1;
+		wKeyTreeRemoveMenus(&wKeyTreeRoot, (void **)items, count,
+				    w_global.shortcut.curpos);
+		w_global.shortcut.action_generation++;
+		wCancelStalledKeyChain();
+	}
+
+	/* the batch above owns their shortcuts now, the per-menu
+	 * on_destroy pass would just re-walk the list for nothing */
+	for (i = 0; i < count; i++) {
+		if (items[i]->on_destroy == removeShortcutsForMenu)
+			items[i]->on_destroy = NULL;
+	}
+	wfree(items);
+
+	wMenuDestroy(menu, true);
 }
 
 static bool addShortcut(const char *file, const char *shortcutDefinition, WMenu *menu, WMenuEntry *entry)
@@ -517,10 +622,18 @@ static bool addShortcut(const char *file, const char *shortcutDefinition, WMenu 
 	ptr->menu  = menu;
 	ptr->entry = entry;
 
-	ptr->next = shortcutList;
-	shortcutList = ptr;
+	/* shortcutList stays in menu definition order: the trie is built
+	 * from it by wRootMenuInsertIntoTree and must come out identical
+	 * to the per-add shortcutInsertIntoTree() calls */
+	ptr->next = NULL;
+	if (shortcutListTail != NULL)
+		shortcutListTail->next = ptr;
+	else
+		shortcutList = ptr;
+	shortcutListTail = ptr;
 
 	menu->menu->screen_ptr->flags.root_menu_changed_shortcuts = 1;
+	shortcutInsertIntoTree(ptr);
 
 	return true;
 }
@@ -1071,7 +1184,7 @@ static WMenu *parseCascade(WScreen * scr, WMenu * menu, WMenuParser parser, int 
 			cascade = wMenuCreate(scr, M_(title), false);
 			cascade->on_destroy = removeShortcutsForMenu;
 			if (!parseCascade(scr, cascade, parser, depth + 1)) {
-				wMenuDestroy(cascade, true);
+				destroyMenuSubtree(cascade);
 			} else {
 				wMenuEntrySetCascade(menu, wMenuAddCallback(menu, M_(title), NULL, NULL), cascade);
 			}
@@ -1112,7 +1225,7 @@ static WMenu *readMenu(WScreen *scr, const char *flat_file, FILE *file)
 			menu = wMenuCreate(scr, M_(title), true);
 			menu->on_destroy = removeShortcutsForMenu;
 			if (!parseCascade(scr, menu, parser, 0)) {
-				wMenuDestroy(menu, true);
+				destroyMenuSubtree(menu);
 				menu = NULL;
 			}
 			freeline(title, command, params, shortcut);
@@ -1758,7 +1871,7 @@ void wRootMenuReparse(WScreen *scr)
 
 	if (menu) {
 		if (scr->root_menu)
-			wMenuDestroy(scr->root_menu, true);
+			destroyMenuSubtree(scr->root_menu);
 		scr->root_menu = menu;
 		w_global.shortcut.action_generation++;
 	}
@@ -1857,7 +1970,7 @@ void OpenRootMenu(WScreen * scr, int x, int y, int keyboard)
 	} else {
 		/* new root menu */
 		if (scr->root_menu) {
-			wMenuDestroy(scr->root_menu, true);
+			destroyMenuSubtree(scr->root_menu);
 		}
 		scr->root_menu = menu;
 		w_global.shortcut.action_generation++;
