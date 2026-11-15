@@ -1541,16 +1541,19 @@ WMPropList *WMGetFromPLDictionary(WMPropList * plist, WMPropList * key)
 
 WMPropList *WMGetFromPLDictionaryByName(WMPropList * plist, const char *key)
 {
-	WMPropList *plkey, *value;
+	W_PropList probe;
 
 	if (!plist)
 		return NULL;
 
-	plkey = WMCreatePLString(key);
-	value = WMGetFromPLDictionary(plist, plkey);
-	WMReleasePropList(plkey);
+	wassertrv(plist->type == WPLDictionary, NULL);
 
-	return value;
+	/* the hash callbacks compare by content and never store the key */
+	probe.type = WPLString;
+	probe.d.string = (char *)key;
+	probe.retainCount = 1;
+
+	return WMHashGet(plist->d.dict, &probe);
 }
 
 WMPropList *WMGetPLDictionaryKeys(WMPropList * plist)
