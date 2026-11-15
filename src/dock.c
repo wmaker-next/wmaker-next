@@ -1907,6 +1907,9 @@ static WAppIcon *restore_icon_state(WScreen *scr, WMPropList *info, int type,
 	WMPropList *cmd, *value;
 	char *wclass, *winstance, *command;
 
+	if (!info || !WMIsPLDictionary(info))
+		return NULL;
+
 	cmd = WMGetFromPLDictionary(info, dCommand);
 	if (!cmd || !WMIsPLString(cmd))
 		return NULL;
@@ -1951,12 +1954,12 @@ static WAppIcon *restore_icon_state(WScreen *scr, WMPropList *info, int type,
 
 #ifdef USE_DOCK_XDND
 	cmd = WMGetFromPLDictionary(info, dDropCommand);
-	if (cmd)
+	if (cmd && WMIsPLString(cmd))
 		aicon->dnd_command = wstrdup(WMGetFromPLString(cmd));
 #endif
 
 	cmd = WMGetFromPLDictionary(info, dPasteCommand);
-	if (cmd)
+	if (cmd && WMIsPLString(cmd))
 		aicon->paste_command = wstrdup(WMGetFromPLString(cmd));
 
 	cmd = WMGetFromPLDictionary(info, dDisplayName);
@@ -2277,6 +2280,11 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 
 	if (!apps)
 		goto finish;
+
+	if (!WMIsPLArray(apps)) {
+		COMPLAIN("Applications");
+		goto finish;
+	}
 
 	count = WMGetPropListItemCount(apps);
 	if (count == 0)
@@ -6158,7 +6166,10 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 
 	/* Get the instance name, and create a drawer */
 	value = WMGetFromPLDictionary(drawer_state, dName);
-	drawer = wDockCreate(scr, WM_DRAWER, WMGetFromPLString(value));
+	if (value && !WMIsPLString(value))
+		COMPLAIN("Name");
+	drawer = wDockCreate(scr, WM_DRAWER,
+			     (value && WMIsPLString(value)) ? WMGetFromPLString(value) : NULL);
 
 	/* restore DnD command and paste command */
 #ifdef USE_DOCK_XDND
@@ -6211,6 +6222,10 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 
 	/* restore dock properties (applist and others) */
 	dock_state = WMGetFromPLDictionary(drawer_state, dDock);
+	if (dock_state && !WMIsPLDictionary(dock_state)) {
+		COMPLAIN("Dock");
+		dock_state = NULL;
+	}
 
 	/* restore lowered/raised state: same as scr->dock, no matter what */
 	drawer->lowered = scr->dock->lowered;
@@ -6221,35 +6236,32 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 	wRaiseFrame(drawer->icon_array[0]->icon->core);
 
 	/* restore collapsed state */
-	drawer->collapsed = 0;
-	value = WMGetFromPLDictionary(dock_state, dCollapsed);
-	if (value && strcasecmp(WMGetFromPLString(value), "YES") == 0) {
-		drawer->collapsed = 1;
-	}
+	value = dock_state ? WMGetFromPLDictionary(dock_state, dCollapsed) : NULL;
+	drawer->collapsed = getBooleanDockValue(value, dCollapsed);
+
 	/* restore auto-collapsed state */
-	value = WMGetFromPLDictionary(dock_state, dAutoCollapse);
-	if (value && strcasecmp(WMGetFromPLString(value), "YES") == 0) {
-		drawer->auto_collapse = 1;
+	value = dock_state ? WMGetFromPLDictionary(dock_state, dAutoCollapse) : NULL;
+	drawer->auto_collapse = getBooleanDockValue(value, dAutoCollapse);
+	if (drawer->auto_collapse)
 		drawer->collapsed = 1;
-	} else {
-		drawer->auto_collapse = 0; // because wDockCreate sets it (drawers only)
-	}
 
 	/* restore auto-raise/lower state: same as scr->dock, no matter what */
 	drawer->auto_raise_lower = scr->dock->auto_raise_lower;
 
 	/* restore attract icons state */
-	drawer->attract_icons = 0;
-	value = WMGetFromPLDictionary(dock_state, dAutoAttractIcons);
-	if (value && strcasecmp(WMGetFromPLString(value), "YES") == 0) {
-		drawer->attract_icons = 1;
+	value = dock_state ? WMGetFromPLDictionary(dock_state, dAutoAttractIcons) : NULL;
+	drawer->attract_icons = getBooleanDockValue(value, dAutoAttractIcons);
+	if (drawer->attract_icons)
 		scr->attracting_drawer = drawer;
-	}
 
 	/* application list */
-	apps = WMGetFromPLDictionary(dock_state, dApplications);
+	apps = dock_state ? WMGetFromPLDictionary(dock_state, dApplications) : NULL;
 
-	if (!apps) {
+	if (!apps)
+		goto finish;
+
+	if (!WMIsPLArray(apps)) {
+		COMPLAIN("Applications");
 		goto finish;
 	}
 
