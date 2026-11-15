@@ -325,16 +325,9 @@ void wPlaceWindowCompute(WPlaceEnv *env, const WPlaceOcc *occ, int n_occ,
 	}
 }
 
-/* Mark one slot cell, skipping cells whose linear index falls
- * outside the map. Unreachable on heads with a non-negative
- * origin, where negative-origin heads would otherwise index
- * before the buffer. */
-static void mark_slot(char *map, int map_size, int stride, int x, int y)
+static int rect_overlap(int ax, int ay, int bx, int by, int size)
 {
-	int idx = (y + 1) * stride + x + 1;
-
-	if (idx >= 0 && idx < map_size)
-		map[idx] = 1;
+	return ax < bx + size && bx < ax + size && ay < by + size && by < ay + size;
 }
 
 void wPlaceIconCompute(const WPlaceEnv *env, const WPlaceOcc *occ, int n_occ,
@@ -344,11 +337,8 @@ void wPlaceIconCompute(const WPlaceEnv *env, const WPlaceOcc *occ, int n_occ,
 	int sf;			/* secondary axis */
 	int fullW;
 	int fullH;
-	char *map;
-	int map_size;
 	int pi, si;
 	int sx1, sx2, sy1, sy2;	/* screen boundary */
-	int sw, sh;
 	int xo, yo;
 	int xs, ys;
 	int x, y;
@@ -363,11 +353,6 @@ void wPlaceIconCompute(const WPlaceEnv *env, const WPlaceOcc *occ, int n_occ,
 	sy1 = env->usable.y1;
 	sx2 = env->usable.x2;
 	sy2 = env->usable.y2;
-	sw = sx2 - sx1;
-	sh = sy2 - sy1;
-
-	sw = isize * (sw / isize);
-	sh = isize * (sh / isize);
 	fullW = (sx2 - sx1) / isize;
 	fullH = (sy2 - sy1) / isize;
 
@@ -394,37 +379,13 @@ void wPlaceIconCompute(const WPlaceEnv *env, const WPlaceOcc *occ, int n_occ,
 		ys = -1;
 	}
 
-	/*
-	 * Create a map with the occupied slots. 1 means the slot is used
-	 * or at least partially used.
-	 */
-	map_size = (sw + 2) * (sh + 2);
-	map = wmalloc(map_size);
-
-#define INDEX(x,y)	(((y)+1)*(sw+2) + (x) + 1)
-
-	for (i = 0; i < n_occ; i++) {
-		int xdi, ydi;	/* rounded down */
-		int xui, yui;	/* rounded up */
-
-		xdi = occ[i].x / isize;
-		ydi = occ[i].y / isize;
-		xui = (occ[i].x + isize / 2) / isize;
-		yui = (occ[i].y + isize / 2) / isize;
-		mark_slot(map, map_size, sw + 2, xdi, ydi);
-		mark_slot(map, map_size, sw + 2, xdi, yui);
-		mark_slot(map, map_size, sw + 2, xui, ydi);
-		mark_slot(map, map_size, sw + 2, xui, yui);
-	}
-	/* Default position */
-	*x_ret = 0;
-	*y_ret = 0;
+	/* keep the fallback on the selected head */
+	*x_ret = sx1;
+	*y_ret = sy1;
 
 	/* Look for an empty slot */
 	for (si = 0; si < sf; si++) {
 		for (pi = 0; pi < pf; pi++) {
-			int idx;
-
 			if (env->icon_yard & IY_VERT) {
 				x = xo + xs * (si * isize);
 				y = yo + ys * (pi * isize);
@@ -432,10 +393,10 @@ void wPlaceIconCompute(const WPlaceEnv *env, const WPlaceOcc *occ, int n_occ,
 				x = xo + xs * (pi * isize);
 				y = yo + ys * (si * isize);
 			}
-			idx = INDEX(x / isize, y / isize);
-			/* cells the map cannot address count as
-			 * occupied so no icon is placed on them */
-			if (idx >= 0 && idx < map_size && !map[idx]) {
+			for (i = 0; i < n_occ; i++)
+				if (rect_overlap(x, y, occ[i].x, occ[i].y, isize))
+					break;
+			if (i == n_occ) {
 				*x_ret = x;
 				*y_ret = y;
 				done = 1;
@@ -445,7 +406,4 @@ void wPlaceIconCompute(const WPlaceEnv *env, const WPlaceOcc *occ, int n_occ,
 		if (done)
 			break;
 	}
-
-	wfree(map);
-#undef INDEX
 }

@@ -217,6 +217,19 @@ static void test_icon_yard(void)
 	wPlaceIconCompute(&env, occ, 1, &x, &y);
 	CHECK(x == 64 && y == 0);
 
+	/* a displaced icon blocks the slots its rectangle overlaps */
+	occ[0] = mkocc(1, 0, 64, 64, true);
+	wPlaceIconCompute(&env, occ, 1, &x, &y);
+	CHECK(x == 2 * 64 && y == 0);
+
+	occ[0] = mkocc(0, 1, 64, 64, true);
+	wPlaceIconCompute(&env, occ, 1, &x, &y);
+	CHECK(x == 64 && y == 0);
+
+	occ[0] = mkocc(65, 0, 64, 64, true);
+	wPlaceIconCompute(&env, occ, 1, &x, &y);
+	CHECK(x == 0 && y == 0);
+
 	/* right origin walks from the right edge going left */
 	env.icon_yard = IY_RIGHT;
 	occ[0] = mkocc(640 - 64, 480 - 64, 64, 64, true);
@@ -228,17 +241,24 @@ static void test_icon_yard(void)
 	occ[0] = mkocc(0, 480 - 64, 64, 64, true);
 	wPlaceIconCompute(&env, occ, 1, &x, &y);
 	CHECK(x == 0 && y == 480 - 2 * 64);
+
+	/* a slot must not overlap an existing icon: the slot at y=352
+	 * overlaps an icon at y=384, the next free one is y=288 */
+	fill_env(&env, 0);
+	env.usable.x2 = 64;
+	occ[0] = mkocc(0, 384, 64, 64, true);
+	wPlaceIconCompute(&env, occ, 1, &x, &y);
+	CHECK(x == 0 && y == 288);
 }
 
 static void test_icon_yard_negative_origin(void)
 {
 	WPlaceEnv env;
-	WPlaceOcc occ[10];
+	WPlaceOcc occ[20];
 	int x, y;
 	int i;
 
-	/* a head entirely above the origin: the bottom row of the yard
-	 * is addressable, the row above it is not */
+	/* a head entirely above the origin: both yard rows are addressable */
 	fill_env(&env, 0);
 	env.usable.x1 = 0;
 	env.usable.y1 = -128;
@@ -248,19 +268,24 @@ static void test_icon_yard_negative_origin(void)
 	env.icon_size = 64;
 
 	/* an icon one icon size above the head's top edge is within
-	 * iconPosition's acceptance: its mark falls before the map and
-	 * must be skipped, the bottom row stays free */
+	 * iconPosition's acceptance: it overlaps no slot and the
+	 * bottom row stays free */
 	occ[0] = mkocc(0, -192, 64, 64, true);
 	wPlaceIconCompute(&env, occ, 1, &x, &y);
 	CHECK(x == 0 && y == -64);
 
-	/* with the addressable bottom row full, the scan reaches only
-	 * cells the map cannot address, which count as occupied:
-	 * nothing is found and the default position stands */
+	/* with the bottom row full the scan finds the free upper row */
 	for (i = 0; i < 10; i++)
 		occ[i] = mkocc(i * 64, -64, 64, 64, true);
-	wPlaceIconCompute(&env, occ, 10, &x, &y);
-	CHECK(x == 0 && y == 0);
+	occ[10] = mkocc(0, -128, 64, 64, true);
+	wPlaceIconCompute(&env, occ, 11, &x, &y);
+	CHECK(x == 64 && y == -128);
+
+	/* with every row full the fallback stays on the head */
+	for (i = 0; i < 10; i++)
+		occ[i + 10] = mkocc(i * 64, -128, 64, 64, true);
+	wPlaceIconCompute(&env, occ, 20, &x, &y);
+	CHECK(x == 0 && y == -128);
 }
 
 int main(void)
