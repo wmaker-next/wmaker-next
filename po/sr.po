@@ -610,35 +610,23 @@ msgid "Collapsed"
 msgstr "Скупљено"
 
 #: ../src/dock.c:1081
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Аутоматско скупљање"
 
 #: ../src/dock.c:1086
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Аутоматско издизање"
 
 #: ../src/dock.c:1091
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Аутоматско привлачење икона"
 
 #: ../src/dock.c:1206
-msgid "could not create options submenu for dock position menu"
+msgid "could not create options submenu for Dock menu"
 msgstr "не може се креирати подмени са опцијама за мени за позицију дока"
 
-#: ../src/dock.c:1210
-msgid "Normal"
-msgstr "Обично"
-
-#: ../src/dock.c:1214
-msgid "Auto raise & lower"
-msgstr "Аутоматско издизање и спуштање"
-
-#: ../src/dock.c:1242
-msgid "Dock position"
-msgstr "Положај дока"
-
 #: ../src/dock.c:1248
-msgid "Add a drawer"
+msgid "Add a Drawer"
 msgstr "Додај фиоку"
 
 #: ../src/dock.c:1252
@@ -647,7 +635,7 @@ msgstr "Опције Спајалице"
 
 #. if (type == WM_DRAWER)
 #: ../src/dock.c:1254
-msgid "Drawer options"
+msgid "Drawer Options"
 msgstr "Опције фиоке"
 
 #: ../src/dock.c:1271
@@ -729,7 +717,7 @@ msgid "Bring Here"
 msgstr "Донеси овамо"
 
 #: ../src/dock.c:3605
-msgid "Remove drawer"
+msgid "Remove Drawer"
 msgstr "Уклони фиоку"
 
 #: ../src/dock.c:4531

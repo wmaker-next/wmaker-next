@@ -626,15 +626,15 @@ msgid "Collapsed"
 msgstr "Zvinuté"
 
 #: ../src/dock.c:1103
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Automaticky zvinúť"
 
 #: ../src/dock.c:1109
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Auto navrchu/naspodu"
 
 #: ../src/dock.c:1115
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Vždy pritiahnuť ikony"
 
 #: ../src/dock.c:1145

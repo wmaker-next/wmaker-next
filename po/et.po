@@ -586,15 +586,15 @@ msgid "Collapsed"
 msgstr "Ahendatud"
 
 #: ../src/dock.c:961
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Automaatselt ahenev"
 
 #: ../src/dock.c:966
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Automaatselt esile tõusev"
 
 #: ../src/dock.c:971
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Ikoonide automaatne külgehaakimine"
 
 #: ../src/dock.c:997

@@ -594,15 +594,15 @@ msgid "Collapsed"
 msgstr "Zusammengefaltet"
 
 #: ../src/dock.c:996
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Automatisch zusammenfalten"
 
 #: ../src/dock.c:1001
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Automatisch oben"
 
 #: ../src/dock.c:1006
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Symbole automatisch anziehen"
 
 #: ../src/dock.c:1032

@@ -644,15 +644,15 @@ msgid "Collapsed"
 msgstr "Collassata"
 
 #: ../src/dock.c:1085
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Collassa automatico"
 
 #: ../src/dock.c:1091
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Alza automaticamente"
 
 #: ../src/dock.c:1097
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Attrai le icone automatico"
 
 #: ../src/dock.c:1127

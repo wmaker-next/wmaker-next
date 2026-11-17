@@ -589,15 +589,15 @@ msgid "Collapsed"
 msgstr "Häivytetty"
 
 #: ../src/dock.c:1056
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Automaattinen häivytys"
 
 #: ../src/dock.c:1062
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Nosta automaattisesti"
 
 #: ../src/dock.c:1068
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Kerää kuvakkeet automaattisesti"
 
 #: ../src/dock.c:1098

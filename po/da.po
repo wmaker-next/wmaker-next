@@ -679,17 +679,17 @@ msgstr "Sammenfoldet"
 
 # ../src/dock.c:1116
 #: ../src/dock.c:1094
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Autosammenfold"
 
 # ../src/dock.c:1122
 #: ../src/dock.c:1100
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Autoløft"
 
 # ../src/dock.c:1128
 #: ../src/dock.c:1106
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Tiltræk ikoner"
 
 # ../src/dock.c:1164

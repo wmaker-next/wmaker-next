@@ -571,15 +571,15 @@ msgid "Collapsed"
 msgstr "Runtuh"
 
 #: ../src/dock.c:1094
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "AutoRuntuh"
 
 #: ../src/dock.c:1100
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Autonaik"
 
 #: ../src/dock.c:1106
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Autotarik Ikon"
 
 #: ../src/dock.c:1136

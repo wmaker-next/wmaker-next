@@ -640,35 +640,23 @@ msgid "Collapsed"
 msgstr "Ynskood"
 
 #: ../src/dock.c:1057
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Fansels skowe"
 
 #: ../src/dock.c:1062
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Fansels ferheegje"
 
 #: ../src/dock.c:1067
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Fansels ikoanen oanlûke"
 
 #: ../src/dock.c:1182
-msgid "could not create options submenu for dock position menu"
+msgid "could not create options submenu for Dock menu"
 msgstr "koe opsjesubmenu net oanmeitsje foar dokposysjemenu"
 
-#: ../src/dock.c:1186
-msgid "Normal"
-msgstr "Normaal"
-
-#: ../src/dock.c:1190
-msgid "Auto raise & lower"
-msgstr "Fansels ferheegje & ferleegje"
-
-#: ../src/dock.c:1218
-msgid "Dock position"
-msgstr "Dokposysje"
-
 #: ../src/dock.c:1224
-msgid "Add a drawer"
+msgid "Add a Drawer"
 msgstr "Laad tafoegje"
 
 #: ../src/dock.c:1228
@@ -677,7 +665,7 @@ msgstr "Klipopsjes"
 
 #. if (type == WM_DRAWER)
 #: ../src/dock.c:1230
-msgid "Drawer options"
+msgid "Drawer Options"
 msgstr "Laadopsjes"
 
 #: ../src/dock.c:1247
@@ -759,7 +747,7 @@ msgid "Bring Here"
 msgstr "Hjir bringe"
 
 #: ../src/dock.c:3577
-msgid "Remove drawer"
+msgid "Remove Drawer"
 msgstr "Laad ferwiderje"
 
 #: ../src/dock.c:4500

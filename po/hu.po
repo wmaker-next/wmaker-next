@@ -590,35 +590,23 @@ msgid "Collapsed"
 msgstr "Ikonok rejtve"
 
 #: ../../wmaker-crm/src/dock.c:1058
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Automatikus ikon elrejtés"
 
 #: ../../wmaker-crm/src/dock.c:1063
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Automatikus előre ugrás"
 
 #: ../../wmaker-crm/src/dock.c:1068
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Automatikus ikon vonzás"
 
 #: ../../wmaker-crm/src/dock.c:1183
-msgid "could not create options submenu for dock position menu"
+msgid "could not create options submenu for Dock menu"
 msgstr "nem sikerült opciók almenüt létrehozni a Dokk pozícióhoz"
 
-#: ../../wmaker-crm/src/dock.c:1187
-msgid "Normal"
-msgstr "Normál"
-
-#: ../../wmaker-crm/src/dock.c:1191
-msgid "Auto raise & lower"
-msgstr "Automatikus előre/hátra rakás"
-
-#: ../../wmaker-crm/src/dock.c:1219
-msgid "Dock position"
-msgstr "Dokkolt ikon"
-
 #: ../../wmaker-crm/src/dock.c:1225
-msgid "Add a drawer"
+msgid "Add a Drawer"
 msgstr "Új fiók"
 
 #: ../../wmaker-crm/src/dock.c:1229
@@ -627,7 +615,7 @@ msgstr "Kapocs beállítások"
 
 #. if (type == WM_DRAWER)
 #: ../../wmaker-crm/src/dock.c:1231
-msgid "Drawer options"
+msgid "Drawer Options"
 msgstr "Fiók beállítások"
 
 #: ../../wmaker-crm/src/dock.c:1248
@@ -713,7 +701,7 @@ msgid "Bring Here"
 msgstr "Áthoz ide"
 
 #: ../../wmaker-crm/src/dock.c:3574
-msgid "Remove drawer"
+msgid "Remove Drawer"
 msgstr "Fiók törlése"
 
 #: ../../wmaker-crm/src/dock.c:4468

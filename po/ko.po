@@ -583,35 +583,23 @@ msgid "Collapsed"
 msgstr "아이콘 숨김"
 
 #: ../src/dock.c:1054
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "자동 축소"
 
 #: ../src/dock.c:1059
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "자동 올림"
 
 #: ../src/dock.c:1064
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "아이콘 자동 모음"
 
 #: ../src/dock.c:1167
-msgid "could not create options submenu for dock position menu"
+msgid "could not create options submenu for Dock menu"
 msgstr "독 위치 메뉴를 위한 옵션 하부메뉴를 만들 수 없습니다"
 
-#: ../src/dock.c:1171
-msgid "Normal"
-msgstr "보통"
-
-#: ../src/dock.c:1175
-msgid "Auto raise & lower"
-msgstr "자동 올림/내림"
-
-#: ../src/dock.c:1203
-msgid "Dock position"
-msgstr "독 위치"
-
 #: ../src/dock.c:1209
-msgid "Add a drawer"
+msgid "Add a Drawer"
 msgstr "서랍 추가하기"
 
 #: ../src/dock.c:1213
@@ -620,7 +608,7 @@ msgstr "클립 옵션"
 
 #. if (type == WM_DRAWER)
 #: ../src/dock.c:1215
-msgid "Drawer options"
+msgid "Drawer Options"
 msgstr "서랍 옵션"
 
 #: ../src/dock.c:1231
@@ -702,7 +690,7 @@ msgid "Bring Here"
 msgstr "여기로 가져오기"
 
 #: ../src/dock.c:3554
-msgid "Remove drawer"
+msgid "Remove Drawer"
 msgstr "서랍 제거하기"
 
 #: ../src/dock.c:4421

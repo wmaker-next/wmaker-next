@@ -590,15 +590,15 @@ msgid "Collapsed"
 msgstr "Agrupar"
 
 #: ../src/dock.c:962
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Autoagrupar"
 
 #: ../src/dock.c:967
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Autoelevar"
 
 #: ../src/dock.c:972
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Autoatraer iconos"
 
 #: ../src/dock.c:998

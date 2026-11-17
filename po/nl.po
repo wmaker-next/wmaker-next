@@ -642,35 +642,23 @@ msgid "Collapsed"
 msgstr "Ingeschoven"
 
 #: ../src/dock.c:1057
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Vanzelf schuiven"
 
 #: ../src/dock.c:1062
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Vanzelf verhogen"
 
 #: ../src/dock.c:1067
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Vanzelf iconen aantrekken"
 
 #: ../src/dock.c:1182
-msgid "could not create options submenu for dock position menu"
+msgid "could not create options submenu for Dock menu"
 msgstr "kon optiesubmenu niet aanmaken voor dokpositiemenu"
 
-#: ../src/dock.c:1186
-msgid "Normal"
-msgstr "Normaal"
-
-#: ../src/dock.c:1190
-msgid "Auto raise & lower"
-msgstr "Vanzelf verhogen & verlagen"
-
-#: ../src/dock.c:1218
-msgid "Dock position"
-msgstr "Dokpositie"
-
 #: ../src/dock.c:1224
-msgid "Add a drawer"
+msgid "Add a Drawer"
 msgstr "Lade toevoegen"
 
 #: ../src/dock.c:1228
@@ -679,7 +667,7 @@ msgstr "Clipopties"
 
 #. if (type == WM_DRAWER)
 #: ../src/dock.c:1230
-msgid "Drawer options"
+msgid "Drawer Options"
 msgstr "Ladeopties"
 
 #: ../src/dock.c:1247
@@ -761,7 +749,7 @@ msgid "Bring Here"
 msgstr "Hier brengen"
 
 #: ../src/dock.c:3577
-msgid "Remove drawer"
+msgid "Remove Drawer"
 msgstr "Lade verwijderen"
 
 #: ../src/dock.c:4500

@@ -352,7 +352,6 @@ msgstr ""
 "εικονίδια σε άλλη επιφάνεια και ότι ο Συνδετήρας δεν είναι πλήρης σε κάποια "
 "επιφάνεια."
 
-
 #: ../src/dock.c:517
 msgid ""
 "Icon cannot be made omnipresent. Please make sure that no other icon is "
@@ -363,7 +362,6 @@ msgstr ""
 "Βεβαιωθείται ότι η θέση που έχει το εικονίδιο δεν καταλαμβάνεται από κάποιο "
 "εικονίδιο σε άλλη επιφάνεια και ότι ο Συνδετήρας δεν είναι πλήρης σε κάποια "
 "επιφάνεια."
-
 
 #: ../src/dock.c:543
 msgid "Workspace Clip"
@@ -670,7 +668,6 @@ msgstr ""
 "αδύνατη η εύρεση του καταλόγου GNUstep του χρήστη (%s).\n"
 "Βεβαιωθείται ότι η εγκατάσταση του Window Maker ήταν επιτυχής και εκτελέστε wmaker.inst"
 
-
 #: ../src/main.c:307 ../src/main.c:312
 #, c-format
 msgid "%s:could not execute initialization script"
@@ -910,7 +907,6 @@ msgid ""
 msgstr ""
 "Θανάτωση του session του παραθυρικού περιβάλλοντος;\n"
 "(όλες οι εφαρμογές θα τρερματιστούν)"
-
 
 #: ../src/rootmenu.c:507
 #, c-format
@@ -1525,7 +1521,6 @@ msgid ""
 msgstr ""
 "Να μην επιτρέπεται στο παράθυρο να μετακινεί τον\n"
 "εαυτό του πλήρως έξω από την οθόνη.\n"
-
 
 #: ../src/winspector.c:1278
 msgid "Don't Let It Take Focus"

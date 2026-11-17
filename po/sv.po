@@ -313,7 +313,6 @@ msgstr ""
 "Kunde inte läsa menykonfigurationen\n"
 "(se konsol loggen för detaljer)"
 
-
 #: ../dialog.c:196
 msgid "OK "
 msgstr "OK "

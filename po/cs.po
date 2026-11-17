@@ -602,15 +602,15 @@ msgid "Collapsed"
 msgstr "Svinuto"
 
 #: ../src/dock.c:1061
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Automaticky svinout"
 
 #: ../src/dock.c:1067
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Automaticky Nahoru/Dolů"
 
 #: ../src/dock.c:1073
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Automaticky chytat ikony"
 
 #: ../src/dock.c:1103

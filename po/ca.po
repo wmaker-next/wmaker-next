@@ -618,15 +618,15 @@ msgid "Collapsed"
 msgstr "Col·lapsat"
 
 #: ../src/dock.c:1103
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Autocol·lapsa"
 
 #: ../src/dock.c:1109
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Autoeleva"
 
 #: ../src/dock.c:1115
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Autoatreu les icones"
 
 #: ../src/dock.c:1145

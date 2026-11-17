@@ -745,17 +745,17 @@ msgstr "Свит"
 
 # ../src/dock.c:1079
 #: ../src/dock.c:1095
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Да се свива автоматично"
 
 # ../src/dock.c:1085
 #: ../src/dock.c:1101
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Да изплува автоматично"
 
 # ../src/dock.c:1091
 #: ../src/dock.c:1107
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Да привлича иконките"
 
 # ../src/dock.c:1118

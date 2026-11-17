@@ -674,37 +674,25 @@ msgid "Collapsed"
 msgstr "აკეცილი"
 
 #: ../src/dock.c:1202
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "ავტოჩამოშლა"
 
 #: ../src/dock.c:1207
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "ავტომატური ამოწევა"
 
 #: ../src/dock.c:1212
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "ხატულების ავტომატური მიმაგრება"
 
 #: ../src/dock.c:1327
-msgid "could not create options submenu for dock position menu"
+msgid "could not create options submenu for Dock menu"
 msgstr ""
 "დოკის მდებარეობის მენიუსთვის ქვემენიუს პარამეტრების ქვემენიუს შექმნა "
 "შეუძლებელია"
 
-#: ../src/dock.c:1331
-msgid "Normal"
-msgstr "ნორმალური"
-
-#: ../src/dock.c:1335
-msgid "Auto raise & lower"
-msgstr "ავტომატური აწევა/დაწევა"
-
-#: ../src/dock.c:1363
-msgid "Dock position"
-msgstr "დოკის მდებარეობა"
-
 #: ../src/dock.c:1369
-msgid "Add a drawer"
+msgid "Add a Drawer"
 msgstr "უჯრის დამატება"
 
 #: ../src/dock.c:1373
@@ -713,7 +701,7 @@ msgstr "კლიპის მორგება"
 
 #. if (type == WM_DRAWER)
 #: ../src/dock.c:1375
-msgid "Drawer options"
+msgid "Drawer Options"
 msgstr "უჯრის მორგება"
 
 #: ../src/dock.c:1392
@@ -802,7 +790,7 @@ msgid "Bring Here"
 msgstr "აქ გადმოტანა"
 
 #: ../src/dock.c:4553
-msgid "Remove drawer"
+msgid "Remove Drawer"
 msgstr "უჯრის წაშლა"
 
 #: ../src/dock.c:5624

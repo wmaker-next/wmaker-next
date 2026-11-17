@@ -605,15 +605,15 @@ msgid "Collapsed"
 msgstr "Fermé"
 
 #: ../src/dock.c:1101
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Fermeture automatique"
 
 #: ../src/dock.c:1107
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Passer devant"
 
 #: ../src/dock.c:1113
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Trombone magnétique"
 
 #: ../src/dock.c:1143

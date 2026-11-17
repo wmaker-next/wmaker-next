@@ -711,15 +711,15 @@ msgid "Collapsed"
 msgstr "Կոծկուած"
 
 #: ../src/dock.c:1085
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Ինքնին կոծկուել"
 
 #: ../src/dock.c:1091
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Ինքնին բացուել"
 
 #: ../src/dock.c:1097
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Ինքնին գրաւել պատկերակները"
 
 #: ../src/dock.c:1127
@@ -1020,7 +1020,6 @@ msgid ""
 msgstr ""
 "հնարաւոր չէ գտնել օգտատիրոջ GNUstep պանակը (%s)։\n"
 "Համոզուէք որ դուք ճիշտ էք տեղակայել էք Window Maker֊ը եւ գործարկել էք wmaker.inst հրամանը"
-
 
 #: ../src/main.c:478
 #, c-format
@@ -1969,4 +1968,3 @@ msgstr "Նոր"
 #: ../src/workspace.c:1362
 msgid "Destroy Last"
 msgstr "Ոչնչացնել վերջինը"
-

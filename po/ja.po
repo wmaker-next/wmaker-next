@@ -577,15 +577,15 @@ msgid "Collapsed"
 msgstr "折り畳む"
 
 #: ../src/dock.c:962
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "自動的に折り畳む"
 
 #: ../src/dock.c:967
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "自動的に前面に表示"
 
 #: ../src/dock.c:972
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "アイコンを自動的に引き寄せる"
 
 #: ../src/dock.c:998

@@ -605,15 +605,15 @@ msgid "Collapsed"
 msgstr "Свернуто"
 
 #: ../src/dock.c:1095
-msgid "Autocollapse"
+msgid "Auto Collapse"
 msgstr "Автоматически сворачивать"
 
 #: ../src/dock.c:1101
-msgid "Autoraise"
+msgid "Auto Raise"
 msgstr "Автоматически поднимать"
 
 #: ../src/dock.c:1107
-msgid "Autoattract Icons"
+msgid "Auto Attract Icons"
 msgstr "Автоматически притягивать иконки"
 
 #: ../src/dock.c:1137
