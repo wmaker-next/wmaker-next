@@ -537,9 +537,8 @@ msgid "Legal"
 msgstr "Licencia"
 
 #: ../src/dialog.c:992
-#, fuzzy
 msgid "Keyboard Shortcuts"
-msgstr "Ignorovať klávesové skratky"
+msgstr "Klávesové skratky"
 
 #: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."

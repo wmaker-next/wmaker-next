@@ -106,7 +106,7 @@ msgstr "Spiele"
 
 #: ../../util/wmgenmenu.c:167
 msgid "Find..."
-msgstr ""
+msgstr "Suchen..."
 
 #: ../../util/wmgenmenu.c:169
 #, c-format
@@ -267,7 +267,7 @@ msgstr "Info-Panel"
 
 #: ../../util/wmgenmenu.c:371
 msgid "Keyboard Shortcuts"
-msgstr ""
+msgstr "Tastenkürzel"
 
 #: ../../util/wmgenmenu.c:379
 #, fuzzy

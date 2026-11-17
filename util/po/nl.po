@@ -105,7 +105,7 @@ msgstr "Spellen"
 
 #: ../../util/wmgenmenu.c:167
 msgid "Find..."
-msgstr ""
+msgstr "Zoeken..."
 
 #: ../../util/wmgenmenu.c:169
 #, c-format
@@ -264,7 +264,7 @@ msgstr "Infopaneel"
 
 #: ../../util/wmgenmenu.c:371
 msgid "Keyboard Shortcuts"
-msgstr ""
+msgstr "Sneltoetsen"
 
 #: ../../util/wmgenmenu.c:379
 msgid "Restart Window Maker"

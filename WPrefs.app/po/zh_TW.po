@@ -65,7 +65,7 @@ msgstr "焦點視窗"
 
 #: ../../WPrefs.app/Appearance.c:76
 msgid "Window Border Color"
-msgstr ""
+msgstr "視窗邊框顏色"
 
 #: ../../WPrefs.app/Appearance.c:78
 #, fuzzy
@@ -443,27 +443,27 @@ msgstr ""
 
 #: ../../WPrefs.app/Docks.c:28
 msgid "Clip autocollapsing delays"
-msgstr ""
+msgstr "迴紋針自動摺疊延遲"
 
 #: ../../WPrefs.app/Docks.c:29
 msgid "Clip autoraising delays"
-msgstr ""
+msgstr "迴紋針自動升起延遲"
 
 #: ../../WPrefs.app/Docks.c:36
 msgid "Before auto-expansion"
-msgstr ""
+msgstr "自動展開前"
 
 #: ../../WPrefs.app/Docks.c:37
 msgid "Before auto-collapsing"
-msgstr ""
+msgstr "自動摺疊前"
 
 #: ../../WPrefs.app/Docks.c:38
 msgid "Before auto-raising"
-msgstr ""
+msgstr "自動升起前"
 
 #: ../../WPrefs.app/Docks.c:39
 msgid "Before auto-lowering"
-msgstr ""
+msgstr "自動降下前"
 
 #: ../../WPrefs.app/Docks.c:50
 #, fuzzy
@@ -537,7 +537,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:52
 msgid "Enable workspace pager."
-msgstr ""
+msgstr "啟用工作區導覽。"
 
 #: ../../WPrefs.app/Expert.c:55
 msgid "Automatically save session when exiting Window Maker."
@@ -557,27 +557,27 @@ msgstr "停用已選取圖示的選取動畫。"
 
 #: ../../WPrefs.app/Expert.c:67
 msgid "Blink the titlebar of windows that demand attention."
-msgstr ""
+msgstr "閃爍需要引起注意之視窗的標題列。"
 
 #: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
-msgstr ""
+msgstr "僅在使用中的螢幕循環切換視窗。"
 
 #: ../../WPrefs.app/Expert.c:73
 msgid "Let a new window on another head take focus automatically."
-msgstr ""
+msgstr "讓另一螢幕上的新視窗自動取得焦點。"
 
 #: ../../WPrefs.app/Expert.c:76
 msgid "Each monitor keeps its own active workspace (requires restart)."
-msgstr ""
+msgstr "每台顯示器保留各自的工作區（需重新啟動）。"
 
 #: ../../WPrefs.app/Expert.c:79
 msgid "Keep at least this many workspaces."
-msgstr ""
+msgstr "至少保留這麼多個工作區。"
 
 #: ../../WPrefs.app/Expert.c:83
 msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
-msgstr ""
+msgstr "啟用虛擬桌面（大於螢幕且可平移的工作區）。"
 
 #: ../../WPrefs.app/Expert.c:87
 #, fuzzy
@@ -586,15 +586,15 @@ msgstr "使最小視窗出現在所有工作區。"
 
 #: ../../WPrefs.app/Expert.c:90
 msgid "Ignore minimized windows when cycling."
-msgstr ""
+msgstr "切換時忽略最小化的視窗。"
 
 #: ../../WPrefs.app/Expert.c:93
 msgid "Order the switch panel by creation time instead of focus history."
-msgstr ""
+msgstr "依建立時間而非焦點歷程排列切換面板。"
 
 #: ../../WPrefs.app/Expert.c:96
 msgid "Show app icons in window list."
-msgstr ""
+msgstr "在視窗清單中顯示應用程式圖示。"
 
 #: ../../WPrefs.app/Expert.c:99
 #, fuzzy
@@ -603,19 +603,19 @@ msgstr "當拖曳視窗時切換工作區"
 
 #: ../../WPrefs.app/Expert.c:102
 msgid "Show every tab-group member in the window switch panel."
-msgstr ""
+msgstr "在視窗切換面板中顯示每個分頁群組成員。"
 
 #: ../../WPrefs.app/Expert.c:105
 msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
-msgstr ""
+msgstr "將分頁群組繪製為標題列片段，而不是 [N/M] 前綴。"
 
 #: ../../WPrefs.app/Expert.c:108
 msgid "Accept tab drops anywhere on the target window, not just its titlebar."
-msgstr ""
+msgstr "允許將分頁放到目標視窗的任何位置，而不只是其標題列。"
 
 #: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
-msgstr ""
+msgstr "在迴紋針上顯示工作區標題。"
 
 #: ../../WPrefs.app/Expert.c:114
 msgid ""
@@ -624,7 +624,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:117
 msgid "Highlight the icon of the application when it has the focus."
-msgstr ""
+msgstr "應用程式取得焦點時突顯其圖示。"
 
 #: ../../WPrefs.app/Expert.c:121
 #, fuzzy
@@ -633,31 +633,31 @@ msgstr "在視窗標題列啟用語言切換鈕。"
 
 #: ../../WPrefs.app/Expert.c:125
 msgid "Snap a window to edge or corner by dragging."
-msgstr ""
+msgstr "拖曳時將視窗對齊到邊緣或角落。"
 
 #: ../../WPrefs.app/Expert.c:128
 msgid "Distance from edge to begin window snap."
-msgstr ""
+msgstr "開始視窗對齊距邊緣的距離。"
 
 #: ../../WPrefs.app/Expert.c:131
 msgid "Distance from corner to begin window snap."
-msgstr ""
+msgstr "開始視窗對齊距角落的距離。"
 
 #: ../../WPrefs.app/Expert.c:134
 msgid "Snap a window to the top to maximize it to the full screen."
-msgstr ""
+msgstr "將視窗對齊到頂端以最大化到全螢幕。"
 
 #: ../../WPrefs.app/Expert.c:137
 msgid "Allow move half-maximized windows between multiple screens."
-msgstr ""
+msgstr "允許在多個螢幕之間移動半最大化的視窗。"
 
 #: ../../WPrefs.app/Expert.c:140
 msgid "Alternative transitions between states for half maximized windows."
-msgstr ""
+msgstr "半最大化視窗的狀態間使用替代過渡效果。"
 
 #: ../../WPrefs.app/Expert.c:143
 msgid "Move mouse pointer with half maximized windows."
-msgstr ""
+msgstr "半最大化視窗時一併移動滑鼠指標。"
 
 #: ../../WPrefs.app/Expert.c:146
 #, fuzzy
@@ -666,35 +666,35 @@ msgstr "開啟對話視窗在其擁有者之相同工作區"
 
 #: ../../WPrefs.app/Expert.c:149
 msgid "Wrap dock-attached icons around the screen edges."
-msgstr ""
+msgstr "讓 Dock 附加圖示沿螢幕邊緣環繞。"
 
 #: ../../WPrefs.app/Expert.c:152
 msgid "Double click on titlebar maximizes a window instead of shading it."
-msgstr ""
+msgstr "連按兩下標題列會最大化視窗而不是將其遮蔽。"
 
 #: ../../WPrefs.app/Expert.c:155
 msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
-msgstr ""
+msgstr "在焦點外按一下滑鼠（左鍵或右鍵）時關閉根選單。"
 
 #: ../../WPrefs.app/Expert.c:158
 msgid "Keep dock on primary head."
-msgstr ""
+msgstr "將 Dock 保持在主要螢幕上。"
 
 #: ../../WPrefs.app/Expert.c:161
 msgid "Keep a separate dock icon list per screen resolution."
-msgstr ""
+msgstr "為每種螢幕解析度保留個別的 Dock 圖示清單。"
 
 #: ../../WPrefs.app/Expert.c:164
 msgid "Allow windows to take focus using mouse wheel."
-msgstr ""
+msgstr "允許使用滑鼠滾輪讓視窗取得焦點。"
 
 #: ../../WPrefs.app/Expert.c:167
 msgid "Enable automatic mouse pointer hiding."
-msgstr ""
+msgstr "啟用滑鼠指標自動隱藏。"
 
 #: ../../WPrefs.app/Expert.c:171
 msgid "Automatically (de)activate monitors on hotplug events."
-msgstr ""
+msgstr "熱插拔事件時自動（停用/啟用）顯示器。"
 
 #: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
@@ -850,7 +850,7 @@ msgstr "無"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:69
 msgid "Show Desktop"
-msgstr ""
+msgstr "顯示桌面"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
 msgid "Show All Windows"
@@ -875,11 +875,11 @@ msgstr "切換至上一個工作區"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:74
 msgid "Lock Screen"
-msgstr ""
+msgstr "鎖定螢幕"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:81
 msgid "Custom action..."
-msgstr ""
+msgstr "自訂動作..."
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
 #, c-format
@@ -905,7 +905,7 @@ msgstr "字型設定"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:216
 msgid "Enter a built-in action name or a shell command:"
-msgstr ""
+msgstr "輸入內建動作名稱或 shell 指令："
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:218
 #: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
@@ -934,11 +934,11 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:399
 msgid "Enable Hot Corners"
-msgstr ""
+msgstr "啟用熱點角落"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:405
 msgid "Hot Corner Edge"
-msgstr ""
+msgstr "熱點角落邊緣"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:430
 msgid ""
@@ -950,7 +950,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:442
 msgid "Hot Corner Delay"
-msgstr ""
+msgstr "熱點角落延遲"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:483
 #, fuzzy
@@ -989,7 +989,7 @@ msgstr "停靠區/應用程式圖示和最小視窗的大小"
 
 #: ../../WPrefs.app/Icons.c:337
 msgid "Mini-Previews for Icons"
-msgstr ""
+msgstr "圖示迷你預覽"
 
 #: ../../WPrefs.app/Icons.c:339
 msgid ""
@@ -1019,19 +1019,19 @@ msgstr "使最小視窗出現在所有工作區。"
 
 #: ../../WPrefs.app/Icons.c:397
 msgid "Single click activation"
-msgstr ""
+msgstr "按一下啟用"
 
 #: ../../WPrefs.app/Icons.c:399
 msgid "Launch applications and restore windows with a single click."
-msgstr ""
+msgstr "按一下即可啟動應用程式並還原視窗。"
 
 #: ../../WPrefs.app/Icons.c:404
 msgid "Enforce icon margin"
-msgstr ""
+msgstr "強制圖示邊距"
 
 #: ../../WPrefs.app/Icons.c:406
 msgid "Make sure that the icon image does not protrude into the icon frame."
-msgstr ""
+msgstr "確保圖示影像不會凸出到圖示框外。"
 
 #: ../../WPrefs.app/Icons.c:457
 msgid "Icon Preferences"
@@ -1051,7 +1051,7 @@ msgstr "按下想要的捷徑鍵或按下取消停止抓取。"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:359
 msgid "Key shortcut already in use by the "
-msgstr ""
+msgstr "捷徑鍵已被使用："
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
 #: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
@@ -1183,7 +1183,7 @@ msgstr "ETerm"
 
 #: ../../WPrefs.app/Menu.c:456
 msgid "Find..."
-msgstr ""
+msgstr "尋找..."
 
 #: ../../WPrefs.app/Menu.c:457
 #, c-format
@@ -1441,7 +1441,7 @@ msgstr ""
 #: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
 #: ../../WPrefs.app/Menu.c:2000
 msgid "Load Default"
-msgstr ""
+msgstr "載入預設值"
 
 #: ../../WPrefs.app/Menu.c:794
 msgid "to reset the menu to the shipped default"
@@ -1597,7 +1597,7 @@ msgstr "當指標移過去時捲動超過螢幕的選單。"
 
 #: ../../WPrefs.app/MenuPreferences.c:162
 msgid "Use h/j/k/l keys to select menu options."
-msgstr ""
+msgstr "使用 h/j/k/l 鍵選取選單選項。"
 
 #: ../../WPrefs.app/MenuPreferences.c:178
 msgid "Menu Preferences"

@@ -849,7 +849,7 @@ msgstr ""
 
 #: ../../WINGs/wfontpanel.c:278
 msgid "Family"
-msgstr ""
+msgstr "Rodina"
 
 #: ../../WINGs/wfontpanel.c:289
 msgid "Typeface"

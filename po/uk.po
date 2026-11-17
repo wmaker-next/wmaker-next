@@ -528,9 +528,8 @@ msgid "Legal"
 msgstr "Правова інформація"
 
 #: ../src/dialog.c:992
-#, fuzzy
 msgid "Keyboard Shortcuts"
-msgstr "Не прив'язувати комбінації клавіш"
+msgstr "Комбінації клавіш"
 
 #: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."

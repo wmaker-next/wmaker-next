@@ -78,7 +78,7 @@ msgstr "Janela Ativa"
 
 #: ../../WPrefs.app/Appearance.c:76
 msgid "Window Border Color"
-msgstr ""
+msgstr "Cor da borda da janela"
 
 #: ../../WPrefs.app/Appearance.c:78
 msgid "Selected Window Border Color"
@@ -467,27 +467,27 @@ msgstr ""
 
 #: ../../WPrefs.app/Docks.c:28
 msgid "Clip autocollapsing delays"
-msgstr ""
+msgstr "Atrasos de recolhimento automático do Clip"
 
 #: ../../WPrefs.app/Docks.c:29
 msgid "Clip autoraising delays"
-msgstr ""
+msgstr "Atrasos de subida automática do Clip"
 
 #: ../../WPrefs.app/Docks.c:36
 msgid "Before auto-expansion"
-msgstr ""
+msgstr "Antes da expansão automática"
 
 #: ../../WPrefs.app/Docks.c:37
 msgid "Before auto-collapsing"
-msgstr ""
+msgstr "Antes do recolhimento automático"
 
 #: ../../WPrefs.app/Docks.c:38
 msgid "Before auto-raising"
-msgstr ""
+msgstr "Antes da subida automática"
 
 #: ../../WPrefs.app/Docks.c:39
 msgid "Before auto-lowering"
-msgstr ""
+msgstr "Antes da descida automática"
 
 #: ../../WPrefs.app/Docks.c:50
 #, fuzzy
@@ -561,9 +561,8 @@ msgid "Ignore decoration hints for GTK applications."
 msgstr "Mais cores para applicações"
 
 #: ../../WPrefs.app/Expert.c:52
-#, fuzzy
 msgid "Enable workspace pager."
-msgstr "Abrir menu de áreas de trabalho"
+msgstr "Ativar a navegação das áreas de trabalho."
 
 #: ../../WPrefs.app/Expert.c:55
 #, fuzzy
@@ -586,27 +585,27 @@ msgstr "Desabilitar confirmação para o comando Terminar."
 
 #: ../../WPrefs.app/Expert.c:67
 msgid "Blink the titlebar of windows that demand attention."
-msgstr ""
+msgstr "Piscar a barra de título das janelas que pedem atenção."
 
 #: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
-msgstr ""
+msgstr "Percorrer janelas apenas no ecrã ativo."
 
 #: ../../WPrefs.app/Expert.c:73
 msgid "Let a new window on another head take focus automatically."
-msgstr ""
+msgstr "Deixar que uma janela nova noutro ecrã receba foco automaticamente."
 
 #: ../../WPrefs.app/Expert.c:76
 msgid "Each monitor keeps its own active workspace (requires restart)."
-msgstr ""
+msgstr "Cada monitor mantém a sua própria área de trabalho ativa (requer reinício)."
 
 #: ../../WPrefs.app/Expert.c:79
 msgid "Keep at least this many workspaces."
-msgstr ""
+msgstr "Manter pelo menos este número de áreas de trabalho."
 
 #: ../../WPrefs.app/Expert.c:83
 msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
-msgstr ""
+msgstr "Ativar o ambiente de trabalho virtual (áreas de trabalho deslizáveis maiores que o ecrã)."
 
 #: ../../WPrefs.app/Expert.c:87
 #, fuzzy
@@ -615,15 +614,15 @@ msgstr "Faça as minijanelas presentes em todas as áreas de trabalho."
 
 #: ../../WPrefs.app/Expert.c:90
 msgid "Ignore minimized windows when cycling."
-msgstr ""
+msgstr "Ignorar janelas minimizadas ao percorrer."
 
 #: ../../WPrefs.app/Expert.c:93
 msgid "Order the switch panel by creation time instead of focus history."
-msgstr ""
+msgstr "Ordenar o painel de comutação por hora de criação em vez do histórico de foco."
 
 #: ../../WPrefs.app/Expert.c:96
 msgid "Show app icons in window list."
-msgstr ""
+msgstr "Mostrar ícones de aplicações na lista de janelas."
 
 #: ../../WPrefs.app/Expert.c:99
 #, fuzzy
@@ -632,19 +631,19 @@ msgstr "Mover janelas entre áreas de trabalho"
 
 #: ../../WPrefs.app/Expert.c:102
 msgid "Show every tab-group member in the window switch panel."
-msgstr ""
+msgstr "Mostrar cada membro do grupo de separadores no painel de comutação."
 
 #: ../../WPrefs.app/Expert.c:105
 msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
-msgstr ""
+msgstr "Desenhar grupos de separadores como segmentos da barra de título em vez de um prefixo [N/M]."
 
 #: ../../WPrefs.app/Expert.c:108
 msgid "Accept tab drops anywhere on the target window, not just its titlebar."
-msgstr ""
+msgstr "Aceitar largar separadores em qualquer ponto da janela de destino, não só na sua barra de título."
 
 #: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
-msgstr ""
+msgstr "Mostrar o título da área de trabalho no Clip."
 
 #: ../../WPrefs.app/Expert.c:114
 msgid ""
@@ -653,7 +652,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:117
 msgid "Highlight the icon of the application when it has the focus."
-msgstr ""
+msgstr "Realçar o ícone da aplicação quando tem o foco."
 
 #: ../../WPrefs.app/Expert.c:121
 #, fuzzy
@@ -662,31 +661,31 @@ msgstr "Manter mapa de teclado para cada janela."
 
 #: ../../WPrefs.app/Expert.c:125
 msgid "Snap a window to edge or corner by dragging."
-msgstr ""
+msgstr "Acoplar uma janela à borda ou canto ao arrastar."
 
 #: ../../WPrefs.app/Expert.c:128
 msgid "Distance from edge to begin window snap."
-msgstr ""
+msgstr "Distância da borda para iniciar o acoplamento."
 
 #: ../../WPrefs.app/Expert.c:131
 msgid "Distance from corner to begin window snap."
-msgstr ""
+msgstr "Distância do canto para iniciar o acoplamento."
 
 #: ../../WPrefs.app/Expert.c:134
 msgid "Snap a window to the top to maximize it to the full screen."
-msgstr ""
+msgstr "Acoplar uma janela ao topo para a maximizar a ecrã inteiro."
 
 #: ../../WPrefs.app/Expert.c:137
 msgid "Allow move half-maximized windows between multiple screens."
-msgstr ""
+msgstr "Permitir mover janelas semi-máximas entre vários ecrãs."
 
 #: ../../WPrefs.app/Expert.c:140
 msgid "Alternative transitions between states for half maximized windows."
-msgstr ""
+msgstr "Transições alternativas entre estados para janelas semi-máximas."
 
 #: ../../WPrefs.app/Expert.c:143
 msgid "Move mouse pointer with half maximized windows."
-msgstr ""
+msgstr "Mover o ponteiro do rato com janelas semi-máximas."
 
 #: ../../WPrefs.app/Expert.c:146
 #, fuzzy
@@ -695,35 +694,35 @@ msgstr "Abrir diálogos na mesma área de trabalho que seus donos"
 
 #: ../../WPrefs.app/Expert.c:149
 msgid "Wrap dock-attached icons around the screen edges."
-msgstr ""
+msgstr "Enrolar ícones ligados ao Dock nas bordas do ecrã."
 
 #: ../../WPrefs.app/Expert.c:152
 msgid "Double click on titlebar maximizes a window instead of shading it."
-msgstr ""
+msgstr "Duplo clique na barra de título maximiza a janela em vez de a sombrear."
 
 #: ../../WPrefs.app/Expert.c:155
 msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
-msgstr ""
+msgstr "Fechar o menu principal quando o rato (esquerdo ou direito) é clicado fora do foco."
 
 #: ../../WPrefs.app/Expert.c:158
 msgid "Keep dock on primary head."
-msgstr ""
+msgstr "Manter o Dock no ecrã principal."
 
 #: ../../WPrefs.app/Expert.c:161
 msgid "Keep a separate dock icon list per screen resolution."
-msgstr ""
+msgstr "Manter uma lista de ícones do Dock separada por resolução de ecrã."
 
 #: ../../WPrefs.app/Expert.c:164
 msgid "Allow windows to take focus using mouse wheel."
-msgstr ""
+msgstr "Permitir que as janelas recebam foco com a roda do rato."
 
 #: ../../WPrefs.app/Expert.c:167
 msgid "Enable automatic mouse pointer hiding."
-msgstr ""
+msgstr "Ativar o ocultamento automático do ponteiro do rato."
 
 #: ../../WPrefs.app/Expert.c:171
 msgid "Automatically (de)activate monitors on hotplug events."
-msgstr ""
+msgstr "(Des)ativar monitores automaticamente em eventos de ligação a quente."
 
 #: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
@@ -839,7 +838,7 @@ msgstr "Fonte de Título de Ícone"
 
 #: ../../WPrefs.app/FontSimple.c:104
 msgid "Desktop Caption"
-msgstr ""
+msgstr "Legenda do ambiente"
 
 #: ../../WPrefs.app/FontSimple.c:105
 #, fuzzy
@@ -857,7 +856,7 @@ msgstr ""
 
 #: ../../WPrefs.app/FontSimple.c:690
 msgid "Family"
-msgstr ""
+msgstr "Família"
 
 #: ../../WPrefs.app/FontSimple.c:715
 #, fuzzy
@@ -888,7 +887,7 @@ msgstr "Nenhum"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:69
 msgid "Show Desktop"
-msgstr ""
+msgstr "Mostrar o ambiente"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
 msgid "Show All Windows"
@@ -913,11 +912,11 @@ msgstr "Ir para área de trabalho anterior"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:74
 msgid "Lock Screen"
-msgstr ""
+msgstr "Bloquear o ecrã"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:81
 msgid "Custom action..."
-msgstr ""
+msgstr "Ação personalizada..."
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
 #, c-format
@@ -942,7 +941,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:216
 msgid "Enter a built-in action name or a shell command:"
-msgstr ""
+msgstr "Introduza um nome de ação incorporada ou um comando de shell:"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:218
 #: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
@@ -971,11 +970,11 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:399
 msgid "Enable Hot Corners"
-msgstr ""
+msgstr "Ativar cantos ativos"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:405
 msgid "Hot Corner Edge"
-msgstr ""
+msgstr "Borda do canto ativo"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:430
 msgid ""
@@ -987,7 +986,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:442
 msgid "Hot Corner Delay"
-msgstr ""
+msgstr "Atraso do canto ativo"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:483
 msgid "Hot Corner Actions"
@@ -1025,7 +1024,7 @@ msgstr "O tamanho do dock, ícones de aplicação e minijanelas"
 
 #: ../../WPrefs.app/Icons.c:337
 msgid "Mini-Previews for Icons"
-msgstr ""
+msgstr "Miniaturas para ícones"
 
 #: ../../WPrefs.app/Icons.c:339
 msgid ""
@@ -1055,19 +1054,19 @@ msgstr "Faça as minijanelas presentes em todas as áreas de trabalho."
 
 #: ../../WPrefs.app/Icons.c:397
 msgid "Single click activation"
-msgstr ""
+msgstr "Ativação com clique único"
 
 #: ../../WPrefs.app/Icons.c:399
 msgid "Launch applications and restore windows with a single click."
-msgstr ""
+msgstr "Iniciar aplicações e restaurar janelas com um único clique."
 
 #: ../../WPrefs.app/Icons.c:404
 msgid "Enforce icon margin"
-msgstr ""
+msgstr "Impor margem do ícone"
 
 #: ../../WPrefs.app/Icons.c:406
 msgid "Make sure that the icon image does not protrude into the icon frame."
-msgstr ""
+msgstr "Certificar-se de que a imagem do ícone não sobressai da moldura do ícone."
 
 #: ../../WPrefs.app/Icons.c:457
 msgid "Icon Preferences"
@@ -1089,7 +1088,7 @@ msgstr ""
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:359
 msgid "Key shortcut already in use by the "
-msgstr ""
+msgstr "Atalho de teclado já em uso por "
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
 #: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
@@ -1232,9 +1231,8 @@ msgid "ETerm"
 msgstr ""
 
 #: ../../WPrefs.app/Menu.c:456
-#, fuzzy
 msgid "Find..."
-msgstr "Adicionar..."
+msgstr "Encontrar..."
 
 #: ../../WPrefs.app/Menu.c:457
 #, c-format
@@ -1485,9 +1483,8 @@ msgstr ""
 
 #: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
 #: ../../WPrefs.app/Menu.c:2000
-#, fuzzy
 msgid "Load Default"
-msgstr "Copiar menu padrão"
+msgstr "Carregar predefinições"
 
 #: ../../WPrefs.app/Menu.c:794
 msgid "to reset the menu to the shipped default"
@@ -1645,7 +1642,7 @@ msgstr "Rolar menus para dentro da tela quando o mouse estiver sobre eles."
 
 #: ../../WPrefs.app/MenuPreferences.c:162
 msgid "Use h/j/k/l keys to select menu options."
-msgstr ""
+msgstr "Use as teclas h/j/k/l para selecionar opções do menu."
 
 #: ../../WPrefs.app/MenuPreferences.c:178
 msgid "Menu Preferences"

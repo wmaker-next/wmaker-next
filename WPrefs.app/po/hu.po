@@ -66,7 +66,7 @@ msgstr "Fókuszált ablak"
 
 #: ../../WPrefs.app/Appearance.c:76
 msgid "Window Border Color"
-msgstr ""
+msgstr "Ablakkeret színe"
 
 #: ../../WPrefs.app/Appearance.c:78
 #, fuzzy
@@ -539,7 +539,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:52
 msgid "Enable workspace pager."
-msgstr ""
+msgstr "Munkafelület-nézegető engedélyezése."
 
 #: ../../WPrefs.app/Expert.c:55
 msgid "Automatically save session when exiting Window Maker."
@@ -560,7 +560,7 @@ msgstr "Az ikon kiválasztás animáció letiltása."
 
 #: ../../WPrefs.app/Expert.c:67
 msgid "Blink the titlebar of windows that demand attention."
-msgstr ""
+msgstr "Villogtassa a figyelmet kérő ablakok címsorát."
 
 #: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
@@ -568,19 +568,19 @@ msgstr "Ablakok közötti váltás csak az aktív képernyőn belül."
 
 #: ../../WPrefs.app/Expert.c:73
 msgid "Let a new window on another head take focus automatically."
-msgstr ""
+msgstr "Az új ablak másik képernyőn automatikusan kapja meg a fókuszt."
 
 #: ../../WPrefs.app/Expert.c:76
 msgid "Each monitor keeps its own active workspace (requires restart)."
-msgstr ""
+msgstr "Minden monitor megőrzi a saját aktív munkafelületét (újraindítást igényel)."
 
 #: ../../WPrefs.app/Expert.c:79
 msgid "Keep at least this many workspaces."
-msgstr ""
+msgstr "Legalább ennyi munkafelületet tartson meg."
 
 #: ../../WPrefs.app/Expert.c:83
 msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
-msgstr ""
+msgstr "Virtuális asztal engedélyezése (nagyobb, tologatható munkafelületek)."
 
 #: ../../WPrefs.app/Expert.c:87
 #, fuzzy
@@ -593,11 +593,11 @@ msgstr "Ikonállapotú ablakok kihagyása ablak váltás közben."
 
 #: ../../WPrefs.app/Expert.c:93
 msgid "Order the switch panel by creation time instead of focus history."
-msgstr ""
+msgstr "A váltópanelt létrehozási idő szerint rendezze, nem a fókusztörténet szerint."
 
 #: ../../WPrefs.app/Expert.c:96
 msgid "Show app icons in window list."
-msgstr ""
+msgstr "Az alkalmazásikonok megjelenítése az ablaklistában."
 
 #: ../../WPrefs.app/Expert.c:99
 #, fuzzy
@@ -606,15 +606,15 @@ msgstr "Munkafelület váltás ablakok mozgatásakor"
 
 #: ../../WPrefs.app/Expert.c:102
 msgid "Show every tab-group member in the window switch panel."
-msgstr ""
+msgstr "Minden fülcsopport-tag megjelenítése az ablakváltó panelen."
 
 #: ../../WPrefs.app/Expert.c:105
 msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
-msgstr ""
+msgstr "A fülcsopportokat címsor-szegmensekként rajzolja, ne [N/M] előtagként."
 
 #: ../../WPrefs.app/Expert.c:108
 msgid "Accept tab drops anywhere on the target window, not just its titlebar."
-msgstr ""
+msgstr "A fülek ejtését a célablak bármely pontján fogadja, ne csak a címsorán."
 
 #: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
@@ -635,31 +635,31 @@ msgstr "Ablakonként megadható billentyűzetkiosztás."
 
 #: ../../WPrefs.app/Expert.c:125
 msgid "Snap a window to edge or corner by dragging."
-msgstr ""
+msgstr "Ablak odaillesztése élhez vagy sarokhoz húzással."
 
 #: ../../WPrefs.app/Expert.c:128
 msgid "Distance from edge to begin window snap."
-msgstr ""
+msgstr "Távolság az éltől az odaillesztés megkezdéséhez."
 
 #: ../../WPrefs.app/Expert.c:131
 msgid "Distance from corner to begin window snap."
-msgstr ""
+msgstr "Távolság a saroktól az odaillesztés megkezdéséhez."
 
 #: ../../WPrefs.app/Expert.c:134
 msgid "Snap a window to the top to maximize it to the full screen."
-msgstr ""
+msgstr "Ablak odaillesztése felülre, hogy teljes képernyőre maximalizálódjon."
 
 #: ../../WPrefs.app/Expert.c:137
 msgid "Allow move half-maximized windows between multiple screens."
-msgstr ""
+msgstr "Fél-maximalizált ablakok mozgatásának engedélyezése képernyők között."
 
 #: ../../WPrefs.app/Expert.c:140
 msgid "Alternative transitions between states for half maximized windows."
-msgstr ""
+msgstr "Alternatív átmenetek a fél-maximalizált ablakok állapotai között."
 
 #: ../../WPrefs.app/Expert.c:143
 msgid "Move mouse pointer with half maximized windows."
-msgstr ""
+msgstr "Egérmutató mozgatása a fél-maximalizált ablakokkal együtt."
 
 #: ../../WPrefs.app/Expert.c:146
 #, fuzzy
@@ -668,35 +668,35 @@ msgstr "A dialógus ablakok szülőikkel azonos munkafelületen jelenjenek meg"
 
 #: ../../WPrefs.app/Expert.c:149
 msgid "Wrap dock-attached icons around the screen edges."
-msgstr ""
+msgstr "A dokkhoz rögzített ikonok átfordítása a képernyő szélein."
 
 #: ../../WPrefs.app/Expert.c:152
 msgid "Double click on titlebar maximizes a window instead of shading it."
-msgstr ""
+msgstr "A címsoron végzett dupla kattintás maximalizálja az ablakot, nem felhúzza."
 
 #: ../../WPrefs.app/Expert.c:155
 msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
-msgstr ""
+msgstr "A gyökérmenü bezárása, ha az egeret (bal vagy jobb) a fókuszon kívül kattintják."
 
 #: ../../WPrefs.app/Expert.c:158
 msgid "Keep dock on primary head."
-msgstr ""
+msgstr "A dokk az elsődleges képernyőn maradjon."
 
 #: ../../WPrefs.app/Expert.c:161
 msgid "Keep a separate dock icon list per screen resolution."
-msgstr ""
+msgstr "Külön dokkikon-lista megőrzése képernyőfelbontásonként."
 
 #: ../../WPrefs.app/Expert.c:164
 msgid "Allow windows to take focus using mouse wheel."
-msgstr ""
+msgstr "Az ablakok fókuszt kaphassanak az egérgörgővel."
 
 #: ../../WPrefs.app/Expert.c:167
 msgid "Enable automatic mouse pointer hiding."
-msgstr ""
+msgstr "Az egérmutató automatikus elrejtésének engedélyezése."
 
 #: ../../WPrefs.app/Expert.c:171
 msgid "Automatically (de)activate monitors on hotplug events."
-msgstr ""
+msgstr "Monitorok automatikus (de)aktiválása csatlakoztatási eseményekkor."
 
 #: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
@@ -852,7 +852,7 @@ msgstr "Nincs"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:69
 msgid "Show Desktop"
-msgstr ""
+msgstr "Asztal megjelenítése"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
 msgid "Show All Windows"
@@ -877,11 +877,11 @@ msgstr "Váltás az előző munkafelületre"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:74
 msgid "Lock Screen"
-msgstr ""
+msgstr "Képernyő zárolása"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:81
 msgid "Custom action..."
-msgstr ""
+msgstr "Egyéni művelet..."
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
 #, c-format
@@ -907,7 +907,7 @@ msgstr "Betűtípus beállítások"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:216
 msgid "Enter a built-in action name or a shell command:"
-msgstr ""
+msgstr "Adja meg egy beépített művelet nevét vagy egy parancssori parancsot:"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:218
 #: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
@@ -936,11 +936,11 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:399
 msgid "Enable Hot Corners"
-msgstr ""
+msgstr "Forró sarkok engedélyezése"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:405
 msgid "Hot Corner Edge"
-msgstr ""
+msgstr "Forró sarok éle"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:430
 msgid ""
@@ -952,7 +952,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:442
 msgid "Hot Corner Delay"
-msgstr ""
+msgstr "Forró sarok késleltetése"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:483
 #, fuzzy
@@ -991,7 +991,7 @@ msgstr "A dokk/alkalmazás ikonok és miniablakok mérete"
 
 #: ../../WPrefs.app/Icons.c:337
 msgid "Mini-Previews for Icons"
-msgstr ""
+msgstr "Miniatűr előnézetek az ikonokhoz"
 
 #: ../../WPrefs.app/Icons.c:339
 msgid ""
@@ -1029,11 +1029,11 @@ msgstr "Alkalmazások indítása és miniablakok visszaállítása egy kattintá
 
 #: ../../WPrefs.app/Icons.c:404
 msgid "Enforce icon margin"
-msgstr ""
+msgstr "Ikonmargó kikényszerítése"
 
 #: ../../WPrefs.app/Icons.c:406
 msgid "Make sure that the icon image does not protrude into the icon frame."
-msgstr ""
+msgstr "Győződjön meg róla, hogy az ikon képe nem lóg be az ikonkeretbe."
 
 #: ../../WPrefs.app/Icons.c:457
 msgid "Icon Preferences"
@@ -1055,7 +1055,7 @@ msgstr ""
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:359
 msgid "Key shortcut already in use by the "
-msgstr ""
+msgstr "A gyorsbillentyűt már használja: "
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
 #: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
@@ -1192,7 +1192,7 @@ msgstr "ETerm"
 
 #: ../../WPrefs.app/Menu.c:456
 msgid "Find..."
-msgstr ""
+msgstr "Keresés..."
 
 #: ../../WPrefs.app/Menu.c:457
 #, c-format
@@ -1461,7 +1461,7 @@ msgstr ""
 #: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
 #: ../../WPrefs.app/Menu.c:2000
 msgid "Load Default"
-msgstr ""
+msgstr "Alapértelmezés betöltése"
 
 #: ../../WPrefs.app/Menu.c:794
 msgid "to reset the menu to the shipped default"

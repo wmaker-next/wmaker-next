@@ -520,9 +520,8 @@ msgid "Legal"
 msgstr "Käyttöehdot"
 
 #: ../src/dialog.c:992
-#, fuzzy
 msgid "Keyboard Shortcuts"
-msgstr "Älä sido näppäinpikavalintoja"
+msgstr "Näppäinpikavalinnat"
 
 #: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."

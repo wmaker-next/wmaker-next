@@ -529,9 +529,8 @@ msgid "Legal"
 msgstr "Condizioni legali"
 
 #: ../src/dialog.c:992
-#, fuzzy
 msgid "Keyboard Shortcuts"
-msgstr "Blocca gli shortcut di tastiera"
+msgstr "Scorciatoie da tastiera"
 
 #: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."

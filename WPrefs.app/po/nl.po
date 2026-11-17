@@ -556,7 +556,7 @@ msgstr "Schakel selectieanimatie voor geselecteerde iconen uit."
 
 #: ../../WPrefs.app/Expert.c:67
 msgid "Blink the titlebar of windows that demand attention."
-msgstr ""
+msgstr "Laat de titelbalk van vensters die aandacht vragen knipperen."
 
 #: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
@@ -564,19 +564,19 @@ msgstr "Wissel vensters alleen op de actieve kop."
 
 #: ../../WPrefs.app/Expert.c:73
 msgid "Let a new window on another head take focus automatically."
-msgstr ""
+msgstr "Laat een nieuw venster op een ander scherm automatisch de focus nemen."
 
 #: ../../WPrefs.app/Expert.c:76
 msgid "Each monitor keeps its own active workspace (requires restart)."
-msgstr ""
+msgstr "Elke monitor behoudt zijn eigen actieve werkruimte (herstart vereist)."
 
 #: ../../WPrefs.app/Expert.c:79
 msgid "Keep at least this many workspaces."
-msgstr ""
+msgstr "Minstens dit aantal werkruimten behouden."
 
 #: ../../WPrefs.app/Expert.c:83
 msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
-msgstr ""
+msgstr "Virtueel bureaublad inschakelen (verschuifbare werkruimten, groter dan het scherm)."
 
 #: ../../WPrefs.app/Expert.c:87
 #, fuzzy
@@ -589,11 +589,11 @@ msgstr "Negeer geminiaturiseerde vensters bij wisselen."
 
 #: ../../WPrefs.app/Expert.c:93
 msgid "Order the switch panel by creation time instead of focus history."
-msgstr ""
+msgstr "Schakelpaneel sorteren op aanmaaktijd in plaats van focusgeschiedenis."
 
 #: ../../WPrefs.app/Expert.c:96
 msgid "Show app icons in window list."
-msgstr ""
+msgstr "Programma-iconen in de vensterlijst tonen."
 
 #: ../../WPrefs.app/Expert.c:99
 msgid "Show switch panel when cycling windows."
@@ -601,15 +601,15 @@ msgstr "Toon schakelpaneel bij vensters wisselen."
 
 #: ../../WPrefs.app/Expert.c:102
 msgid "Show every tab-group member in the window switch panel."
-msgstr ""
+msgstr "Elk tabbladgroeplid in het vensterschakelpaneel tonen."
 
 #: ../../WPrefs.app/Expert.c:105
 msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
-msgstr ""
+msgstr "Tabbladgroepen tekenen als titelbalksegmenten in plaats van een [N/M]-voorvoegsel."
 
 #: ../../WPrefs.app/Expert.c:108
 msgid "Accept tab drops anywhere on the target window, not just its titlebar."
-msgstr ""
+msgstr "Tabbladen overal in het doelvenster accepteren, niet alleen in de titelbalk."
 
 #: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
@@ -629,9 +629,8 @@ msgid "Enable keyboard language switch button in window titlebars."
 msgstr "Schakel toetsenbordtaalknop op venstertitelbalken in."
 
 #: ../../WPrefs.app/Expert.c:125
-#, fuzzy
 msgid "Snap a window to edge or corner by dragging."
-msgstr "Maximaliseer (duw) 'n venster tegen kant of hoek door verslepen."
+msgstr "Vensters bij slepen aan rand of hoek laten vastklikken."
 
 #: ../../WPrefs.app/Expert.c:128
 msgid "Distance from edge to begin window snap."
@@ -642,9 +641,8 @@ msgid "Distance from corner to begin window snap."
 msgstr "Afstand vanaf hoek waar venster opduwen begint."
 
 #: ../../WPrefs.app/Expert.c:134
-#, fuzzy
 msgid "Snap a window to the top to maximize it to the full screen."
-msgstr "Venster duwen tegen de bovenkant, maximaliseert 't schermvullend."
+msgstr "Vensters naar boven laten vastklikken om ze op volledig scherm te maximaliseren."
 
 #: ../../WPrefs.app/Expert.c:137
 msgid "Allow move half-maximized windows between multiple screens."
@@ -664,35 +662,35 @@ msgstr "Open dialogen in dezelfde werkruimte als hun eigenaren."
 
 #: ../../WPrefs.app/Expert.c:149
 msgid "Wrap dock-attached icons around the screen edges."
-msgstr ""
+msgstr "Aan het dock gekoppelde iconen om de schermranden wikkelen."
 
 #: ../../WPrefs.app/Expert.c:152
 msgid "Double click on titlebar maximizes a window instead of shading it."
-msgstr ""
+msgstr "Dubbelklik op de titelbalk maximaliseert een venster in plaats van het op te rollen."
 
 #: ../../WPrefs.app/Expert.c:155
 msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
-msgstr ""
+msgstr "Hoofdmenu sluiten wanneer de muis (links of rechts) buiten de focus wordt geklikt."
 
 #: ../../WPrefs.app/Expert.c:158
 msgid "Keep dock on primary head."
-msgstr ""
+msgstr "Dock op het primaire scherm houden."
 
 #: ../../WPrefs.app/Expert.c:161
 msgid "Keep a separate dock icon list per screen resolution."
-msgstr ""
+msgstr "Een aparte dock-icoonlijst per schermresolutie behouden."
 
 #: ../../WPrefs.app/Expert.c:164
 msgid "Allow windows to take focus using mouse wheel."
-msgstr ""
+msgstr "Vensters toestaan de focus met het muiswiel over te nemen."
 
 #: ../../WPrefs.app/Expert.c:167
 msgid "Enable automatic mouse pointer hiding."
-msgstr ""
+msgstr "Automatisch verbergen van de muisaanwijzer inschakelen."
 
 #: ../../WPrefs.app/Expert.c:171
 msgid "Automatically (de)activate monitors on hotplug events."
-msgstr ""
+msgstr "Monitoren automatisch (de)activeren bij hotplug-gebeurtenissen."
 
 #: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
@@ -857,7 +855,7 @@ msgstr "Geen"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:69
 msgid "Show Desktop"
-msgstr ""
+msgstr "Bureaublad tonen"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
 msgid "Show All Windows"
@@ -880,11 +878,11 @@ msgstr "Vorige werkruimte"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:74
 msgid "Lock Screen"
-msgstr ""
+msgstr "Scherm vergrendelen"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:81
 msgid "Custom action..."
-msgstr ""
+msgstr "Aangepaste actie..."
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
 #, c-format
@@ -910,7 +908,7 @@ msgstr "Lettertypenconfiguratie"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:216
 msgid "Enter a built-in action name or a shell command:"
-msgstr ""
+msgstr "Voer een ingebouwde actienaam of een shell-opdracht in:"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:218
 #: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
@@ -939,11 +937,11 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:399
 msgid "Enable Hot Corners"
-msgstr ""
+msgstr "Hoekacties inschakelen"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:405
 msgid "Hot Corner Edge"
-msgstr ""
+msgstr "Hoekactie-rand"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:430
 msgid ""
@@ -955,7 +953,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:442
 msgid "Hot Corner Delay"
-msgstr ""
+msgstr "Hoekactie-vertraging"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:483
 #, fuzzy
@@ -1036,11 +1034,11 @@ msgstr ""
 
 #: ../../WPrefs.app/Icons.c:404
 msgid "Enforce icon margin"
-msgstr ""
+msgstr "Icoonmarge afdwingen"
 
 #: ../../WPrefs.app/Icons.c:406
 msgid "Make sure that the icon image does not protrude into the icon frame."
-msgstr ""
+msgstr "Zorg dat het icoonbeeld niet uitsteekt in het icoonkader."
 
 #: ../../WPrefs.app/Icons.c:457
 msgid "Icon Preferences"
@@ -1061,7 +1059,7 @@ msgstr ""
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:359
 msgid "Key shortcut already in use by the "
-msgstr ""
+msgstr "Sneltoets al in gebruik door "
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
 #: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
@@ -1194,7 +1192,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Menu.c:456
 msgid "Find..."
-msgstr ""
+msgstr "Zoeken..."
 
 #: ../../WPrefs.app/Menu.c:457
 #, c-format
@@ -1463,7 +1461,7 @@ msgstr ""
 #: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
 #: ../../WPrefs.app/Menu.c:2000
 msgid "Load Default"
-msgstr ""
+msgstr "Standaard laden"
 
 #: ../../WPrefs.app/Menu.c:794
 msgid "to reset the menu to the shipped default"

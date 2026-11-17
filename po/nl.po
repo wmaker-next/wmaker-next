@@ -522,9 +522,8 @@ msgid "Legal"
 msgstr "Juridische info"
 
 #: ../src/dialog.c:992
-#, fuzzy
 msgid "Keyboard Shortcuts"
-msgstr "Sneltoetsen niet verbinden"
+msgstr "Sneltoetsen"
 
 #: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."

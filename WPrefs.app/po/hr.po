@@ -71,7 +71,7 @@ msgstr "Fokusirani prozor"
 
 #: ../../WPrefs.app/Appearance.c:76
 msgid "Window Border Color"
-msgstr ""
+msgstr "Boja obruba prozora"
 
 #: ../../WPrefs.app/Appearance.c:78
 msgid "Selected Window Border Color"
@@ -453,27 +453,27 @@ msgstr ""
 
 #: ../../WPrefs.app/Docks.c:28
 msgid "Clip autocollapsing delays"
-msgstr ""
+msgstr "Kašnjenja automatskog rušenja clipa"
 
 #: ../../WPrefs.app/Docks.c:29
 msgid "Clip autoraising delays"
-msgstr ""
+msgstr "Kašnjenja automatskog podizanja clipa"
 
 #: ../../WPrefs.app/Docks.c:36
 msgid "Before auto-expansion"
-msgstr ""
+msgstr "Prije automatskog širenja"
 
 #: ../../WPrefs.app/Docks.c:37
 msgid "Before auto-collapsing"
-msgstr ""
+msgstr "Prije automatskog rušenja"
 
 #: ../../WPrefs.app/Docks.c:38
 msgid "Before auto-raising"
-msgstr ""
+msgstr "Prije automatskog podizanja"
 
 #: ../../WPrefs.app/Docks.c:39
 msgid "Before auto-lowering"
-msgstr ""
+msgstr "Prije automatskog spuštanja"
 
 #: ../../WPrefs.app/Docks.c:50
 msgid ""
@@ -537,9 +537,8 @@ msgid "Ignore decoration hints for GTK applications."
 msgstr "Još boja za aplikacije"
 
 #: ../../WPrefs.app/Expert.c:52
-#, fuzzy
 msgid "Enable workspace pager."
-msgstr "Otvoriti izbornik radnih prostora"
+msgstr "Omogući preglednik radnih prostora."
 
 #: ../../WPrefs.app/Expert.c:55
 #, fuzzy
@@ -562,27 +561,27 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:67
 msgid "Blink the titlebar of windows that demand attention."
-msgstr ""
+msgstr "Treperi naslovnom trakom prozora koji traže pažnju."
 
 #: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
-msgstr ""
+msgstr "Kruži prozorima samo na aktivnom zaslonu."
 
 #: ../../WPrefs.app/Expert.c:73
 msgid "Let a new window on another head take focus automatically."
-msgstr ""
+msgstr "Neka novi prozor na drugom zaslonu automatski preuzme fokus."
 
 #: ../../WPrefs.app/Expert.c:76
 msgid "Each monitor keeps its own active workspace (requires restart)."
-msgstr ""
+msgstr "Svaki monitor zadržava vlastiti aktivni radni prostor (zahtijeva ponovno pokretanje)."
 
 #: ../../WPrefs.app/Expert.c:79
 msgid "Keep at least this many workspaces."
-msgstr ""
+msgstr "Zadrži najmanje toliko radnih prostora."
 
 #: ../../WPrefs.app/Expert.c:83
 msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
-msgstr ""
+msgstr "Omogući virtualnu radnu površinu (pomični radni prostori veći od zaslona)."
 
 #: ../../WPrefs.app/Expert.c:87
 #, fuzzy
@@ -591,15 +590,15 @@ msgstr "povlačenje prozora između radnih prostora."
 
 #: ../../WPrefs.app/Expert.c:90
 msgid "Ignore minimized windows when cycling."
-msgstr ""
+msgstr "Zanemari minimizirane prozore pri kruženju."
 
 #: ../../WPrefs.app/Expert.c:93
 msgid "Order the switch panel by creation time instead of focus history."
-msgstr ""
+msgstr "Poredaj ploču prebacivanja po vremenu stvaranja umjesto po povijesti fokusa."
 
 #: ../../WPrefs.app/Expert.c:96
 msgid "Show app icons in window list."
-msgstr ""
+msgstr "Prikaži ikone aplikacija na popisu prozora."
 
 #: ../../WPrefs.app/Expert.c:99
 msgid "Show switch panel when cycling windows."
@@ -607,19 +606,19 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:102
 msgid "Show every tab-group member in the window switch panel."
-msgstr ""
+msgstr "Prikaži svakog člana grupe kartica u ploči prebacivanja prozora."
 
 #: ../../WPrefs.app/Expert.c:105
 msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
-msgstr ""
+msgstr "Crtaj grupe kartica kao segmente naslovne trake umjesto prefiksa [N/M]."
 
 #: ../../WPrefs.app/Expert.c:108
 msgid "Accept tab drops anywhere on the target window, not just its titlebar."
-msgstr ""
+msgstr "Prihvati ispuštanje kartica bilo gdje u ciljnom prozoru, ne samo u njegovoj naslovnoj traci."
 
 #: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
-msgstr ""
+msgstr "Prikaži naslov radnog prostora na clipu."
 
 #: ../../WPrefs.app/Expert.c:114
 msgid ""
@@ -628,7 +627,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:117
 msgid "Highlight the icon of the application when it has the focus."
-msgstr ""
+msgstr "Istakni ikonu aplikacije kada ima fokus."
 
 #: ../../WPrefs.app/Expert.c:121
 #, fuzzy
@@ -637,31 +636,31 @@ msgstr "Zadrži raspored tastature za svaki prozor"
 
 #: ../../WPrefs.app/Expert.c:125
 msgid "Snap a window to edge or corner by dragging."
-msgstr ""
+msgstr "Priljubi prozor uz rub ili kut povlačenjem."
 
 #: ../../WPrefs.app/Expert.c:128
 msgid "Distance from edge to begin window snap."
-msgstr ""
+msgstr "Udaljenost od ruba za početak priljubljivanja prozora."
 
 #: ../../WPrefs.app/Expert.c:131
 msgid "Distance from corner to begin window snap."
-msgstr ""
+msgstr "Udaljenost od kuta za početak priljubljivanja prozora."
 
 #: ../../WPrefs.app/Expert.c:134
 msgid "Snap a window to the top to maximize it to the full screen."
-msgstr ""
+msgstr "Priljubi prozor prema gore da se maksimizira na cijeli zaslon."
 
 #: ../../WPrefs.app/Expert.c:137
 msgid "Allow move half-maximized windows between multiple screens."
-msgstr ""
+msgstr "Dopusti premještanje polu-maksimiziranih prozora između više zaslona."
 
 #: ../../WPrefs.app/Expert.c:140
 msgid "Alternative transitions between states for half maximized windows."
-msgstr ""
+msgstr "Alternativni prijelazi između stanja za polu-maksimizirane prozore."
 
 #: ../../WPrefs.app/Expert.c:143
 msgid "Move mouse pointer with half maximized windows."
-msgstr ""
+msgstr "Premještaj pokazivač miša s polu-maksimiziranim prozorima."
 
 #: ../../WPrefs.app/Expert.c:146
 msgid "Open dialogs in the same workspace as their owners."
@@ -669,35 +668,35 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:149
 msgid "Wrap dock-attached icons around the screen edges."
-msgstr ""
+msgstr "Omotaj ikone pričvršćene uz dock oko rubova zaslona."
 
 #: ../../WPrefs.app/Expert.c:152
 msgid "Double click on titlebar maximizes a window instead of shading it."
-msgstr ""
+msgstr "Dvoklik na naslovnu traku maksimizira prozor umjesto da ga zamota."
 
 #: ../../WPrefs.app/Expert.c:155
 msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
-msgstr ""
+msgstr "Zatvori korijenski izbornik kada se miš (lijevi ili desni) klikne izvan fokusa."
 
 #: ../../WPrefs.app/Expert.c:158
 msgid "Keep dock on primary head."
-msgstr ""
+msgstr "Zadrži dock na primarnom zaslonu."
 
 #: ../../WPrefs.app/Expert.c:161
 msgid "Keep a separate dock icon list per screen resolution."
-msgstr ""
+msgstr "Zadrži zaseban popis dock ikona za svaku rezoluciju zaslona."
 
 #: ../../WPrefs.app/Expert.c:164
 msgid "Allow windows to take focus using mouse wheel."
-msgstr ""
+msgstr "Dopusti prozorima da preuzmu fokus kotačićem miša."
 
 #: ../../WPrefs.app/Expert.c:167
 msgid "Enable automatic mouse pointer hiding."
-msgstr ""
+msgstr "Omogući automatsko skrivanje pokazivača miša."
 
 #: ../../WPrefs.app/Expert.c:171
 msgid "Automatically (de)activate monitors on hotplug events."
-msgstr ""
+msgstr "Automatski (de)aktiviraj monitore pri događajima vrućeg priključivanja."
 
 #: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
@@ -808,7 +807,7 @@ msgstr "Font naslova ikone"
 
 #: ../../WPrefs.app/FontSimple.c:104
 msgid "Desktop Caption"
-msgstr ""
+msgstr "Naslov radne površine"
 
 #: ../../WPrefs.app/FontSimple.c:105
 #, fuzzy
@@ -827,7 +826,7 @@ msgstr "Onemogućeni tekst"
 
 #: ../../WPrefs.app/FontSimple.c:690
 msgid "Family"
-msgstr ""
+msgstr "Obitelj"
 
 #: ../../WPrefs.app/FontSimple.c:715
 msgid "Style"
@@ -855,7 +854,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:69
 msgid "Show Desktop"
-msgstr ""
+msgstr "Prikaži radnu površinu"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
 msgid "Show All Windows"
@@ -880,11 +879,11 @@ msgstr "Prebacivanje na prethodni radni prostor"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:74
 msgid "Lock Screen"
-msgstr ""
+msgstr "Zaključaj zaslon"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:81
 msgid "Custom action..."
-msgstr ""
+msgstr "Prilagođena radnja..."
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
 #, c-format
@@ -909,7 +908,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:216
 msgid "Enter a built-in action name or a shell command:"
-msgstr ""
+msgstr "Unesite naziv ugrađene radnje ili naredbu ljuske:"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:218
 #: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
@@ -938,11 +937,11 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:399
 msgid "Enable Hot Corners"
-msgstr ""
+msgstr "Omogući vruće kutove"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:405
 msgid "Hot Corner Edge"
-msgstr ""
+msgstr "Rub vrućeg kuta"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:430
 msgid ""
@@ -954,7 +953,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:442
 msgid "Hot Corner Delay"
-msgstr ""
+msgstr "Kašnjenje vrućeg kuta"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:483
 msgid "Hot Corner Actions"
@@ -993,7 +992,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Icons.c:337
 msgid "Mini-Previews for Icons"
-msgstr ""
+msgstr "Mini pregledi za ikone"
 
 #: ../../WPrefs.app/Icons.c:339
 msgid ""
@@ -1025,19 +1024,19 @@ msgstr "povlačenje prozora između radnih prostora."
 
 #: ../../WPrefs.app/Icons.c:397
 msgid "Single click activation"
-msgstr ""
+msgstr "Aktivacija jednim klikom"
 
 #: ../../WPrefs.app/Icons.c:399
 msgid "Launch applications and restore windows with a single click."
-msgstr ""
+msgstr "Pokreni aplikacije i vrati prozore jednim klikom."
 
 #: ../../WPrefs.app/Icons.c:404
 msgid "Enforce icon margin"
-msgstr ""
+msgstr "Nametni marginu ikone"
 
 #: ../../WPrefs.app/Icons.c:406
 msgid "Make sure that the icon image does not protrude into the icon frame."
-msgstr ""
+msgstr "Osiguraj da slika ikone ne strši u okvir ikone."
 
 #: ../../WPrefs.app/Icons.c:457
 #, fuzzy
@@ -1056,7 +1055,7 @@ msgstr "Pritisnite željenu kraticu ili kliknite Otkaži za prekid hvatanja."
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:359
 msgid "Key shortcut already in use by the "
-msgstr ""
+msgstr "Tipkovnički prečac već koristi "
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
 #: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
@@ -1198,7 +1197,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Menu.c:456
 msgid "Find..."
-msgstr ""
+msgstr "Pronađi..."
 
 #: ../../WPrefs.app/Menu.c:457
 #, c-format
@@ -1449,7 +1448,7 @@ msgstr ""
 #: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
 #: ../../WPrefs.app/Menu.c:2000
 msgid "Load Default"
-msgstr ""
+msgstr "Učitaj zadano"
 
 #: ../../WPrefs.app/Menu.c:794
 msgid "to reset the menu to the shipped default"
@@ -1606,7 +1605,7 @@ msgstr ""
 
 #: ../../WPrefs.app/MenuPreferences.c:162
 msgid "Use h/j/k/l keys to select menu options."
-msgstr ""
+msgstr "Koristite tipke h/j/k/l za odabir opcija izbornika."
 
 #: ../../WPrefs.app/MenuPreferences.c:178
 msgid "Menu Preferences"

@@ -69,7 +69,7 @@ msgstr "Активное окно"
 
 #: ../../WPrefs.app/Appearance.c:76
 msgid "Window Border Color"
-msgstr ""
+msgstr "Цвет рамки окна"
 
 #: ../../WPrefs.app/Appearance.c:78
 #, fuzzy
@@ -463,27 +463,27 @@ msgstr ""
 
 #: ../../WPrefs.app/Docks.c:28
 msgid "Clip autocollapsing delays"
-msgstr ""
+msgstr "Задержки автосворачивания скрепки"
 
 #: ../../WPrefs.app/Docks.c:29
 msgid "Clip autoraising delays"
-msgstr ""
+msgstr "Задержки автоподнятия скрепки"
 
 #: ../../WPrefs.app/Docks.c:36
 msgid "Before auto-expansion"
-msgstr ""
+msgstr "Перед авторазворачиванием"
 
 #: ../../WPrefs.app/Docks.c:37
 msgid "Before auto-collapsing"
-msgstr ""
+msgstr "Перед автосворачиванием"
 
 #: ../../WPrefs.app/Docks.c:38
 msgid "Before auto-raising"
-msgstr ""
+msgstr "Перед автоподнятием"
 
 #: ../../WPrefs.app/Docks.c:39
 msgid "Before auto-lowering"
-msgstr ""
+msgstr "Перед автоопусканием"
 
 #: ../../WPrefs.app/Docks.c:50
 #, fuzzy
@@ -558,7 +558,7 @@ msgstr "Игнорировать декорацию окон для GTK прил
 
 #: ../../WPrefs.app/Expert.c:52
 msgid "Enable workspace pager."
-msgstr ""
+msgstr "Включить переключатель рабочих пространств."
 
 #: ../../WPrefs.app/Expert.c:55
 msgid "Automatically save session when exiting Window Maker."
@@ -578,27 +578,27 @@ msgstr "Запретить анимацию выбора для выбранны
 
 #: ../../WPrefs.app/Expert.c:67
 msgid "Blink the titlebar of windows that demand attention."
-msgstr ""
+msgstr "Мигать заголовком окон, требующих внимания."
 
 #: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
-msgstr ""
+msgstr "Переключать окна только на активном экране."
 
 #: ../../WPrefs.app/Expert.c:73
 msgid "Let a new window on another head take focus automatically."
-msgstr ""
+msgstr "Позволить новому окну на другом экране автоматически получать фокус."
 
 #: ../../WPrefs.app/Expert.c:76
 msgid "Each monitor keeps its own active workspace (requires restart)."
-msgstr ""
+msgstr "Каждый монитор сохраняет своё активное рабочее пространство (нужен перезапуск)."
 
 #: ../../WPrefs.app/Expert.c:79
 msgid "Keep at least this many workspaces."
-msgstr ""
+msgstr "Сохранять столько рабочих пространств как минимум."
 
 #: ../../WPrefs.app/Expert.c:83
 msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
-msgstr ""
+msgstr "Включить виртуальный рабочий стол (прокручиваемые пространства больше экрана)."
 
 #: ../../WPrefs.app/Expert.c:87
 #, fuzzy
@@ -609,15 +609,15 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:90
 msgid "Ignore minimized windows when cycling."
-msgstr ""
+msgstr "Игнорировать свёрнутые окна при переключении."
 
 #: ../../WPrefs.app/Expert.c:93
 msgid "Order the switch panel by creation time instead of focus history."
-msgstr ""
+msgstr "Упорядочивать панель переключения по времени создания, а не по истории фокуса."
 
 #: ../../WPrefs.app/Expert.c:96
 msgid "Show app icons in window list."
-msgstr ""
+msgstr "Показывать иконки приложений в списке окон."
 
 #: ../../WPrefs.app/Expert.c:99
 msgid "Show switch panel when cycling windows."
@@ -625,15 +625,15 @@ msgstr "Показывать панель переключения окон."
 
 #: ../../WPrefs.app/Expert.c:102
 msgid "Show every tab-group member in the window switch panel."
-msgstr ""
+msgstr "Показывать всех членов группы вкладок в панели переключения окон."
 
 #: ../../WPrefs.app/Expert.c:105
 msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
-msgstr ""
+msgstr "Рисовать группы вкладок сегментами заголовка, а не префиксом [N/M]."
 
 #: ../../WPrefs.app/Expert.c:108
 msgid "Accept tab drops anywhere on the target window, not just its titlebar."
-msgstr ""
+msgstr "Принимать перетаскивание вкладок в любую часть окна, а только в его заголовок."
 
 #: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
@@ -654,34 +654,32 @@ msgid "Enable keyboard language switch button in window titlebars."
 msgstr "Сохранять язык клавиатуры для каждого окна"
 
 #: ../../WPrefs.app/Expert.c:125
-#, fuzzy
 msgid "Snap a window to edge or corner by dragging."
-msgstr "Прилипания окон по краям и углам."
+msgstr "Прикреплять окно к краю или углу при перетаскивании."
 
 #: ../../WPrefs.app/Expert.c:128
 msgid "Distance from edge to begin window snap."
-msgstr ""
+msgstr "Расстояние от края для начала прикрепления окна."
 
 #: ../../WPrefs.app/Expert.c:131
 msgid "Distance from corner to begin window snap."
-msgstr ""
+msgstr "Расстояние от угла для начала прикрепления окна."
 
 #: ../../WPrefs.app/Expert.c:134
-#, fuzzy
 msgid "Snap a window to the top to maximize it to the full screen."
-msgstr "Распахнуть окно при перетаскивании к верхнему краю."
+msgstr "Прикреплять окно к верху, чтобы развернуть его на весь экран."
 
 #: ../../WPrefs.app/Expert.c:137
 msgid "Allow move half-maximized windows between multiple screens."
-msgstr ""
+msgstr "Разрешить перемещение полуразвёрнутых окон между экранами."
 
 #: ../../WPrefs.app/Expert.c:140
 msgid "Alternative transitions between states for half maximized windows."
-msgstr ""
+msgstr "Альтернативные переходы между состояниями полуразвёрнутых окон."
 
 #: ../../WPrefs.app/Expert.c:143
 msgid "Move mouse pointer with half maximized windows."
-msgstr ""
+msgstr "Перемещать указатель мыши вместе с полуразвёрнутыми окнами."
 
 #: ../../WPrefs.app/Expert.c:146
 #, fuzzy
@@ -690,12 +688,11 @@ msgstr "Открывать диалоги в одном рабочем прос�
 
 #: ../../WPrefs.app/Expert.c:149
 msgid "Wrap dock-attached icons around the screen edges."
-msgstr ""
+msgstr "Оборачивать иконки дока по краям экрана."
 
 #: ../../WPrefs.app/Expert.c:152
-#, fuzzy
 msgid "Double click on titlebar maximizes a window instead of shading it."
-msgstr "Распахнуть окно двойным щелчком."
+msgstr "Двойной щелчок по заголовку разворачивает окно, а не сворачивает его в полоску."
 
 #: ../../WPrefs.app/Expert.c:155
 msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
@@ -703,23 +700,23 @@ msgstr "Закрывать меню приложений правым или л�
 
 #: ../../WPrefs.app/Expert.c:158
 msgid "Keep dock on primary head."
-msgstr ""
+msgstr "Держать док на основном экране."
 
 #: ../../WPrefs.app/Expert.c:161
 msgid "Keep a separate dock icon list per screen resolution."
-msgstr ""
+msgstr "Хранить отдельный список иконок дока для каждого разрешения экрана."
 
 #: ../../WPrefs.app/Expert.c:164
 msgid "Allow windows to take focus using mouse wheel."
-msgstr ""
+msgstr "Разрешить окнам получать фокус колесом мыши."
 
 #: ../../WPrefs.app/Expert.c:167
 msgid "Enable automatic mouse pointer hiding."
-msgstr ""
+msgstr "Включить автоматическое скрытие указателя мыши."
 
 #: ../../WPrefs.app/Expert.c:171
 msgid "Automatically (de)activate monitors on hotplug events."
-msgstr ""
+msgstr "Автоматически (де)активировать мониторы при подключении."
 
 #: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
@@ -840,7 +837,7 @@ msgstr "Размер иконок"
 
 #: ../../WPrefs.app/FontSimple.c:104
 msgid "Desktop Caption"
-msgstr ""
+msgstr "Подпись рабочего стола"
 
 #: ../../WPrefs.app/FontSimple.c:105
 msgid "System Font"
@@ -857,7 +854,7 @@ msgstr "Примеры подменю"
 
 #: ../../WPrefs.app/FontSimple.c:690
 msgid "Family"
-msgstr ""
+msgstr "Гарнитура"
 
 #: ../../WPrefs.app/FontSimple.c:715
 #, fuzzy
@@ -888,7 +885,7 @@ msgstr "Без оного"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:69
 msgid "Show Desktop"
-msgstr ""
+msgstr "Показать рабочий стол"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
 msgid "Show All Windows"
@@ -913,11 +910,11 @@ msgstr "Предыдущее рабочее пространство"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:74
 msgid "Lock Screen"
-msgstr ""
+msgstr "Заблокировать экран"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:81
 msgid "Custom action..."
-msgstr ""
+msgstr "Своя команда..."
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
 #, c-format
@@ -943,7 +940,7 @@ msgstr "Без предупреждения"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:216
 msgid "Enter a built-in action name or a shell command:"
-msgstr ""
+msgstr "Введите имя встроенного действия или команду оболочки:"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:218
 #: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
@@ -972,11 +969,11 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:399
 msgid "Enable Hot Corners"
-msgstr ""
+msgstr "Включить горячие углы"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:405
 msgid "Hot Corner Edge"
-msgstr ""
+msgstr "Край горячего угла"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:430
 msgid ""
@@ -988,7 +985,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:442
 msgid "Hot Corner Delay"
-msgstr ""
+msgstr "Задержка горячего угла"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:483
 #, fuzzy
@@ -1027,7 +1024,7 @@ msgstr "Размер миниокон и иконок приложений/до�
 
 #: ../../WPrefs.app/Icons.c:337
 msgid "Mini-Previews for Icons"
-msgstr ""
+msgstr "Мини-просмотры для иконок"
 
 #: ../../WPrefs.app/Icons.c:339
 msgid ""
@@ -1063,15 +1060,15 @@ msgstr "Одинарный щелчок мыши"
 
 #: ../../WPrefs.app/Icons.c:399
 msgid "Launch applications and restore windows with a single click."
-msgstr ""
+msgstr "Запускать приложения и восстанавливать окна одним щелчком."
 
 #: ../../WPrefs.app/Icons.c:404
 msgid "Enforce icon margin"
-msgstr ""
+msgstr "Применять отступ иконки"
 
 #: ../../WPrefs.app/Icons.c:406
 msgid "Make sure that the icon image does not protrude into the icon frame."
-msgstr ""
+msgstr "Следить, чтобы изображение иконки не выходило за рамку."
 
 #: ../../WPrefs.app/Icons.c:457
 msgid "Icon Preferences"
@@ -1091,7 +1088,7 @@ msgstr "Нажмите клавишу(ы) или нажмите Отмена д�
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:359
 msgid "Key shortcut already in use by the "
-msgstr ""
+msgstr "Сочетание клавиш уже занято: "
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
 #: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
@@ -1225,9 +1222,8 @@ msgid "ETerm"
 msgstr "ETerm"
 
 #: ../../WPrefs.app/Menu.c:456
-#, fuzzy
 msgid "Find..."
-msgstr "Добавить..."
+msgstr "Найти..."
 
 #: ../../WPrefs.app/Menu.c:457
 #, c-format
@@ -1498,7 +1494,7 @@ msgstr ""
 #: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
 #: ../../WPrefs.app/Menu.c:2000
 msgid "Load Default"
-msgstr ""
+msgstr "Загрузить значения по умолчанию"
 
 #: ../../WPrefs.app/Menu.c:794
 msgid "to reset the menu to the shipped default"
@@ -1656,7 +1652,7 @@ msgstr "Сдвигать меню в область видимости по ме
 
 #: ../../WPrefs.app/MenuPreferences.c:162
 msgid "Use h/j/k/l keys to select menu options."
-msgstr ""
+msgstr "Используйте клавиши h/j/k/l для выбора пунктов меню."
 
 #: ../../WPrefs.app/MenuPreferences.c:178
 msgid "Menu Preferences"

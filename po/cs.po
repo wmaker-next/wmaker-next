@@ -524,9 +524,8 @@ msgid "Legal"
 msgstr "Licenční podmínky"
 
 #: ../src/dialog.c:992
-#, fuzzy
 msgid "Keyboard Shortcuts"
-msgstr "Klávesnice jen pro aplikaci"
+msgstr "Klávesové zkratky"
 
 #: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."

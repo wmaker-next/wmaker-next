@@ -67,7 +67,7 @@ msgstr "Aktiivinen ikkuna"
 
 #: ../../WPrefs.app/Appearance.c:76
 msgid "Window Border Color"
-msgstr ""
+msgstr "Ikkunan reunuksen väri"
 
 #: ../../WPrefs.app/Appearance.c:78
 #, fuzzy
@@ -457,27 +457,27 @@ msgstr ""
 
 #: ../../WPrefs.app/Docks.c:28
 msgid "Clip autocollapsing delays"
-msgstr ""
+msgstr "Liittimen automaattisen kertauksen viiveet"
 
 #: ../../WPrefs.app/Docks.c:29
 msgid "Clip autoraising delays"
-msgstr ""
+msgstr "Liittimen automaattisen nostamisen viiveet"
 
 #: ../../WPrefs.app/Docks.c:36
 msgid "Before auto-expansion"
-msgstr ""
+msgstr "Ennen automaattista laajentumista"
 
 #: ../../WPrefs.app/Docks.c:37
 msgid "Before auto-collapsing"
-msgstr ""
+msgstr "Ennen automaattista kertausta"
 
 #: ../../WPrefs.app/Docks.c:38
 msgid "Before auto-raising"
-msgstr ""
+msgstr "Ennen automaattista nostamista"
 
 #: ../../WPrefs.app/Docks.c:39
 msgid "Before auto-lowering"
-msgstr ""
+msgstr "Ennen automaattista laskemista"
 
 #: ../../WPrefs.app/Docks.c:50
 #, fuzzy
@@ -556,7 +556,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:52
 msgid "Enable workspace pager."
-msgstr ""
+msgstr "Ota työtilojen selaus käyttöön."
 
 #: ../../WPrefs.app/Expert.c:55
 msgid "Automatically save session when exiting Window Maker."
@@ -578,27 +578,27 @@ msgstr "Ei valittujen kuvakkeiden animaatiota"
 
 #: ../../WPrefs.app/Expert.c:67
 msgid "Blink the titlebar of windows that demand attention."
-msgstr ""
+msgstr "Vilkuta huomiota vaativien ikkunoiden otsikkopalkkia."
 
 #: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
-msgstr ""
+msgstr "Kierrä ikkunoita vain aktiivisella näytöllä."
 
 #: ../../WPrefs.app/Expert.c:73
 msgid "Let a new window on another head take focus automatically."
-msgstr ""
+msgstr "Anna uuden ikkunan toisella näytöllä saada fokus automaattisesti."
 
 #: ../../WPrefs.app/Expert.c:76
 msgid "Each monitor keeps its own active workspace (requires restart)."
-msgstr ""
+msgstr "Jokainen monitori pitää oman aktiivisen työtilansa (vaatii uudelleenkäynnistyksen)."
 
 #: ../../WPrefs.app/Expert.c:79
 msgid "Keep at least this many workspaces."
-msgstr ""
+msgstr "Pidä vähintään näin monta työtilaa."
 
 #: ../../WPrefs.app/Expert.c:83
 msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
-msgstr ""
+msgstr "Ota virtuaalityöpöytä käyttöön (siirrettävät työtilat, suurempia kuin näyttö)."
 
 #: ../../WPrefs.app/Expert.c:87
 #, fuzzy
@@ -607,15 +607,15 @@ msgstr "Näytä mini-ikkunat kaikissa työtiloissa."
 
 #: ../../WPrefs.app/Expert.c:90
 msgid "Ignore minimized windows when cycling."
-msgstr ""
+msgstr "Ohita pienennetyt ikkunat kierrättäessä."
 
 #: ../../WPrefs.app/Expert.c:93
 msgid "Order the switch panel by creation time instead of focus history."
-msgstr ""
+msgstr "Järjestä vaihtopaneeli luontiajan mukaan fokushistorian sijaan."
 
 #: ../../WPrefs.app/Expert.c:96
 msgid "Show app icons in window list."
-msgstr ""
+msgstr "Näytä sovellusten kuvakkeet ikkunaluettelossa."
 
 #: ../../WPrefs.app/Expert.c:99
 #, fuzzy
@@ -624,19 +624,19 @@ msgstr "Vaihda työtiloja ikkunoita vedettäessä"
 
 #: ../../WPrefs.app/Expert.c:102
 msgid "Show every tab-group member in the window switch panel."
-msgstr ""
+msgstr "Näytä jokainen välilehtiryhmän jäsen ikkunan vaihtopaneelissa."
 
 #: ../../WPrefs.app/Expert.c:105
 msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
-msgstr ""
+msgstr "Piirrä välilehtiryhmät otsikkopalkin osina [N/M]-etuliitteen sijaan."
 
 #: ../../WPrefs.app/Expert.c:108
 msgid "Accept tab drops anywhere on the target window, not just its titlebar."
-msgstr ""
+msgstr "Hyväksy välilehtien pudotus kohdeikkunan mihin tahansa kohtaan, ei vain sen otsikkopalkkiin."
 
 #: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
-msgstr ""
+msgstr "Näytä työtilan otsikko liittimessä."
 
 #: ../../WPrefs.app/Expert.c:114
 msgid ""
@@ -645,7 +645,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:117
 msgid "Highlight the icon of the application when it has the focus."
-msgstr ""
+msgstr "Korosta sovelluksen kuvake, kun sillä on fokus."
 
 #: ../../WPrefs.app/Expert.c:121
 #, fuzzy
@@ -656,31 +656,31 @@ msgstr ""
 
 #: ../../WPrefs.app/Expert.c:125
 msgid "Snap a window to edge or corner by dragging."
-msgstr ""
+msgstr "Napsauta ikkuna reunaan tai kulmaan vetämällä."
 
 #: ../../WPrefs.app/Expert.c:128
 msgid "Distance from edge to begin window snap."
-msgstr ""
+msgstr "Etäisyys reunasta, josta ikkunan napsautus alkaa."
 
 #: ../../WPrefs.app/Expert.c:131
 msgid "Distance from corner to begin window snap."
-msgstr ""
+msgstr "Etäisyys kulmasta, josta ikkunan napsautus alkaa."
 
 #: ../../WPrefs.app/Expert.c:134
 msgid "Snap a window to the top to maximize it to the full screen."
-msgstr ""
+msgstr "Napsauta ikkuna ylös, jotta se suurenee koko näytölle."
 
 #: ../../WPrefs.app/Expert.c:137
 msgid "Allow move half-maximized windows between multiple screens."
-msgstr ""
+msgstr "Salli puolikkaan suurennettujen ikkunoiden siirto näyttöjen välillä."
 
 #: ../../WPrefs.app/Expert.c:140
 msgid "Alternative transitions between states for half maximized windows."
-msgstr ""
+msgstr "Vaihtoehtoiset siirtymät puolikkaan suurennettujen ikkunoiden tilojen välillä."
 
 #: ../../WPrefs.app/Expert.c:143
 msgid "Move mouse pointer with half maximized windows."
-msgstr ""
+msgstr "Siirrä hiiriosoitinta puolikkaan suurennettujen ikkunoiden mukana."
 
 #: ../../WPrefs.app/Expert.c:146
 #, fuzzy
@@ -689,35 +689,35 @@ msgstr "Avaa valintaikkunat omistajansa työtilassa"
 
 #: ../../WPrefs.app/Expert.c:149
 msgid "Wrap dock-attached icons around the screen edges."
-msgstr ""
+msgstr "Kääri telakkaan kiinnitetyt kuvakkeet näytön reunojen ympäri."
 
 #: ../../WPrefs.app/Expert.c:152
 msgid "Double click on titlebar maximizes a window instead of shading it."
-msgstr ""
+msgstr "Kaksoisnapsautus otsikkopalkissa suurentaa ikkunan sen rullauksen sijaan."
 
 #: ../../WPrefs.app/Expert.c:155
 msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
-msgstr ""
+msgstr "Sulje päävalikko, kun hiirtä (vasen tai oikea) napsautetaan fookuksen ulkopuolella."
 
 #: ../../WPrefs.app/Expert.c:158
 msgid "Keep dock on primary head."
-msgstr ""
+msgstr "Pidä telakka ensisijaisella näytöllä."
 
 #: ../../WPrefs.app/Expert.c:161
 msgid "Keep a separate dock icon list per screen resolution."
-msgstr ""
+msgstr "Pidä erillinen telakan kuvakeluettelo kullekin näytön tarkkuudelle."
 
 #: ../../WPrefs.app/Expert.c:164
 msgid "Allow windows to take focus using mouse wheel."
-msgstr ""
+msgstr "Salli ikkunoiden saada fokus hiiren rullalla."
 
 #: ../../WPrefs.app/Expert.c:167
 msgid "Enable automatic mouse pointer hiding."
-msgstr ""
+msgstr "Ota hiiriosoittimen automaattinen piilotus käyttöön."
 
 #: ../../WPrefs.app/Expert.c:171
 msgid "Automatically (de)activate monitors on hotplug events."
-msgstr ""
+msgstr "Aktivoi/poista monitorit käytöstä automaattisesti liitostapahtumissa."
 
 #: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
@@ -836,7 +836,7 @@ msgstr "Kuvakkeiden koko"
 
 #: ../../WPrefs.app/FontSimple.c:104
 msgid "Desktop Caption"
-msgstr ""
+msgstr "Työpöydän kuvateksti"
 
 #: ../../WPrefs.app/FontSimple.c:105
 msgid "System Font"
@@ -853,7 +853,7 @@ msgstr "Näyte-alivalikkoja"
 
 #: ../../WPrefs.app/FontSimple.c:690
 msgid "Family"
-msgstr ""
+msgstr "Perhe"
 
 #: ../../WPrefs.app/FontSimple.c:715
 #, fuzzy
@@ -884,7 +884,7 @@ msgstr "Ei mitään"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:69
 msgid "Show Desktop"
-msgstr ""
+msgstr "Näytä työpöytä"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
 msgid "Show All Windows"
@@ -909,11 +909,11 @@ msgstr "Siirry edelliseen työtilaan"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:74
 msgid "Lock Screen"
-msgstr ""
+msgstr "Lukitse näyttö"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:81
 msgid "Custom action..."
-msgstr ""
+msgstr "Mukautettu toiminto..."
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
 #, c-format
@@ -939,7 +939,7 @@ msgstr "Ei vahvistuspaneelia"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:216
 msgid "Enter a built-in action name or a shell command:"
-msgstr ""
+msgstr "Anna valmiin toiminnon nimi tai komentorivin käsky:"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:218
 #: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
@@ -968,11 +968,11 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:399
 msgid "Enable Hot Corners"
-msgstr ""
+msgstr "Ota kuumat kulmat käyttöön"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:405
 msgid "Hot Corner Edge"
-msgstr ""
+msgstr "Kuumakulman reuna"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:430
 msgid ""
@@ -984,7 +984,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:442
 msgid "Hot Corner Delay"
-msgstr ""
+msgstr "Kuumakulman viive"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:483
 #, fuzzy
@@ -1023,7 +1023,7 @@ msgstr "Telakka/sovelluskuvakkeen ja mini-ikkunoiden koko."
 
 #: ../../WPrefs.app/Icons.c:337
 msgid "Mini-Previews for Icons"
-msgstr ""
+msgstr "Miniesikatselut kuvakkeille"
 
 #: ../../WPrefs.app/Icons.c:339
 msgid ""
@@ -1053,19 +1053,19 @@ msgstr "Näytä mini-ikkunat kaikissa työtiloissa."
 
 #: ../../WPrefs.app/Icons.c:397
 msgid "Single click activation"
-msgstr ""
+msgstr "Aktivointi yhdellä napsautuksella"
 
 #: ../../WPrefs.app/Icons.c:399
 msgid "Launch applications and restore windows with a single click."
-msgstr ""
+msgstr "Käynnistä sovellukset ja palauta ikkunat yhdellä napsautuksella."
 
 #: ../../WPrefs.app/Icons.c:404
 msgid "Enforce icon margin"
-msgstr ""
+msgstr "Pakota kuvakkeen reunus"
 
 #: ../../WPrefs.app/Icons.c:406
 msgid "Make sure that the icon image does not protrude into the icon frame."
-msgstr ""
+msgstr "Varmista, ettei kuvakkeen kuva ulotu kuvakkeen kehykseen."
 
 #: ../../WPrefs.app/Icons.c:457
 msgid "Icon Preferences"
@@ -1086,7 +1086,7 @@ msgstr "Paina haluamasi pikavalinnan näppäinyhdistelmä tai paina 'Peruuta'."
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:359
 msgid "Key shortcut already in use by the "
-msgstr ""
+msgstr "Näppäinpikavalinta on jo käytössä: "
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
 #: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
@@ -1221,9 +1221,8 @@ msgid "ETerm"
 msgstr "ETerm"
 
 #: ../../WPrefs.app/Menu.c:456
-#, fuzzy
 msgid "Find..."
-msgstr "Lisää..."
+msgstr "Etsi..."
 
 #: ../../WPrefs.app/Menu.c:457
 #, c-format
@@ -1493,9 +1492,8 @@ msgstr ""
 
 #: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
 #: ../../WPrefs.app/Menu.c:2000
-#, fuzzy
 msgid "Load Default"
-msgstr "Kopioi oletusvalikko"
+msgstr "Lataa oletukset"
 
 #: ../../WPrefs.app/Menu.c:794
 msgid "to reset the menu to the shipped default"
@@ -1653,7 +1651,7 @@ msgstr ""
 
 #: ../../WPrefs.app/MenuPreferences.c:162
 msgid "Use h/j/k/l keys to select menu options."
-msgstr ""
+msgstr "Käytä näppäimiä h/j/k/l valitaksesi valikon vaihtoehdot."
 
 #: ../../WPrefs.app/MenuPreferences.c:178
 msgid "Menu Preferences"

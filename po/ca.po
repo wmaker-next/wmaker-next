@@ -528,9 +528,8 @@ msgid "Legal"
 msgstr "Legal"
 
 #: ../src/dialog.c:992
-#, fuzzy
 msgid "Keyboard Shortcuts"
-msgstr "Deshabilitar els vincles de tecla"
+msgstr "Dreceres de teclat"
 
 #: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."

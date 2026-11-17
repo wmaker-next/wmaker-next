@@ -618,9 +618,8 @@ msgstr "Право"
 
 # ../src/winspector.c:1437
 #: ../src/dialog.c:992
-#, fuzzy
 msgid "Keyboard Shortcuts"
-msgstr "Да не се прихващат бързи клавиши"
+msgstr "Бързи клавиши"
 
 # ../src/dialog.c:1515 ../src/startup.c:328
 #: ../src/dialog_crash.c:147 ../src/monitor.c:85

@@ -105,7 +105,7 @@ msgstr "Juegos"
 
 #: ../../util/wmgenmenu.c:167
 msgid "Find..."
-msgstr ""
+msgstr "Buscar..."
 
 #: ../../util/wmgenmenu.c:169
 #, c-format
@@ -264,7 +264,7 @@ msgstr "Panel de información"
 
 #: ../../util/wmgenmenu.c:371
 msgid "Keyboard Shortcuts"
-msgstr ""
+msgstr "Atajos de teclado"
 
 #: ../../util/wmgenmenu.c:379
 msgid "Restart Window Maker"

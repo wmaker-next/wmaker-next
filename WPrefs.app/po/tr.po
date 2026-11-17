@@ -546,7 +546,7 @@ msgstr "Seçili simgeler için seçim animasyonunu devre dışı bırak."
 
 #: ../../WPrefs.app/Expert.c:67
 msgid "Blink the titlebar of windows that demand attention."
-msgstr ""
+msgstr "Dikkat isteyen pencerelerin başlık çubuğunu yanıp söndür."
 
 #: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
@@ -554,19 +554,19 @@ msgstr "Pencereleri sadece aktif kafada dolaş."
 
 #: ../../WPrefs.app/Expert.c:73
 msgid "Let a new window on another head take focus automatically."
-msgstr ""
+msgstr "Başka ekrandaki yeni bir pencerenin kendiliğinden odak almasına izin ver."
 
 #: ../../WPrefs.app/Expert.c:76
 msgid "Each monitor keeps its own active workspace (requires restart)."
-msgstr ""
+msgstr "Her monitör kendi etkin çalışma alanını korur (yeniden başlatma gerekir)."
 
 #: ../../WPrefs.app/Expert.c:79
 msgid "Keep at least this many workspaces."
-msgstr ""
+msgstr "En az bu kadar çalışma alanı tut."
 
 #: ../../WPrefs.app/Expert.c:83
 msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
-msgstr ""
+msgstr "Sanal masaüstünü etkinleştir (ekrandan büyük, kaydırılabilir çalışma alanları)."
 
 #: ../../WPrefs.app/Expert.c:87
 #, fuzzy
@@ -579,11 +579,11 @@ msgstr "Bisiklet sürerken simge durumuna küçültülmüş pencereleri yoksay."
 
 #: ../../WPrefs.app/Expert.c:93
 msgid "Order the switch panel by creation time instead of focus history."
-msgstr ""
+msgstr "Değiştirme panelini odak geçmişi yerine oluşturma zamanına göre sırala."
 
 #: ../../WPrefs.app/Expert.c:96
 msgid "Show app icons in window list."
-msgstr ""
+msgstr "Uygulama simgelerini pencere listesinde göster."
 
 #: ../../WPrefs.app/Expert.c:99
 msgid "Show switch panel when cycling windows."
@@ -591,15 +591,15 @@ msgstr "Pencereleri çevirirken anahtar panelini göster."
 
 #: ../../WPrefs.app/Expert.c:102
 msgid "Show every tab-group member in the window switch panel."
-msgstr ""
+msgstr "Sekme grubunun her üyesini pencere değiştirme panelinde göster."
 
 #: ../../WPrefs.app/Expert.c:105
 msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
-msgstr ""
+msgstr "Sekme gruplarını [N/M] öneki yerine başlık çubuğu parçaları olarak çiz."
 
 #: ../../WPrefs.app/Expert.c:108
 msgid "Accept tab drops anywhere on the target window, not just its titlebar."
-msgstr ""
+msgstr "Sekme bırakmalarını yalnızca başlık çubuğunda değil, hedef pencerenin her yerinde kabul et."
 
 #: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
@@ -619,10 +619,8 @@ msgid "Enable keyboard language switch button in window titlebars."
 msgstr "Pencere başlık çubuklarında klavye dili geçiş düğmesini etkinleştir."
 
 #: ../../WPrefs.app/Expert.c:125
-#, fuzzy
 msgid "Snap a window to edge or corner by dragging."
-msgstr ""
-"Bir pencereyi sürükleyerek kenarına veya köşesine büyütme (yapıştırma)."
+msgstr "Sürükleyerek pencereyi kenara veya köşeye yapıştır."
 
 #: ../../WPrefs.app/Expert.c:128
 msgid "Distance from edge to begin window snap."
@@ -633,9 +631,8 @@ msgid "Distance from corner to begin window snap."
 msgstr "Pencere yapışmasına başlamak için köşeden uzaklık."
 
 #: ../../WPrefs.app/Expert.c:134
-#, fuzzy
 msgid "Snap a window to the top to maximize it to the full screen."
-msgstr "Bir pencereyi en üste yapıştırmak onu tam ekrana büyütür."
+msgstr "Pencereyi tam ekrana büyütmek için yukarı yapıştır."
 
 #: ../../WPrefs.app/Expert.c:137
 msgid "Allow move half-maximized windows between multiple screens."
@@ -660,31 +657,31 @@ msgstr "Dock-ekli simgeleri ekran kenarlarına sarın."
 
 #: ../../WPrefs.app/Expert.c:152
 msgid "Double click on titlebar maximizes a window instead of shading it."
-msgstr ""
+msgstr "Başlık çubuğuna çift tıklama pencereyi katlamak yerine büyütür."
 
 #: ../../WPrefs.app/Expert.c:155
 msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
-msgstr ""
+msgstr "Fare (sol veya sağ) odağın dışında tıklandığında kök menüyü kapat."
 
 #: ../../WPrefs.app/Expert.c:158
 msgid "Keep dock on primary head."
-msgstr ""
+msgstr "Dock'u birincil ekranda tut."
 
 #: ../../WPrefs.app/Expert.c:161
 msgid "Keep a separate dock icon list per screen resolution."
-msgstr ""
+msgstr "Ekran çözünürlüğü başına ayrı bir dock simge listesi tut."
 
 #: ../../WPrefs.app/Expert.c:164
 msgid "Allow windows to take focus using mouse wheel."
-msgstr ""
+msgstr "Pencerelerin fare tekerleğiyle odak almasına izin ver."
 
 #: ../../WPrefs.app/Expert.c:167
 msgid "Enable automatic mouse pointer hiding."
-msgstr ""
+msgstr "Fare imlecinin kendiliğinden gizlenmesini etkinleştir."
 
 #: ../../WPrefs.app/Expert.c:171
 msgid "Automatically (de)activate monitors on hotplug events."
-msgstr ""
+msgstr "Takma olaylarında monitörleri kendiliğinden (de)etkinleştir."
 
 #: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
@@ -846,7 +843,7 @@ msgstr "Yok"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:69
 msgid "Show Desktop"
-msgstr ""
+msgstr "Masaüstünü Göster"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
 msgid "Show All Windows"
@@ -869,11 +866,11 @@ msgstr "Önceki Çalışma Alanı"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:74
 msgid "Lock Screen"
-msgstr ""
+msgstr "Ekranı Kilitle"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:81
 msgid "Custom action..."
-msgstr ""
+msgstr "Özel eylem..."
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
 #, c-format
@@ -899,7 +896,7 @@ msgstr "Yazı Tipi Yapılandırması"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:216
 msgid "Enter a built-in action name or a shell command:"
-msgstr ""
+msgstr "Yerleşik bir eylem adı veya kabuk komutu girin:"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:218
 #: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
@@ -928,11 +925,11 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:399
 msgid "Enable Hot Corners"
-msgstr ""
+msgstr "Sıcak Köşeleri Etkinleştir"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:405
 msgid "Hot Corner Edge"
-msgstr ""
+msgstr "Sıcak Köşe Kenarı"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:430
 msgid ""
@@ -944,7 +941,7 @@ msgstr ""
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:442
 msgid "Hot Corner Delay"
-msgstr ""
+msgstr "Sıcak Köşe Gecikmesi"
 
 #: ../../WPrefs.app/HotCornerShortcuts.c:483
 #, fuzzy
@@ -1048,7 +1045,7 @@ msgstr ""
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:359
 msgid "Key shortcut already in use by the "
-msgstr ""
+msgstr "Kısayol tuşu zaten kullanımda: "
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
 #: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
@@ -1181,7 +1178,7 @@ msgstr ""
 
 #: ../../WPrefs.app/Menu.c:456
 msgid "Find..."
-msgstr ""
+msgstr "Bul..."
 
 #: ../../WPrefs.app/Menu.c:457
 #, c-format
@@ -1441,7 +1438,7 @@ msgstr ""
 #: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
 #: ../../WPrefs.app/Menu.c:2000
 msgid "Load Default"
-msgstr ""
+msgstr "Varsayılanı Yükle"
 
 #: ../../WPrefs.app/Menu.c:794
 msgid "to reset the menu to the shipped default"

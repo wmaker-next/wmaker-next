@@ -110,7 +110,7 @@ msgstr "Игре"
 
 #: ../../util/wmgenmenu.c:167
 msgid "Find..."
-msgstr ""
+msgstr "Пронађи..."
 
 #: ../../util/wmgenmenu.c:169
 #, c-format
@@ -269,7 +269,7 @@ msgstr "Панел за информације"
 
 #: ../../util/wmgenmenu.c:371
 msgid "Keyboard Shortcuts"
-msgstr ""
+msgstr "Тастатурне пречице"
 
 #: ../../util/wmgenmenu.c:379
 msgid "Restart Window Maker"
