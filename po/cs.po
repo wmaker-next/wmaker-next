@@ -599,15 +599,15 @@ msgstr "Ikony"
 
 #: ../src/dialog_icon.c:519
 msgid "List Mode"
-msgstr ""
+msgstr "Režim seznamu"
 
 #: ../src/dialog_icon.c:524
 msgid "Names"
-msgstr ""
+msgstr "Názvy"
 
 #: ../src/dialog_icon.c:531
 msgid "Thumbs"
-msgstr ""
+msgstr "Náhledy"
 
 #: ../src/dialog_icon.c:539
 msgid "Preview"
@@ -706,9 +706,8 @@ msgid "Auto Collapse"
 msgstr "Automaticky svinout"
 
 #: ../src/dock.c:1301
-#, fuzzy
 msgid "Auto Compact"
-msgstr "Automaticky svinout"
+msgstr "Automaticky komprimovat"
 
 #: ../src/dock.c:1306 ../src/dock.c:1387
 msgid "Auto Raise"
@@ -728,18 +727,16 @@ msgid "could not create options submenu for Dock menu"
 msgstr "nelze vytvořit submenu voleb pro menu Sponky"
 
 #: ../src/dock.c:1382
-#, fuzzy
 msgid "Auto Hide"
-msgstr "Automaticky Nahoru/Dolů"
+msgstr "Automaticky skrýt"
 
 #: ../src/dock.c:1417
-#, fuzzy
 msgid "Dock Options"
-msgstr "Volby"
+msgstr "Volby doku"
 
 #: ../src/dock.c:1423
 msgid "Add a Drawer"
-msgstr ""
+msgstr "Přidat zásuvku"
 
 #: ../src/dock.c:1427
 msgid "Clip Options"
@@ -832,7 +829,7 @@ msgstr "Držet zde"
 
 #: ../src/dock.c:5345
 msgid "Remove Drawer"
-msgstr ""
+msgstr "Odebrat zásuvku"
 
 #: ../src/dock.c:6430
 msgid "All icons in this drawer will be detached!"
@@ -967,11 +964,11 @@ msgstr "chyba při vykreslení obrázku: %s"
 #: ../src/keybind_descriptions.h:46 ../src/keybind_descriptions.h:47
 #: ../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Virtuální plocha"
 
 #: ../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Přesunout virtuální plochu k další levé hraně"
 
 #: ../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -979,7 +976,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Přesunout virtuální plochu k další pravé hraně"
 
 #: ../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -987,7 +984,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Přesunout virtuální plochu k další horní hraně"
 
 #: ../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -995,7 +992,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Přesunout virtuální plochu k další dolní hraně"
 
 #: ../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -1003,7 +1000,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Přesunout virtuální plochu do jejího počátku"
 
 #: ../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -1011,7 +1008,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Vycentrovat zaměřené okno na virtuální ploše"
 
 #: ../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -1019,7 +1016,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Připnout zaměřené okno k zobrazení virtuální plochy"
 
 #: ../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -1030,11 +1027,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:222 ../src/keybind_descriptions.h:223
 #: ../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Relace a různé"
 
 #: ../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
-msgstr ""
+msgstr "Přepnout jazyk klávesnice"
 
 #: ../src/keybind_descriptions.h:55
 msgid "ToggleKbdModeKey"
@@ -1042,7 +1039,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Vybrat znaky s diakritikou a speciální znaky"
 
 #: ../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -1051,12 +1048,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:62 ../src/keybind_descriptions.h:63
 #: ../src/keybind_descriptions.h:64
 msgid "Menus"
-msgstr ""
+msgstr "Nabídky"
 
 #: ../src/keybind_descriptions.h:62
-#, fuzzy
 msgid "Open applications menu"
-msgstr "Bez aplikační ikony"
+msgstr "Otevřít nabídku aplikací"
 
 #: ../src/keybind_descriptions.h:62
 msgid "RootMenuKey"
@@ -1064,33 +1060,30 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:63
 msgid "Open window list menu"
-msgstr ""
+msgstr "Otevřít seznam oken"
 
 #: ../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Seznam oken"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
-msgstr ""
+msgstr "Otevřít nabídku příkazů okna"
 
 #: ../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Okna"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:66 ../src/keybind_descriptions.h:67
 #: ../src/keybind_descriptions.h:68 ../src/keybind_descriptions.h:69
 #: ../src/keybind_descriptions.h:70 ../src/keybind_descriptions.h:71
 #: ../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "Ukotvit ikonu"
+msgstr "Dok a obrazovka"
 
 #: ../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
-msgstr ""
+msgstr "Zvednout/spustit Dok"
 
 #: ../src/keybind_descriptions.h:66
 msgid "DockRaiseLowerKey"
@@ -1098,7 +1091,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
-msgstr ""
+msgstr "Zvednout/spustit Sponku"
 
 #: ../src/keybind_descriptions.h:67
 msgid "ClipRaiseLowerKey"
@@ -1106,25 +1099,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:68
 msgid "Switch to next screen/monitor"
-msgstr ""
+msgstr "Přepnout na další obrazovku/monitor"
 
 #: ../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "Capture the entire screen"
-msgstr "Držet uvnitř obrazovky"
+msgstr "Zachytit celou obrazovku"
 
 #: ../src/keybind_descriptions.h:69
 msgid "ScreenCaptureKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "Standard pro všechna okna"
+msgstr "Zachytit okno"
 
 #: ../src/keybind_descriptions.h:70
 msgid "WindowCaptureKey"
@@ -1132,7 +1123,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Zachytit část obrazovky"
 
 #: ../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
@@ -1140,7 +1131,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:72
 msgid "Find the mouse pointer"
-msgstr ""
+msgstr "Najít ukazatel myši"
 
 #: ../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -1177,76 +1168,64 @@ msgid "Windows"
 msgstr "Okna"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "Miniaturize active window"
-msgstr "Miniaturizace"
+msgstr "Miniaturizovat aktivní okno"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Miniaturizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "Miniaturize all windows"
-msgstr "Miniaturizace"
+msgstr "Miniaturizovat všechna okna"
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "Miniaturizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Miniaturizace"
+msgstr "Miniaturizovat ostatní okna"
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "MiniaturizeOthersKey"
-msgstr "Miniaturizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "Hide active application"
-msgstr "Emulovat aplikační ikonu"
+msgstr "Skrýt aktivní aplikaci"
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "HideKey"
-msgstr "Skrýt"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "Hide other applications"
-msgstr "aplikaci %s nelze odstartovat\n"
+msgstr "Skrýt ostatní aplikace"
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "HideOthersKey"
-msgstr "Ignorovat \"Skrýt ostatní\""
+msgstr ""
 
 #: ../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Přepnout zobrazení plochy (miniaturizovat/obnovit vše)"
 
 #: ../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "Standard pro všechna okna"
+msgstr "Zobrazit všechna okna"
 
 #: ../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "Chytat ikony"
+msgstr "Uspořádat ikony"
 
 #: ../src/keybind_descriptions.h:81
 msgid "ArrangeIconsKey"
@@ -1254,27 +1233,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
-msgstr ""
+msgstr "Přesunout/změnit velikost aktivního okna"
 
 #: ../src/keybind_descriptions.h:82
-#, fuzzy
 msgid "MoveResizeKey"
-msgstr "Zvětšit/Zmenšit"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "Close active window"
-msgstr "Vyberte okno"
+msgstr "Zavřít aktivní okno"
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Uzavřít"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Restart Window Makeru"
+msgstr "Obnovit geometrii aktivního okna"
 
 #: ../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -1282,116 +1257,103 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:85
 msgid "Maximize active window"
-msgstr ""
+msgstr "Maximalizovat aktivní okno"
 
 #: ../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
-msgstr ""
+msgstr "Maximalizovat aktivní okno svisle"
 
 #: ../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
-msgstr ""
+msgstr "Maximalizovat aktivní okno vodorovně"
 
 #: ../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
-msgstr ""
+msgstr "Maximalizovat aktivní okno na levou polovinu"
 
 #: ../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
-msgstr ""
+msgstr "Maximalizovat aktivní okno na pravou polovinu"
 
 #: ../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
-msgstr ""
+msgstr "Maximalizovat aktivní okno na horní polovinu"
 
 #: ../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
-msgstr ""
+msgstr "Maximalizovat aktivní okno na dolní polovinu"
 
 #: ../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:92
 msgid "Maximize active window top left corner"
-msgstr ""
+msgstr "Maximalizovat aktivní okno do levého horního rohu"
 
 #: ../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:93
 msgid "Maximize active window top right corner"
-msgstr ""
+msgstr "Maximalizovat aktivní okno do pravého horního rohu"
 
 #: ../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:94
 msgid "Maximize active window bottom left corner"
-msgstr ""
+msgstr "Maximalizovat aktivní okno do levého dolního rohu"
 
 #: ../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:95
 msgid "Maximize active window bottom right corner"
-msgstr ""
+msgstr "Maximalizovat aktivní okno do pravého dolního rohu"
 
 #: ../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "Vyberte okno"
+msgstr "Uspořádat aktivní okno do dlaždic"
 
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "Maximalizace"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:97
 msgid "Move active window to left edge"
-msgstr ""
+msgstr "Přesunout aktivní okno k levé hraně"
 
 #: ../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
@@ -1399,7 +1361,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:98
 msgid "Move active window to right edge"
-msgstr ""
+msgstr "Přesunout aktivní okno k pravé hraně"
 
 #: ../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
@@ -1407,7 +1369,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:99
 msgid "Move active window to top edge"
-msgstr ""
+msgstr "Přesunout aktivní okno k horní hraně"
 
 #: ../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
@@ -1415,7 +1377,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:100
 msgid "Move active window to bottom edge"
-msgstr ""
+msgstr "Přesunout aktivní okno k dolní hraně"
 
 #: ../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
@@ -1423,7 +1385,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:101
 msgid "Move active window to left screen edge"
-msgstr ""
+msgstr "Přesunout aktivní okno k levé hraně obrazovky"
 
 #: ../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
@@ -1431,7 +1393,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:102
 msgid "Move active window to right screen edge"
-msgstr ""
+msgstr "Přesunout aktivní okno k pravé hraně obrazovky"
 
 #: ../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
@@ -1439,7 +1401,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:103
 msgid "Move active window to top screen edge"
-msgstr ""
+msgstr "Přesunout aktivní okno k horní hraně obrazovky"
 
 #: ../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
@@ -1447,7 +1409,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:104
 msgid "Move active window to bottom screen edge"
-msgstr ""
+msgstr "Přesunout aktivní okno k dolní hraně obrazovky"
 
 #: ../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
@@ -1455,7 +1417,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:105
 msgid "Grow active window to left edge"
-msgstr ""
+msgstr "Rozšířit aktivní okno k levé hraně"
 
 #: ../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
@@ -1463,7 +1425,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:106
 msgid "Grow active window to right edge"
-msgstr ""
+msgstr "Rozšířit aktivní okno k pravé hraně"
 
 #: ../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
@@ -1471,7 +1433,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:107
 msgid "Grow active window to top edge"
-msgstr ""
+msgstr "Rozšířit aktivní okno k horní hraně"
 
 #: ../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
@@ -1479,7 +1441,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:108
 msgid "Grow active window to bottom edge"
-msgstr ""
+msgstr "Rozšířit aktivní okno k dolní hraně"
 
 #: ../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
@@ -1487,7 +1449,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:109
 msgid "Shrink active window from left edge"
-msgstr ""
+msgstr "Zmenšit aktivní okno od levé hrany"
 
 #: ../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
@@ -1495,7 +1457,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:110
 msgid "Shrink active window from right edge"
-msgstr ""
+msgstr "Zmenšit aktivní okno od pravé hrany"
 
 #: ../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
@@ -1503,7 +1465,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:111
 msgid "Shrink active window from top edge"
-msgstr ""
+msgstr "Zmenšit aktivní okno od horní hrany"
 
 #: ../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
@@ -1511,25 +1473,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:112
 msgid "Shrink active window from bottom edge"
-msgstr ""
+msgstr "Zmenšit aktivní okno od dolní hrany"
 
 #: ../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "Standard pro všechna okna"
+msgstr "Přepnout celou obrazovku pro aktivní okno"
 
 #: ../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "Vyberte okno"
+msgstr "Vycentrovat aktivní okno"
 
 #: ../src/keybind_descriptions.h:114
 msgid "CenterKey"
@@ -1537,45 +1497,39 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "Přepnout stav okna «vždy navrchu»"
 
 #: ../src/keybind_descriptions.h:115
-#, fuzzy
 msgid "KeepOnTopKey"
-msgstr "Vždy navrchu"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "Přepnout stav okna «vždy dole»"
 
 #: ../src/keybind_descriptions.h:116
-#, fuzzy
 msgid "KeepAtBottomKey"
-msgstr "Držet dole"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "Toggle window omnipresent status"
-msgstr "Všechny plochy"
+msgstr "Přepnout stav okna «všudypřítomné»"
 
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "OmnipresentKey"
-msgstr "Všechny plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:118
-#, fuzzy
 msgid "Raise active window"
-msgstr "Vyberte okno"
+msgstr "Zvednout aktivní okno"
 
 #: ../src/keybind_descriptions.h:118
 msgid "RaiseKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:119
-#, fuzzy
 msgid "Lower active window"
-msgstr "Vyberte okno"
+msgstr "Spustit aktivní okno"
 
 #: ../src/keybind_descriptions.h:119
 msgid "LowerKey"
@@ -1583,35 +1537,31 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:120
 msgid "Raise/Lower window under mouse pointer"
-msgstr ""
+msgstr "Zvednout/spustit okno pod ukazatelem myši"
 
 #: ../src/keybind_descriptions.h:120
 msgid "RaiseLowerKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "Shade active window"
-msgstr "Vyberte okno"
+msgstr "Srolovat aktivní okno"
 
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "ShadeKey"
-msgstr "Titulek"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "Select active window"
-msgstr "Vyberte okno"
+msgstr "Vybrat aktivní okno"
 
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "Vybraná"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
-msgstr ""
+msgstr "Spustit novou instanci aplikace"
 
 #: ../src/keybind_descriptions.h:123
 msgid "WindowRelaunchKey"
@@ -1619,7 +1569,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "Přesunout na pravý/dolní/levý/horní monitor"
 
 #: ../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -1627,7 +1577,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "Přesunout na levý/horní/pravý/dolní monitor"
 
 #: ../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -1638,13 +1588,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:131 ../src/keybind_descriptions.h:132
 #: ../src/keybind_descriptions.h:133 ../src/keybind_descriptions.h:134
 #: ../src/keybind_descriptions.h:135 ../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Atributy okna"
+msgstr "Zkratky oken"
 
 #: ../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 1"
 
 #: ../src/keybind_descriptions.h:127
 msgid "WindowShortcut1Key"
@@ -1652,7 +1601,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 2"
 
 #: ../src/keybind_descriptions.h:128
 msgid "WindowShortcut2Key"
@@ -1660,7 +1609,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 3"
 
 #: ../src/keybind_descriptions.h:129
 msgid "WindowShortcut3Key"
@@ -1668,7 +1617,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 4"
 
 #: ../src/keybind_descriptions.h:130
 msgid "WindowShortcut4Key"
@@ -1676,7 +1625,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 5"
 
 #: ../src/keybind_descriptions.h:131
 msgid "WindowShortcut5Key"
@@ -1684,7 +1633,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 6"
 
 #: ../src/keybind_descriptions.h:132
 msgid "WindowShortcut6Key"
@@ -1692,7 +1641,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 7"
 
 #: ../src/keybind_descriptions.h:133
 msgid "WindowShortcut7Key"
@@ -1700,7 +1649,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 8"
 
 #: ../src/keybind_descriptions.h:134
 msgid "WindowShortcut8Key"
@@ -1708,7 +1657,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 9"
 
 #: ../src/keybind_descriptions.h:135
 msgid "WindowShortcut9Key"
@@ -1716,7 +1665,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
-msgstr ""
+msgstr "Klávesová zkratka pro okno 10"
 
 #: ../src/keybind_descriptions.h:136
 msgid "WindowShortcut10Key"
@@ -1730,12 +1679,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:148 ../src/keybind_descriptions.h:149
 #: ../src/keybind_descriptions.h:150 ../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "Zaměření a skupiny"
 
 #: ../src/keybind_descriptions.h:138
-#, fuzzy
 msgid "Focus next window"
-msgstr "Vyberte okno"
+msgstr "Zaměřit další okno"
 
 #: ../src/keybind_descriptions.h:138
 msgid "FocusNextKey"
@@ -1743,7 +1691,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:139
 msgid "Focus previous window"
-msgstr ""
+msgstr "Zaměřit předchozí okno"
 
 #: ../src/keybind_descriptions.h:139
 msgid "FocusPrevKey"
@@ -1751,7 +1699,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:140
 msgid "Focus the window to the left"
-msgstr ""
+msgstr "Zaměřit okno vlevo"
 
 #: ../src/keybind_descriptions.h:140
 msgid "FocusWindowLeftKey"
@@ -1759,7 +1707,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:141
 msgid "Focus the window to the right"
-msgstr ""
+msgstr "Zaměřit okno vpravo"
 
 #: ../src/keybind_descriptions.h:141
 msgid "FocusWindowRightKey"
@@ -1767,7 +1715,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:142
 msgid "Focus the window above"
-msgstr ""
+msgstr "Zaměřit okno nad"
 
 #: ../src/keybind_descriptions.h:142
 msgid "FocusWindowUpKey"
@@ -1775,7 +1723,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:143
 msgid "Focus the window below"
-msgstr ""
+msgstr "Zaměřit okno pod"
 
 #: ../src/keybind_descriptions.h:143
 msgid "FocusWindowDownKey"
@@ -1783,7 +1731,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:144
 msgid "Focus next window in group"
-msgstr ""
+msgstr "Zaměřit další okno ve skupině"
 
 #: ../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
@@ -1791,7 +1739,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:145
 msgid "Focus previous window in group"
-msgstr ""
+msgstr "Zaměřit předchozí okno ve skupině"
 
 #: ../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
@@ -1799,7 +1747,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:146
 msgid "Switch to next application group"
-msgstr ""
+msgstr "Přepnout na další skupinu aplikací"
 
 #: ../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
@@ -1807,7 +1755,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:147
 msgid "Switch to previous application group"
-msgstr ""
+msgstr "Přepnout na předchozí skupinu aplikací"
 
 #: ../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
@@ -1815,7 +1763,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:148
 msgid "Switch to next tab in group"
-msgstr ""
+msgstr "Přepnout na další kartu ve skupině"
 
 #: ../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
@@ -1823,7 +1771,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:149
 msgid "Switch to previous tab in group"
-msgstr ""
+msgstr "Přepnout na předchozí kartu ve skupině"
 
 #: ../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
@@ -1831,7 +1779,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:150
 msgid "Attach window as tab"
-msgstr ""
+msgstr "Připojit okno jako kartu"
 
 #: ../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -1839,7 +1787,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Odpojit kartu od skupiny"
 
 #: ../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -1875,45 +1823,40 @@ msgid "Workspaces"
 msgstr "Pracovní plochy"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "Open workspace pager"
-msgstr "Přejmenovat plochu"
+msgstr "Otevřít přepínač pracovních ploch"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
-msgstr ""
+msgstr "Přepnout na další pracovní plochu"
 
 #: ../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
-msgstr ""
+msgstr "Přepnout na předchozí pracovní plochu"
 
 #: ../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
-msgstr ""
+msgstr "Přepnout na naposledy použitou pracovní plochu"
 
 #: ../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
-msgstr ""
+msgstr "Přepnout na dalších deset pracovních ploch"
 
 #: ../src/keybind_descriptions.h:157
 msgid "NextWorkspaceLayerKey"
@@ -1921,7 +1864,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
-msgstr ""
+msgstr "Přepnout na předchozích deset pracovních ploch"
 
 #: ../src/keybind_descriptions.h:158
 msgid "PrevWorkspaceLayerKey"
@@ -1929,170 +1872,151 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:159
 msgid "Switch to workspace on the left"
-msgstr ""
+msgstr "Přepnout na pracovní plochu vlevo"
 
 #: ../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:160
 msgid "Switch to workspace on the right"
-msgstr ""
+msgstr "Přepnout na pracovní plochu vpravo"
 
 #: ../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:161
 msgid "Switch to workspace above"
-msgstr ""
+msgstr "Přepnout na pracovní plochu nad"
 
 #: ../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:162
 msgid "Switch to workspace below"
-msgstr ""
+msgstr "Přepnout na pracovní plochu pod"
 
 #: ../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 1"
 
 #: ../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 2"
 
 #: ../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 3"
 
 #: ../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 4"
 
 #: ../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 5"
 
 #: ../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 6"
 
 #: ../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 7"
 
 #: ../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 8"
 
 #: ../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 9"
 
 #: ../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
-msgstr ""
+msgstr "Přepnout na pracovní plochu 10"
 
 #: ../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "Move window to next workspace"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na další pracovní plochu"
 
 #: ../src/keybind_descriptions.h:173
 msgid "MoveToNextWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "Move window to previous workspace"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na předchozí pracovní plochu"
 
 #: ../src/keybind_descriptions.h:174
 msgid "MoveToPrevWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "Move window to last used workspace"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na naposledy použitou pracovní plochu"
 
 #: ../src/keybind_descriptions.h:175
 msgid "MoveToLastWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "Move window to next ten workspaces"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na dalších deset pracovních ploch"
 
 #: ../src/keybind_descriptions.h:176
 msgid "MoveToNextWorkspaceLayerKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:177
-#, fuzzy
 msgid "Move window to previous ten workspaces"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na předchozích deset pracovních ploch"
 
 #: ../src/keybind_descriptions.h:177
 msgid "MoveToPrevWorkspaceLayerKey"
@@ -2100,7 +2024,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:178
 msgid "Move window to workspace on the left"
-msgstr ""
+msgstr "Přesunout okno na pracovní plochu vlevo"
 
 #: ../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
@@ -2108,229 +2032,187 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:179
 msgid "Move window to workspace on the right"
-msgstr ""
+msgstr "Přesunout okno na pracovní plochu vpravo"
 
 #: ../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu nad"
 
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "MoveToUpWorkspaceKey"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu pod"
 
 #: ../src/keybind_descriptions.h:181
 msgid "MoveToDownWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "Move window to workspace 1"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 1"
 
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "Move window to workspace 2"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 2"
 
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "Move window to workspace 3"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 3"
 
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "Move window to workspace 4"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 4"
 
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "Move window to workspace 5"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 5"
 
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "Move window to workspace 6"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 6"
 
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "Move window to workspace 7"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 7"
 
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "Move window to workspace 8"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 8"
 
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "Move window to workspace 9"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 9"
 
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "Move window to workspace 10"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přesunout okno na pracovní plochu 10"
 
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 1"
 
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 2"
 
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 3"
 
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 4"
 
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 5"
 
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 6"
 
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 7"
 
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 8"
 
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Přepnout okno na pracovní ploše 9"
 
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "Pracovní plochy"
-
-#: ../src/keybind_descriptions.h:201
-msgid "Toggle window on workspace 10"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:201
-#, fuzzy
+msgid "Toggle window on workspace 10"
+msgstr "Přepnout okno na pracovní ploše 10"
+
+#: ../src/keybind_descriptions.h:201
 msgid "ToggleWorkspace10Key"
-msgstr "Pracovní plochy"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:203 ../src/keybind_descriptions.h:204
 #: ../src/keybind_descriptions.h:205 ../src/keybind_descriptions.h:206
@@ -2338,11 +2220,11 @@ msgstr "Pracovní plochy"
 #: ../src/keybind_descriptions.h:209 ../src/keybind_descriptions.h:210
 #: ../src/keybind_descriptions.h:211 ../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Dlaždice a rozvržení"
 
 #: ../src/keybind_descriptions.h:203
 msgid "Cycle workspace tiling layout"
-msgstr ""
+msgstr "Přepnout dlaždicové rozvržení pracovní plochy"
 
 #: ../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -2350,7 +2232,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Přepnout dlaždicové rozvržení pracovní plochy zpět"
 
 #: ../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -2358,7 +2240,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Prohodit osu dlaždicového rozvržení"
 
 #: ../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
@@ -2366,7 +2248,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:206
 msgid "Set workspace layout to float"
-msgstr ""
+msgstr "Nastavit rozvržení pracovní plochy na plovoucí"
 
 #: ../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -2374,7 +2256,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Zvýšit počet masterů rozvržení"
 
 #: ../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -2382,7 +2264,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Snížit počet masterů rozvržení"
 
 #: ../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -2390,7 +2272,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Zvýšit poměr masteru rozvržení"
 
 #: ../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -2398,7 +2280,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Snížit poměr masteru rozvržení"
 
 #: ../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
@@ -2406,16 +2288,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:211
 msgid "Toggle tiling for active window"
-msgstr ""
+msgstr "Přepnout dlaždice pro aktivní okno"
 
 #: ../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "Odstartovat alternativní okenní manažer"
+msgstr "Prohodit aktivní okno s masterem"
 
 #: ../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -2424,14 +2305,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:214 ../src/keybind_descriptions.h:215
 #: ../src/keybind_descriptions.h:216 ../src/keybind_descriptions.h:217
 #: ../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Okna"
+msgstr "Značky oken"
 
 #: ../src/keybind_descriptions.h:214
-#, fuzzy
 msgid "Mark window: set mark"
-msgstr "Zobrazit okno na všech plochách."
+msgstr "Označit okno: nastavit značku"
 
 #: ../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -2439,7 +2318,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "Označit okno: zrušit značku"
 
 #: ../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -2447,7 +2326,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Označit okno: přinést označené okno sem"
 
 #: ../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -2455,7 +2334,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Označit okno: skočit na označené okno"
 
 #: ../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -2463,44 +2342,39 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Označit okno: prohodit s označeným oknem"
 
 #: ../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "Ukončit aplikaci"
+msgstr "Najít aplikaci"
 
 #: ../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "Klávesnice jen pro aplikaci"
+msgstr "Zobrazit klávesové zkratky"
 
 #: ../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "Exit Window Maker"
-msgstr "Restart Window Makeru"
+msgstr "Ukončit Window Maker"
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "ExitKey"
-msgstr "Konec"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:223
-#, fuzzy
 msgid "Lock screen"
-msgstr "Ukotvit ikonu"
+msgstr "Zamknout obrazovku"
 
 #: ../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -2508,7 +2382,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Otevřít historii schránky"
 
 #: ../src/keybind_descriptions.h:224
 msgid "ClipboardKey"
@@ -3416,7 +3290,7 @@ msgstr ""
 
 #: ../src/winmenu.c:90
 msgid "Restore geometry"
-msgstr ""
+msgstr "Obnovit geometrii"
 
 #: ../src/winmenu.c:91
 msgid "Region snap"

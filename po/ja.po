@@ -585,15 +585,15 @@ msgstr "アイコン"
 
 #: ../src/dialog_icon.c:519
 msgid "List Mode"
-msgstr ""
+msgstr "リスト表示"
 
 #: ../src/dialog_icon.c:524
 msgid "Names"
-msgstr ""
+msgstr "名前"
 
 #: ../src/dialog_icon.c:531
 msgid "Thumbs"
-msgstr ""
+msgstr "サムネイル"
 
 #: ../src/dialog_icon.c:539
 msgid "Preview"
@@ -694,9 +694,8 @@ msgid "Auto Collapse"
 msgstr "自動的に折り畳む"
 
 #: ../src/dock.c:1301
-#, fuzzy
 msgid "Auto Compact"
-msgstr "自動的に折り畳む"
+msgstr "自動的にコンパクト化"
 
 #: ../src/dock.c:1306 ../src/dock.c:1387
 msgid "Auto Raise"
@@ -716,18 +715,16 @@ msgid "could not create options submenu for Dock menu"
 msgstr "クリップメニューのオプションサブメニューが作成できません"
 
 #: ../src/dock.c:1382
-#, fuzzy
 msgid "Auto Hide"
-msgstr "自動的に前面に表示"
+msgstr "自動的に隠す"
 
 #: ../src/dock.c:1417
-#, fuzzy
 msgid "Dock Options"
-msgstr "オプション"
+msgstr "ドックオプション"
 
 #: ../src/dock.c:1423
 msgid "Add a Drawer"
-msgstr ""
+msgstr "ドロワーを追加"
 
 #: ../src/dock.c:1427
 msgid "Clip Options"
@@ -820,7 +817,7 @@ msgstr "持ってくる"
 
 #: ../src/dock.c:5345
 msgid "Remove Drawer"
-msgstr ""
+msgstr "ドロワーを削除"
 
 #: ../src/dock.c:6430
 msgid "All icons in this drawer will be detached!"
@@ -955,11 +952,11 @@ msgstr "画像のレンダリングエラー: %s"
 #: ../src/keybind_descriptions.h:46 ../src/keybind_descriptions.h:47
 #: ../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "仮想デスクトップ"
 
 #: ../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "仮想デスクトップを次の左端へ移動"
 
 #: ../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -967,7 +964,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "仮想デスクトップを次の右端へ移動"
 
 #: ../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -975,7 +972,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "仮想デスクトップを次の上端へ移動"
 
 #: ../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -983,7 +980,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "仮想デスクトップを次の下端へ移動"
 
 #: ../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -991,7 +988,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "仮想デスクトップを元の位置へ移動"
 
 #: ../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -999,7 +996,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "フォーカス中のウィンドウを仮想デスクトップの中央に配置"
 
 #: ../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -1007,7 +1004,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "フォーカス中のウィンドウを仮想デスクトップの表示領域に固定"
 
 #: ../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -1018,11 +1015,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:222 ../src/keybind_descriptions.h:223
 #: ../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "セッションとその他"
 
 #: ../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
-msgstr ""
+msgstr "キーボードの言語を切替"
 
 #: ../src/keybind_descriptions.h:55
 msgid "ToggleKbdModeKey"
@@ -1030,7 +1027,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "アクセント記号や特殊文字を選択"
 
 #: ../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -1039,12 +1036,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:62 ../src/keybind_descriptions.h:63
 #: ../src/keybind_descriptions.h:64
 msgid "Menus"
-msgstr ""
+msgstr "メニュー"
 
 #: ../src/keybind_descriptions.h:62
-#, fuzzy
 msgid "Open applications menu"
-msgstr "アプリアイコンを表示しない"
+msgstr "アプリケーションメニューを開く"
 
 #: ../src/keybind_descriptions.h:62
 msgid "RootMenuKey"
@@ -1052,33 +1048,30 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:63
 msgid "Open window list menu"
-msgstr ""
+msgstr "ウィンドウリストを開く"
 
 #: ../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "ウィンドウ一覧"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
-msgstr ""
+msgstr "ウィンドウコマンドメニューを開く"
 
 #: ../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "ウィンドウ一覧"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:66 ../src/keybind_descriptions.h:67
 #: ../src/keybind_descriptions.h:68 ../src/keybind_descriptions.h:69
 #: ../src/keybind_descriptions.h:70 ../src/keybind_descriptions.h:71
 #: ../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "ドック登録アイコン"
+msgstr "ドックとスクリーン"
 
 #: ../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
-msgstr ""
+msgstr "ドックの前面/背面切替"
 
 #: ../src/keybind_descriptions.h:66
 msgid "DockRaiseLowerKey"
@@ -1086,7 +1079,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
-msgstr ""
+msgstr "クリップの前面/背面切替"
 
 #: ../src/keybind_descriptions.h:67
 msgid "ClipRaiseLowerKey"
@@ -1094,25 +1087,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:68
 msgid "Switch to next screen/monitor"
-msgstr ""
+msgstr "次のスクリーン/モニタに切替"
 
 #: ../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "Capture the entire screen"
-msgstr "スクリーンの内側に保持する"
+msgstr "スクリーン全体をキャプチャ"
 
 #: ../src/keybind_descriptions.h:69
 msgid "ScreenCaptureKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "全ウィンドウの標準"
+msgstr "ウィンドウをキャプチャ"
 
 #: ../src/keybind_descriptions.h:70
 msgid "WindowCaptureKey"
@@ -1120,7 +1111,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "スクリーンの一部をキャプチャ"
 
 #: ../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
@@ -1128,7 +1119,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:72
 msgid "Find the mouse pointer"
-msgstr ""
+msgstr "マウスポインタを見つける"
 
 #: ../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -1165,76 +1156,64 @@ msgid "Windows"
 msgstr "ウィンドウ一覧"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "Miniaturize active window"
-msgstr "最小化"
+msgstr "アクティブウィンドウを最小化"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "最小化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "Miniaturize all windows"
-msgstr "最小化"
+msgstr "すべてのウィンドウを最小化"
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "最小化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "最小化"
+msgstr "他のウィンドウを最小化"
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "MiniaturizeOthersKey"
-msgstr "最小化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "Hide active application"
-msgstr "アプリアイコンのエミュレート"
+msgstr "アクティブアプリケーションを隠す"
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "HideKey"
-msgstr "隠す"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "Hide other applications"
-msgstr "アプリケーション%sを起動できません"
+msgstr "他のアプリケーションを隠す"
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "HideOthersKey"
-msgstr "'他を隠す'を無視する"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "デスクトップ表示を切替（すべて最小化/復元）"
 
 #: ../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "全ウィンドウの標準"
+msgstr "すべてのウィンドウを表示"
 
 #: ../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "アイコンを引き寄せる"
+msgstr "アイコンを整列"
 
 #: ../src/keybind_descriptions.h:81
 msgid "ArrangeIconsKey"
@@ -1242,26 +1221,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
-msgstr ""
+msgstr "アクティブウィンドウを移動/サイズ変更"
 
 #: ../src/keybind_descriptions.h:82
 msgid "MoveResizeKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "Close active window"
-msgstr "ウィンドウの選択"
+msgstr "アクティブウィンドウを閉じる"
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "閉じる"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Window Maker を再起動する"
+msgstr "アクティブウィンドウの位置と大きさを復元"
 
 #: ../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -1269,116 +1245,103 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:85
 msgid "Maximize active window"
-msgstr ""
+msgstr "アクティブウィンドウを最大化"
 
 #: ../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
-msgstr ""
+msgstr "アクティブウィンドウを縦に最大化"
 
 #: ../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
-msgstr ""
+msgstr "アクティブウィンドウを横に最大化"
 
 #: ../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
-msgstr ""
+msgstr "アクティブウィンドウを左半分に最大化"
 
 #: ../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
-msgstr ""
+msgstr "アクティブウィンドウを右半分に最大化"
 
 #: ../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
-msgstr ""
+msgstr "アクティブウィンドウを上半分に最大化"
 
 #: ../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
-msgstr ""
+msgstr "アクティブウィンドウを下半分に最大化"
 
 #: ../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:92
 msgid "Maximize active window top left corner"
-msgstr ""
+msgstr "アクティブウィンドウを左上隅に最大化"
 
 #: ../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:93
 msgid "Maximize active window top right corner"
-msgstr ""
+msgstr "アクティブウィンドウを右上隅に最大化"
 
 #: ../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:94
 msgid "Maximize active window bottom left corner"
-msgstr ""
+msgstr "アクティブウィンドウを左下隅に最大化"
 
 #: ../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:95
 msgid "Maximize active window bottom right corner"
-msgstr ""
+msgstr "アクティブウィンドウを右下隅に最大化"
 
 #: ../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "ウィンドウの選択"
+msgstr "アクティブウィンドウをタイル表示"
 
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "最大化"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:97
 msgid "Move active window to left edge"
-msgstr ""
+msgstr "アクティブウィンドウを左端へ移動"
 
 #: ../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
@@ -1386,7 +1349,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:98
 msgid "Move active window to right edge"
-msgstr ""
+msgstr "アクティブウィンドウを右端へ移動"
 
 #: ../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
@@ -1394,7 +1357,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:99
 msgid "Move active window to top edge"
-msgstr ""
+msgstr "アクティブウィンドウを上端へ移動"
 
 #: ../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
@@ -1402,7 +1365,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:100
 msgid "Move active window to bottom edge"
-msgstr ""
+msgstr "アクティブウィンドウを下端へ移動"
 
 #: ../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
@@ -1410,7 +1373,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:101
 msgid "Move active window to left screen edge"
-msgstr ""
+msgstr "アクティブウィンドウをスクリーンの左端へ移動"
 
 #: ../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
@@ -1418,7 +1381,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:102
 msgid "Move active window to right screen edge"
-msgstr ""
+msgstr "アクティブウィンドウをスクリーンの右端へ移動"
 
 #: ../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
@@ -1426,7 +1389,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:103
 msgid "Move active window to top screen edge"
-msgstr ""
+msgstr "アクティブウィンドウをスクリーンの上端へ移動"
 
 #: ../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
@@ -1434,7 +1397,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:104
 msgid "Move active window to bottom screen edge"
-msgstr ""
+msgstr "アクティブウィンドウをスクリーンの下端へ移動"
 
 #: ../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
@@ -1442,7 +1405,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:105
 msgid "Grow active window to left edge"
-msgstr ""
+msgstr "アクティブウィンドウを左端まで広げる"
 
 #: ../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
@@ -1450,7 +1413,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:106
 msgid "Grow active window to right edge"
-msgstr ""
+msgstr "アクティブウィンドウを右端まで広げる"
 
 #: ../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
@@ -1458,7 +1421,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:107
 msgid "Grow active window to top edge"
-msgstr ""
+msgstr "アクティブウィンドウを上端まで広げる"
 
 #: ../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
@@ -1466,7 +1429,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:108
 msgid "Grow active window to bottom edge"
-msgstr ""
+msgstr "アクティブウィンドウを下端まで広げる"
 
 #: ../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
@@ -1474,7 +1437,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:109
 msgid "Shrink active window from left edge"
-msgstr ""
+msgstr "アクティブウィンドウを左端から縮める"
 
 #: ../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
@@ -1482,7 +1445,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:110
 msgid "Shrink active window from right edge"
-msgstr ""
+msgstr "アクティブウィンドウを右端から縮める"
 
 #: ../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
@@ -1490,7 +1453,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:111
 msgid "Shrink active window from top edge"
-msgstr ""
+msgstr "アクティブウィンドウを上端から縮める"
 
 #: ../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
@@ -1498,25 +1461,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:112
 msgid "Shrink active window from bottom edge"
-msgstr ""
+msgstr "アクティブウィンドウを下端から縮める"
 
 #: ../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "全ウィンドウの標準"
+msgstr "アクティブウィンドウのフルスクリーンを切替"
 
 #: ../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "ウィンドウの選択"
+msgstr "アクティブウィンドウを中央に配置"
 
 #: ../src/keybind_descriptions.h:114
 msgid "CenterKey"
@@ -1524,45 +1485,39 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "ウィンドウの「常に前面」状態を切替"
 
 #: ../src/keybind_descriptions.h:115
-#, fuzzy
 msgid "KeepOnTopKey"
-msgstr "常に手前に表示"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "ウィンドウの「常に背面」状態を切替"
 
 #: ../src/keybind_descriptions.h:116
-#, fuzzy
 msgid "KeepAtBottomKey"
-msgstr "常に後ろに表示"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "Toggle window omnipresent status"
-msgstr "どこでも表示"
+msgstr "ウィンドウの「全ワークスペース」状態を切替"
 
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "OmnipresentKey"
-msgstr "どこでも表示"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:118
-#, fuzzy
 msgid "Raise active window"
-msgstr "ウィンドウの選択"
+msgstr "アクティブウィンドウを前面へ"
 
 #: ../src/keybind_descriptions.h:118
 msgid "RaiseKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:119
-#, fuzzy
 msgid "Lower active window"
-msgstr "ウィンドウの選択"
+msgstr "アクティブウィンドウを背面へ"
 
 #: ../src/keybind_descriptions.h:119
 msgid "LowerKey"
@@ -1570,35 +1525,31 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:120
 msgid "Raise/Lower window under mouse pointer"
-msgstr ""
+msgstr "マウスポインタ下のウィンドウの前面/背面切替"
 
 #: ../src/keybind_descriptions.h:120
 msgid "RaiseLowerKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "Shade active window"
-msgstr "ウィンドウの選択"
+msgstr "アクティブウィンドウをシェード"
 
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "ShadeKey"
-msgstr "シェード"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "Select active window"
-msgstr "ウィンドウの選択"
+msgstr "アクティブウィンドウを選択"
 
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "選択"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
-msgstr ""
+msgstr "アプリケーションの新しいインスタンスを起動"
 
 #: ../src/keybind_descriptions.h:123
 msgid "WindowRelaunchKey"
@@ -1606,7 +1557,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "右/下/左/上のスクリーンへ移動"
 
 #: ../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -1614,7 +1565,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "左/上/右/下のスクリーンへ移動"
 
 #: ../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -1625,13 +1576,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:131 ../src/keybind_descriptions.h:132
 #: ../src/keybind_descriptions.h:133 ../src/keybind_descriptions.h:134
 #: ../src/keybind_descriptions.h:135 ../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "ウィンドウの属性"
+msgstr "ウィンドウショートカット"
 
 #: ../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
-msgstr ""
+msgstr "ウィンドウ 1 のショートカット"
 
 #: ../src/keybind_descriptions.h:127
 msgid "WindowShortcut1Key"
@@ -1639,7 +1589,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
-msgstr ""
+msgstr "ウィンドウ 2 のショートカット"
 
 #: ../src/keybind_descriptions.h:128
 msgid "WindowShortcut2Key"
@@ -1647,7 +1597,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
-msgstr ""
+msgstr "ウィンドウ 3 のショートカット"
 
 #: ../src/keybind_descriptions.h:129
 msgid "WindowShortcut3Key"
@@ -1655,7 +1605,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
-msgstr ""
+msgstr "ウィンドウ 4 のショートカット"
 
 #: ../src/keybind_descriptions.h:130
 msgid "WindowShortcut4Key"
@@ -1663,7 +1613,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
-msgstr ""
+msgstr "ウィンドウ 5 のショートカット"
 
 #: ../src/keybind_descriptions.h:131
 msgid "WindowShortcut5Key"
@@ -1671,7 +1621,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
-msgstr ""
+msgstr "ウィンドウ 6 のショートカット"
 
 #: ../src/keybind_descriptions.h:132
 msgid "WindowShortcut6Key"
@@ -1679,7 +1629,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
-msgstr ""
+msgstr "ウィンドウ 7 のショートカット"
 
 #: ../src/keybind_descriptions.h:133
 msgid "WindowShortcut7Key"
@@ -1687,7 +1637,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
-msgstr ""
+msgstr "ウィンドウ 8 のショートカット"
 
 #: ../src/keybind_descriptions.h:134
 msgid "WindowShortcut8Key"
@@ -1695,7 +1645,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
-msgstr ""
+msgstr "ウィンドウ 9 のショートカット"
 
 #: ../src/keybind_descriptions.h:135
 msgid "WindowShortcut9Key"
@@ -1703,7 +1653,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
-msgstr ""
+msgstr "ウィンドウ 10 のショートカット"
 
 #: ../src/keybind_descriptions.h:136
 msgid "WindowShortcut10Key"
@@ -1717,12 +1667,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:148 ../src/keybind_descriptions.h:149
 #: ../src/keybind_descriptions.h:150 ../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "フォーカスとグループ"
 
 #: ../src/keybind_descriptions.h:138
-#, fuzzy
 msgid "Focus next window"
-msgstr "ウィンドウの選択"
+msgstr "次のウィンドウにフォーカス"
 
 #: ../src/keybind_descriptions.h:138
 msgid "FocusNextKey"
@@ -1730,7 +1679,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:139
 msgid "Focus previous window"
-msgstr ""
+msgstr "前のウィンドウにフォーカス"
 
 #: ../src/keybind_descriptions.h:139
 msgid "FocusPrevKey"
@@ -1738,7 +1687,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:140
 msgid "Focus the window to the left"
-msgstr ""
+msgstr "左のウィンドウにフォーカス"
 
 #: ../src/keybind_descriptions.h:140
 msgid "FocusWindowLeftKey"
@@ -1746,7 +1695,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:141
 msgid "Focus the window to the right"
-msgstr ""
+msgstr "右のウィンドウにフォーカス"
 
 #: ../src/keybind_descriptions.h:141
 msgid "FocusWindowRightKey"
@@ -1754,7 +1703,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:142
 msgid "Focus the window above"
-msgstr ""
+msgstr "上のウィンドウにフォーカス"
 
 #: ../src/keybind_descriptions.h:142
 msgid "FocusWindowUpKey"
@@ -1762,7 +1711,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:143
 msgid "Focus the window below"
-msgstr ""
+msgstr "下のウィンドウにフォーカス"
 
 #: ../src/keybind_descriptions.h:143
 msgid "FocusWindowDownKey"
@@ -1770,7 +1719,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:144
 msgid "Focus next window in group"
-msgstr ""
+msgstr "グループの次のウィンドウにフォーカス"
 
 #: ../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
@@ -1778,25 +1727,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:145
 msgid "Focus previous window in group"
-msgstr ""
+msgstr "グループの前のウィンドウにフォーカス"
 
 #: ../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:146
-#, fuzzy
 msgid "Switch to next application group"
-msgstr "アプリアイコンを共有"
+msgstr "次のアプリケーショングループに切替"
 
 #: ../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:147
-#, fuzzy
 msgid "Switch to previous application group"
-msgstr "アプリアイコンを共有"
+msgstr "前のアプリケーショングループに切替"
 
 #: ../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
@@ -1804,7 +1751,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:148
 msgid "Switch to next tab in group"
-msgstr ""
+msgstr "グループの次のタブに切替"
 
 #: ../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
@@ -1812,7 +1759,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:149
 msgid "Switch to previous tab in group"
-msgstr ""
+msgstr "グループの前のタブに切替"
 
 #: ../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
@@ -1820,7 +1767,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:150
 msgid "Attach window as tab"
-msgstr ""
+msgstr "ウィンドウをタブとして結合"
 
 #: ../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -1828,7 +1775,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "タブをグループから分離"
 
 #: ../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -1864,45 +1811,40 @@ msgid "Workspaces"
 msgstr "ワークスペースの設定"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "Open workspace pager"
-msgstr "ワークスペースの状態保存"
+msgstr "ワークスペース一覧を開く"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
-msgstr ""
+msgstr "次のワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
-msgstr ""
+msgstr "前のワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
-msgstr ""
+msgstr "最後に使ったワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
-msgstr ""
+msgstr "次の10個のワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:157
 msgid "NextWorkspaceLayerKey"
@@ -1910,7 +1852,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
-msgstr ""
+msgstr "前の10個のワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:158
 msgid "PrevWorkspaceLayerKey"
@@ -1918,171 +1860,151 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:159
 msgid "Switch to workspace on the left"
-msgstr ""
+msgstr "左のワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:160
 msgid "Switch to workspace on the right"
-msgstr ""
+msgstr "右のワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "Switch to workspace above"
-msgstr "ワークスペースの状態保存"
+msgstr "上のワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:162
 msgid "Switch to workspace below"
-msgstr ""
+msgstr "下のワークスペースに切替"
 
 #: ../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
-msgstr ""
+msgstr "ワークスペース 1 に切替"
 
 #: ../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
-msgstr ""
+msgstr "ワークスペース 2 に切替"
 
 #: ../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
-msgstr ""
+msgstr "ワークスペース 3 に切替"
 
 #: ../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
-msgstr ""
+msgstr "ワークスペース 4 に切替"
 
 #: ../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
-msgstr ""
+msgstr "ワークスペース 5 に切替"
 
 #: ../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
-msgstr ""
+msgstr "ワークスペース 6 に切替"
 
 #: ../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
-msgstr ""
+msgstr "ワークスペース 7 に切替"
 
 #: ../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
-msgstr ""
+msgstr "ワークスペース 8 に切替"
 
 #: ../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
-msgstr ""
+msgstr "ワークスペース 9 に切替"
 
 #: ../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
-msgstr ""
+msgstr "ワークスペース 10 に切替"
 
 #: ../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "Move window to next workspace"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウを次のワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:173
 msgid "MoveToNextWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "Move window to previous workspace"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウを前のワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:174
 msgid "MoveToPrevWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "Move window to last used workspace"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウを最後に使ったワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:175
 msgid "MoveToLastWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "Move window to next ten workspaces"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウを次の10個のワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:176
 msgid "MoveToNextWorkspaceLayerKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:177
-#, fuzzy
 msgid "Move window to previous ten workspaces"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウを前の10個のワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:177
 msgid "MoveToPrevWorkspaceLayerKey"
@@ -2090,7 +2012,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:178
 msgid "Move window to workspace on the left"
-msgstr ""
+msgstr "ウィンドウを左のワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
@@ -2098,229 +2020,187 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:179
 msgid "Move window to workspace on the right"
-msgstr ""
+msgstr "ウィンドウを右のワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウを上のワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "MoveToUpWorkspaceKey"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウを下のワークスペースへ移動"
 
 #: ../src/keybind_descriptions.h:181
 msgid "MoveToDownWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "Move window to workspace 1"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 1 へ移動"
 
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "Move window to workspace 2"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 2 へ移動"
 
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "Move window to workspace 3"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 3 へ移動"
 
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "Move window to workspace 4"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 4 へ移動"
 
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "Move window to workspace 5"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 5 へ移動"
 
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "Move window to workspace 6"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 6 へ移動"
 
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "Move window to workspace 7"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 7 へ移動"
 
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "Move window to workspace 8"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 8 へ移動"
 
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "Move window to workspace 9"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 9 へ移動"
 
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "Move window to workspace 10"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをワークスペース 10 へ移動"
 
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 1 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 2 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 3 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 4 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 5 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 6 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 7 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 8 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "全てのワークスペースで表示します"
+msgstr "ワークスペース 9 のウィンドウを切替"
 
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "ワークスペースの設定"
-
-#: ../src/keybind_descriptions.h:201
-msgid "Toggle window on workspace 10"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:201
-#, fuzzy
+msgid "Toggle window on workspace 10"
+msgstr "ワークスペース 10 のウィンドウを切替"
+
+#: ../src/keybind_descriptions.h:201
 msgid "ToggleWorkspace10Key"
-msgstr "ワークスペースの設定"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:203 ../src/keybind_descriptions.h:204
 #: ../src/keybind_descriptions.h:205 ../src/keybind_descriptions.h:206
@@ -2328,12 +2208,11 @@ msgstr "ワークスペースの設定"
 #: ../src/keybind_descriptions.h:209 ../src/keybind_descriptions.h:210
 #: ../src/keybind_descriptions.h:211 ../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "タイルとレイアウト"
 
 #: ../src/keybind_descriptions.h:203
-#, fuzzy
 msgid "Cycle workspace tiling layout"
-msgstr "ワークスペースの状態保存"
+msgstr "ワークスペースのタイルレイアウトを切替"
 
 #: ../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -2341,7 +2220,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "ワークスペースのタイルレイアウトを逆順に切替"
 
 #: ../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -2349,16 +2228,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "タイルレイアウトの軸を交換"
 
 #: ../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:206
-#, fuzzy
 msgid "Set workspace layout to float"
-msgstr "ワークスペースの状態保存"
+msgstr "ワークスペースのレイアウトをフロートに設定"
 
 #: ../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -2366,7 +2244,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "レイアウトのマスター数を増やす"
 
 #: ../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -2374,7 +2252,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "レイアウトのマスター数を減らす"
 
 #: ../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -2382,7 +2260,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "レイアウトのマスター比率を増やす"
 
 #: ../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -2390,7 +2268,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "レイアウトのマスター比率を減らす"
 
 #: ../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
@@ -2398,16 +2276,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:211
 msgid "Toggle tiling for active window"
-msgstr ""
+msgstr "アクティブウィンドウのタイル表示を切替"
 
 #: ../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "かわりのウィンドウマネージャを起動する"
+msgstr "アクティブウィンドウとマスターを交換"
 
 #: ../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -2416,14 +2293,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:214 ../src/keybind_descriptions.h:215
 #: ../src/keybind_descriptions.h:216 ../src/keybind_descriptions.h:217
 #: ../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "ウィンドウ一覧"
+msgstr "ウィンドウマーク"
 
 #: ../src/keybind_descriptions.h:214
-#, fuzzy
 msgid "Mark window: set mark"
-msgstr "全てのワークスペースで表示します"
+msgstr "ウィンドウをマーク: マークを設定"
 
 #: ../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -2431,7 +2306,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "ウィンドウをマーク: マークを解除"
 
 #: ../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -2439,7 +2314,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "ウィンドウをマーク: マークしたウィンドウをここへ"
 
 #: ../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -2447,7 +2322,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "ウィンドウをマーク: マークしたウィンドウへ移動"
 
 #: ../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -2455,44 +2330,39 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "ウィンドウをマーク: マークしたウィンドウと交換"
 
 #: ../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "アプリケーション強制終了"
+msgstr "アプリケーションを検索"
 
 #: ../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "キーボードと連動しない"
+msgstr "キーボードショートカットを表示"
 
 #: ../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "Exit Window Maker"
-msgstr "Window Maker を再起動する"
+msgstr "Window Maker を終了"
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "ExitKey"
-msgstr "終了"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:223
-#, fuzzy
 msgid "Lock screen"
-msgstr "ドック登録アイコン"
+msgstr "スクリーンをロック"
 
 #: ../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -2500,7 +2370,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "クリップボード履歴を開く"
 
 #: ../src/keybind_descriptions.h:224
 msgid "ClipboardKey"
@@ -3411,7 +3281,7 @@ msgstr ""
 
 #: ../src/winmenu.c:90
 msgid "Restore geometry"
-msgstr ""
+msgstr "位置と大きさを復元"
 
 #: ../src/winmenu.c:91
 msgid "Region snap"

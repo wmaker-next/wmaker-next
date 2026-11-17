@@ -1052,7 +1052,7 @@ msgstr "Valikud"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:573
 msgid "List Mode"
-msgstr ""
+msgstr "Loendirežiim"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:578
 #, fuzzy
@@ -1196,9 +1196,8 @@ msgstr ""
 
 #: ../../WPrefs.app/Menu.c:480 ../../WPrefs.app/Menu.c:748
 #: ../../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "Exit Window Maker"
-msgstr "Taaskäivitan Window Makeri"
+msgstr "Välju Window Makerist"
 
 #: ../../WPrefs.app/Menu.c:496
 msgid "Debian Menu"
@@ -2571,11 +2570,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:46 ../../src/keybind_descriptions.h:47
 #: ../../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Virtuaalne töölaud"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Liiguta virtuaalne töölaud järgmisele vasakule servale"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -2583,7 +2582,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Liiguta virtuaalne töölaud järgmisele paremale servale"
 
 #: ../../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -2591,7 +2590,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Liiguta virtuaalne töölaud järgmisele ülemisele servale"
 
 #: ../../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -2599,7 +2598,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Liiguta virtuaalne töölaud järgmisele alumisele servale"
 
 #: ../../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -2607,7 +2606,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Liiguta virtuaalne töölaud selle algasendisse"
 
 #: ../../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -2615,7 +2614,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Tsentreeri fookustatud aken virtuaalsel töölaual"
 
 #: ../../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -2623,7 +2622,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Kinnita fookustatud aken virtuaalse töölaua vaateaknasse"
 
 #: ../../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -2634,11 +2633,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:222 ../../src/keybind_descriptions.h:223
 #: ../../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Seanss ja muu"
 
 #: ../../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
-msgstr ""
+msgstr "Lülita klaviatuuri keel"
 
 #: ../../src/keybind_descriptions.h:55
 msgid "ToggleKbdModeKey"
@@ -2646,7 +2645,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Vali rõhumärkidega ja erimärgid"
 
 #: ../../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -2655,12 +2654,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:62 ../../src/keybind_descriptions.h:63
 #: ../../src/keybind_descriptions.h:64
 msgid "Menus"
-msgstr ""
+msgstr "Menüüd"
 
 #: ../../src/keybind_descriptions.h:62
-#, fuzzy
 msgid "Open applications menu"
-msgstr "Keela rakenduse ikoon"
+msgstr "Ava rakenduste menüü"
 
 #: ../../src/keybind_descriptions.h:62
 msgid "RootMenuKey"
@@ -2668,33 +2666,30 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:63
 msgid "Open window list menu"
-msgstr ""
+msgstr "Ava akende loend"
 
 #: ../../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Akende nimekiri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
-msgstr ""
+msgstr "Ava akna käskude menüü"
 
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Aknad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:66 ../../src/keybind_descriptions.h:67
 #: ../../src/keybind_descriptions.h:68 ../../src/keybind_descriptions.h:69
 #: ../../src/keybind_descriptions.h:70 ../../src/keybind_descriptions.h:71
 #: ../../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "Dokin ikooni"
+msgstr "Dokk ja ekraan"
 
 #: ../../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
-msgstr ""
+msgstr "Tõsta/langeta dokk"
 
 #: ../../src/keybind_descriptions.h:66
 msgid "DockRaiseLowerKey"
@@ -2702,7 +2697,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
-msgstr ""
+msgstr "Tõsta/langeta klamber"
 
 #: ../../src/keybind_descriptions.h:67
 msgid "ClipRaiseLowerKey"
@@ -2710,25 +2705,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:68
 msgid "Switch to next screen/monitor"
-msgstr ""
+msgstr "Lülitu järgmisele ekraanile/monitorile"
 
 #: ../../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "Capture the entire screen"
-msgstr "Hoia ekraani sees"
+msgstr "Hõiva kogu ekraan"
 
 #: ../../src/keybind_descriptions.h:69
 msgid "ScreenCaptureKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "Vaikimisi kőigile akendele"
+msgstr "Hõiva aken"
 
 #: ../../src/keybind_descriptions.h:70
 msgid "WindowCaptureKey"
@@ -2736,7 +2729,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Hõiva osa ekraanist"
 
 #: ../../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
@@ -2744,7 +2737,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:72
 msgid "Find the mouse pointer"
-msgstr ""
+msgstr "Leia hiirekursor"
 
 #: ../../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -2780,76 +2773,64 @@ msgid "Windows"
 msgstr "Aknad"
 
 #: ../../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "Miniaturize active window"
-msgstr "Minimeeri"
+msgstr "Minimeeri aktiivne aken"
 
 #: ../../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Minimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "Miniaturize all windows"
-msgstr "Minimeeri"
+msgstr "Minimeeri kõik akendid"
 
 #: ../../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "Minimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Minimeeri"
+msgstr "Minimeeri teised akendid"
 
 #: ../../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "MiniaturizeOthersKey"
-msgstr "Minimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "Hide active application"
-msgstr "Emuleeri rakenduse ikooni"
+msgstr "Peida aktiivne rakendus"
 
 #: ../../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "HideKey"
-msgstr "Peida"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "Hide other applications"
-msgstr "ei őnnestu käivitada rakendust %s\n"
+msgstr "Peida teised rakendused"
 
 #: ../../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "HideOthersKey"
-msgstr "Eira käsku 'Peida teised aknad'"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Lülita töölaua näitamine (minimeeri/taasta kõik)"
 
 #: ../../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "Vaikimisi kőigile akendele"
+msgstr "Näita kõiki aknaid"
 
 #: ../../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "Haagi ikoonid külge"
+msgstr "Korralda ikoonid"
 
 #: ../../src/keybind_descriptions.h:81
 msgid "ArrangeIconsKey"
@@ -2857,26 +2838,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
-msgstr ""
+msgstr "Liiguta/muuda aktiivse akna suurust"
 
 #: ../../src/keybind_descriptions.h:82
 msgid "MoveResizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "Close active window"
-msgstr "Vali aken"
+msgstr "Sulge aktiivne aken"
 
 #: ../../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Sulge"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Taaskäivitan Window Makeri"
+msgstr "Taasta aktiivse akna geomeetria"
 
 #: ../../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -2884,116 +2862,103 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:85
 msgid "Maximize active window"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken"
 
 #: ../../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken vertikaalselt"
 
 #: ../../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken horisontaalselt"
 
 #: ../../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken vasakule poolele"
 
 #: ../../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken paremale poolele"
 
 #: ../../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken ülemisele poolele"
 
 #: ../../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken alumisele poolele"
 
 #: ../../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:92
 msgid "Maximize active window top left corner"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken ülemisse vasakusse nurka"
 
 #: ../../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:93
 msgid "Maximize active window top right corner"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken ülemisse paremasse nurka"
 
 #: ../../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:94
 msgid "Maximize active window bottom left corner"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken alumisse vasakusse nurka"
 
 #: ../../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:95
 msgid "Maximize active window bottom right corner"
-msgstr ""
+msgstr "Maksimeeri aktiivne aken alumisse paremasse nurka"
 
 #: ../../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "Vali aken"
+msgstr "Aseta aktiivne aken ruudustikku"
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "Maksimeeri"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:97
 msgid "Move active window to left edge"
-msgstr ""
+msgstr "Liiguta aktiivne aken vasakule servale"
 
 #: ../../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
@@ -3001,7 +2966,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:98
 msgid "Move active window to right edge"
-msgstr ""
+msgstr "Liiguta aktiivne aken paremale servale"
 
 #: ../../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
@@ -3009,7 +2974,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:99
 msgid "Move active window to top edge"
-msgstr ""
+msgstr "Liiguta aktiivne aken ülemisele servale"
 
 #: ../../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
@@ -3017,7 +2982,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:100
 msgid "Move active window to bottom edge"
-msgstr ""
+msgstr "Liiguta aktiivne aken alumisele servale"
 
 #: ../../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
@@ -3025,7 +2990,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:101
 msgid "Move active window to left screen edge"
-msgstr ""
+msgstr "Liiguta aktiivne aken ekraani vasakule servale"
 
 #: ../../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
@@ -3033,7 +2998,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:102
 msgid "Move active window to right screen edge"
-msgstr ""
+msgstr "Liiguta aktiivne aken ekraani paremale servale"
 
 #: ../../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
@@ -3041,7 +3006,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:103
 msgid "Move active window to top screen edge"
-msgstr ""
+msgstr "Liiguta aktiivne aken ekraani ülemisele servale"
 
 #: ../../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
@@ -3049,7 +3014,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:104
 msgid "Move active window to bottom screen edge"
-msgstr ""
+msgstr "Liiguta aktiivne aken ekraani alumisele servale"
 
 #: ../../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
@@ -3057,7 +3022,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:105
 msgid "Grow active window to left edge"
-msgstr ""
+msgstr "Suurenda aktiivset akent vasaku serva suunas"
 
 #: ../../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
@@ -3065,7 +3030,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:106
 msgid "Grow active window to right edge"
-msgstr ""
+msgstr "Suurenda aktiivset akent parema serva suunas"
 
 #: ../../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
@@ -3073,7 +3038,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:107
 msgid "Grow active window to top edge"
-msgstr ""
+msgstr "Suurenda aktiivset akent ülemise serva suunas"
 
 #: ../../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
@@ -3081,7 +3046,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:108
 msgid "Grow active window to bottom edge"
-msgstr ""
+msgstr "Suurenda aktiivset akent alumise serva suunas"
 
 #: ../../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
@@ -3089,7 +3054,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:109
 msgid "Shrink active window from left edge"
-msgstr ""
+msgstr "Kahanda aktiivset akent vasakust servast"
 
 #: ../../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
@@ -3097,7 +3062,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:110
 msgid "Shrink active window from right edge"
-msgstr ""
+msgstr "Kahanda aktiivset akent paremast servast"
 
 #: ../../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
@@ -3105,7 +3070,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:111
 msgid "Shrink active window from top edge"
-msgstr ""
+msgstr "Kahanda aktiivset akent ülemisest servast"
 
 #: ../../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
@@ -3113,25 +3078,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:112
 msgid "Shrink active window from bottom edge"
-msgstr ""
+msgstr "Kahanda aktiivset akent alumisest servast"
 
 #: ../../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "Vaikimisi kőigile akendele"
+msgstr "Lülita aktiivse akna täisekraan"
 
 #: ../../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "Vali aken"
+msgstr "Tsentreeri aktiivne aken"
 
 #: ../../src/keybind_descriptions.h:114
 msgid "CenterKey"
@@ -3139,45 +3102,39 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "Lülita akna olek «alati ees»"
 
 #: ../../src/keybind_descriptions.h:115
-#, fuzzy
 msgid "KeepOnTopKey"
-msgstr "Hoia esiplaanil"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "Lülita akna olek «alati taga»"
 
 #: ../../src/keybind_descriptions.h:116
-#, fuzzy
 msgid "KeepAtBottomKey"
-msgstr "Hoia tagaplaanil"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "Toggle window omnipresent status"
-msgstr "Näita/ära näita kőigil töölaudadel"
+msgstr "Lülita akna olek «kõikjal»"
 
 #: ../../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "OmnipresentKey"
-msgstr "Näita kőigil töölaudadel"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:118
-#, fuzzy
 msgid "Raise active window"
-msgstr "Vali aken"
+msgstr "Tõsta aktiivne aken"
 
 #: ../../src/keybind_descriptions.h:118
 msgid "RaiseKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:119
-#, fuzzy
 msgid "Lower active window"
-msgstr "Vali aken"
+msgstr "Langeta aktiivne aken"
 
 #: ../../src/keybind_descriptions.h:119
 msgid "LowerKey"
@@ -3185,35 +3142,31 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:120
 msgid "Raise/Lower window under mouse pointer"
-msgstr ""
+msgstr "Tõsta/langeta aken hiirekursori all"
 
 #: ../../src/keybind_descriptions.h:120
 msgid "RaiseLowerKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "Shade active window"
-msgstr "Vali aken"
+msgstr "Keri aktiivne aken kokku"
 
 #: ../../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "ShadeKey"
-msgstr "Keri kokku"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "Select active window"
-msgstr "Vali aken"
+msgstr "Vali aktiivne aken"
 
 #: ../../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "Valitud"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
-msgstr ""
+msgstr "Käivita rakenduse uus isend"
 
 #: ../../src/keybind_descriptions.h:123
 msgid "WindowRelaunchKey"
@@ -3221,7 +3174,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "Liigu paremale/alumisele/vasakule/ülemisele ekraanile"
 
 #: ../../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -3229,7 +3182,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "Liigu vasakule/ülemisele/paremale/alumisele ekraanile"
 
 #: ../../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -3240,13 +3193,12 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:131 ../../src/keybind_descriptions.h:132
 #: ../../src/keybind_descriptions.h:133 ../../src/keybind_descriptions.h:134
 #: ../../src/keybind_descriptions.h:135 ../../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Akna rekvisiidid"
+msgstr "Akende kiirklahvid"
 
 #: ../../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
-msgstr ""
+msgstr "Akna 1 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:127
 msgid "WindowShortcut1Key"
@@ -3254,7 +3206,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
-msgstr ""
+msgstr "Akna 2 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:128
 msgid "WindowShortcut2Key"
@@ -3262,7 +3214,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
-msgstr ""
+msgstr "Akna 3 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:129
 msgid "WindowShortcut3Key"
@@ -3270,7 +3222,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
-msgstr ""
+msgstr "Akna 4 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:130
 msgid "WindowShortcut4Key"
@@ -3278,7 +3230,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
-msgstr ""
+msgstr "Akna 5 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:131
 msgid "WindowShortcut5Key"
@@ -3286,7 +3238,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
-msgstr ""
+msgstr "Akna 6 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:132
 msgid "WindowShortcut6Key"
@@ -3294,7 +3246,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
-msgstr ""
+msgstr "Akna 7 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:133
 msgid "WindowShortcut7Key"
@@ -3302,7 +3254,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
-msgstr ""
+msgstr "Akna 8 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:134
 msgid "WindowShortcut8Key"
@@ -3310,7 +3262,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
-msgstr ""
+msgstr "Akna 9 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:135
 msgid "WindowShortcut9Key"
@@ -3318,7 +3270,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
-msgstr ""
+msgstr "Akna 10 kiirklahv"
 
 #: ../../src/keybind_descriptions.h:136
 msgid "WindowShortcut10Key"
@@ -3332,12 +3284,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:148 ../../src/keybind_descriptions.h:149
 #: ../../src/keybind_descriptions.h:150 ../../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "Fookus ja rühmad"
 
 #: ../../src/keybind_descriptions.h:138
-#, fuzzy
 msgid "Focus next window"
-msgstr "Vali aken"
+msgstr "Fookusta järgmine aken"
 
 #: ../../src/keybind_descriptions.h:138
 msgid "FocusNextKey"
@@ -3345,7 +3296,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:139
 msgid "Focus previous window"
-msgstr ""
+msgstr "Fookusta eelmine aken"
 
 #: ../../src/keybind_descriptions.h:139
 msgid "FocusPrevKey"
@@ -3353,7 +3304,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:140
 msgid "Focus the window to the left"
-msgstr ""
+msgstr "Fookusta vasakul olev aken"
 
 #: ../../src/keybind_descriptions.h:140
 msgid "FocusWindowLeftKey"
@@ -3361,7 +3312,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:141
 msgid "Focus the window to the right"
-msgstr ""
+msgstr "Fookusta paremal olev aken"
 
 #: ../../src/keybind_descriptions.h:141
 msgid "FocusWindowRightKey"
@@ -3369,7 +3320,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:142
 msgid "Focus the window above"
-msgstr ""
+msgstr "Fookusta ülal olev aken"
 
 #: ../../src/keybind_descriptions.h:142
 msgid "FocusWindowUpKey"
@@ -3377,7 +3328,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:143
 msgid "Focus the window below"
-msgstr ""
+msgstr "Fookusta all olev aken"
 
 #: ../../src/keybind_descriptions.h:143
 msgid "FocusWindowDownKey"
@@ -3385,7 +3336,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:144
 msgid "Focus next window in group"
-msgstr ""
+msgstr "Fookusta rühma järgmine aken"
 
 #: ../../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
@@ -3393,7 +3344,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:145
 msgid "Focus previous window in group"
-msgstr ""
+msgstr "Fookusta rühma eelmine aken"
 
 #: ../../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
@@ -3401,7 +3352,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:146
 msgid "Switch to next application group"
-msgstr ""
+msgstr "Lülitu järgmisse rakenduste rühma"
 
 #: ../../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
@@ -3409,7 +3360,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:147
 msgid "Switch to previous application group"
-msgstr ""
+msgstr "Lülitu eelmisesse rakenduste rühma"
 
 #: ../../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
@@ -3417,7 +3368,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:148
 msgid "Switch to next tab in group"
-msgstr ""
+msgstr "Lülitu rühma järgmisele kaardile"
 
 #: ../../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
@@ -3425,7 +3376,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:149
 msgid "Switch to previous tab in group"
-msgstr ""
+msgstr "Lülitu rühma eelmisele kaardile"
 
 #: ../../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
@@ -3433,7 +3384,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:150
 msgid "Attach window as tab"
-msgstr ""
+msgstr "Kinnita aken kaardina"
 
 #: ../../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -3441,7 +3392,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Eemalda kaart rühmast"
 
 #: ../../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -3476,45 +3427,40 @@ msgid "Workspaces"
 msgstr "Töölauad"
 
 #: ../../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "Open workspace pager"
-msgstr "Töölaua ümbernimetamine"
+msgstr "Ava töölaudade sirvija"
 
 #: ../../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
-msgstr ""
+msgstr "Lülitu järgmisele töölauale"
 
 #: ../../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
-msgstr ""
+msgstr "Lülitu eelmisele töölauale"
 
 #: ../../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
-msgstr ""
+msgstr "Lülitu viimati kasutatud töölauale"
 
 #: ../../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
-msgstr ""
+msgstr "Lülitu järgmisele kümnele töölauale"
 
 #: ../../src/keybind_descriptions.h:157
 msgid "NextWorkspaceLayerKey"
@@ -3522,7 +3468,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
-msgstr ""
+msgstr "Lülitu eelmisele kümnele töölauale"
 
 #: ../../src/keybind_descriptions.h:158
 msgid "PrevWorkspaceLayerKey"
@@ -3530,170 +3476,151 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:159
 msgid "Switch to workspace on the left"
-msgstr ""
+msgstr "Lülitu vasakul olevale töölauale"
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:160
 msgid "Switch to workspace on the right"
-msgstr ""
+msgstr "Lülitu paremal olevale töölauale"
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:161
 msgid "Switch to workspace above"
-msgstr ""
+msgstr "Lülitu ülal olevale töölauale"
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:162
 msgid "Switch to workspace below"
-msgstr ""
+msgstr "Lülitu all olevale töölauale"
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
-msgstr ""
+msgstr "Lülitu töölauale 1"
 
 #: ../../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
-msgstr ""
+msgstr "Lülitu töölauale 2"
 
 #: ../../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
-msgstr ""
+msgstr "Lülitu töölauale 3"
 
 #: ../../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
-msgstr ""
+msgstr "Lülitu töölauale 4"
 
 #: ../../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
-msgstr ""
+msgstr "Lülitu töölauale 5"
 
 #: ../../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
-msgstr ""
+msgstr "Lülitu töölauale 6"
 
 #: ../../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
-msgstr ""
+msgstr "Lülitu töölauale 7"
 
 #: ../../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
-msgstr ""
+msgstr "Lülitu töölauale 8"
 
 #: ../../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
-msgstr ""
+msgstr "Lülitu töölauale 9"
 
 #: ../../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
-msgstr ""
+msgstr "Lülitu töölauale 10"
 
 #: ../../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "Move window to next workspace"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken järgmisele töölauale"
 
 #: ../../src/keybind_descriptions.h:173
 msgid "MoveToNextWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "Move window to previous workspace"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken eelmisele töölauale"
 
 #: ../../src/keybind_descriptions.h:174
 msgid "MoveToPrevWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "Move window to last used workspace"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken viimati kasutatud töölauale"
 
 #: ../../src/keybind_descriptions.h:175
 msgid "MoveToLastWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "Move window to next ten workspaces"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken järgmisele kümnele töölauale"
 
 #: ../../src/keybind_descriptions.h:176
 msgid "MoveToNextWorkspaceLayerKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:177
-#, fuzzy
 msgid "Move window to previous ten workspaces"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken eelmisele kümnele töölauale"
 
 #: ../../src/keybind_descriptions.h:177
 msgid "MoveToPrevWorkspaceLayerKey"
@@ -3701,7 +3628,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:178
 msgid "Move window to workspace on the left"
-msgstr ""
+msgstr "Liiguta aken vasakul olevale töölauale"
 
 #: ../../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
@@ -3709,229 +3636,187 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:179
 msgid "Move window to workspace on the right"
-msgstr ""
+msgstr "Liiguta aken paremal olevale töölauale"
 
 #: ../../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken ülal olevale töölauale"
 
 #: ../../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "MoveToUpWorkspaceKey"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken all olevale töölauale"
 
 #: ../../src/keybind_descriptions.h:181
 msgid "MoveToDownWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "Move window to workspace 1"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 1"
 
 #: ../../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "Move window to workspace 2"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 2"
 
 #: ../../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "Move window to workspace 3"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 3"
 
 #: ../../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "Move window to workspace 4"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 4"
 
 #: ../../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "Move window to workspace 5"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 5"
 
 #: ../../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "Move window to workspace 6"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 6"
 
 #: ../../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "Move window to workspace 7"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 7"
 
 #: ../../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "Move window to workspace 8"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 8"
 
 #: ../../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "Move window to workspace 9"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 9"
 
 #: ../../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "Move window to workspace 10"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Liiguta aken töölauale 10"
 
 #: ../../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 1"
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 2"
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 3"
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 4"
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 5"
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 6"
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 7"
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 8"
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Lülita aken töölaual 9"
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "Töölauad"
-
-#: ../../src/keybind_descriptions.h:201
-msgid "Toggle window on workspace 10"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
+msgid "Toggle window on workspace 10"
+msgstr "Lülita aken töölaual 10"
+
+#: ../../src/keybind_descriptions.h:201
 msgid "ToggleWorkspace10Key"
-msgstr "Töölauad"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:203 ../../src/keybind_descriptions.h:204
 #: ../../src/keybind_descriptions.h:205 ../../src/keybind_descriptions.h:206
@@ -3939,11 +3824,11 @@ msgstr "Töölauad"
 #: ../../src/keybind_descriptions.h:209 ../../src/keybind_descriptions.h:210
 #: ../../src/keybind_descriptions.h:211 ../../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Ruudustik ja paigutus"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "Cycle workspace tiling layout"
-msgstr ""
+msgstr "Lülita töölaua ruudustiku paigutust"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -3951,7 +3836,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Lülita töölaua ruudustiku paigutust tagasi"
 
 #: ../../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -3959,7 +3844,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Vaheta ruudustiku paigutuse telg"
 
 #: ../../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
@@ -3967,7 +3852,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:206
 msgid "Set workspace layout to float"
-msgstr ""
+msgstr "Sea töölaua paigutus hõljuvaks"
 
 #: ../../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -3975,7 +3860,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Suurenda paigutuse peamiste arvu"
 
 #: ../../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -3983,7 +3868,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Vähenda paigutuse peamiste arvu"
 
 #: ../../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -3991,7 +3876,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Suurenda paigutuse peamise suhet"
 
 #: ../../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -3999,7 +3884,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Vähenda paigutuse peamise suhet"
 
 #: ../../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
@@ -4007,16 +3892,15 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:211
 msgid "Toggle tiling for active window"
-msgstr ""
+msgstr "Lülita aktiivse akna ruudustikku"
 
 #: ../../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "Käivitan alternatiivse aknahalduri"
+msgstr "Vaheta aktiivne aken peamisega"
 
 #: ../../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -4025,14 +3909,12 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:214 ../../src/keybind_descriptions.h:215
 #: ../../src/keybind_descriptions.h:216 ../../src/keybind_descriptions.h:217
 #: ../../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Aknad"
+msgstr "Akende märgised"
 
 #: ../../src/keybind_descriptions.h:214
-#, fuzzy
 msgid "Mark window: set mark"
-msgstr "Näita akent kőigil töölaudadel."
+msgstr "Märgi aken: sea märgis"
 
 #: ../../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -4040,7 +3922,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "Märgi aken: eemalda märgis"
 
 #: ../../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -4048,7 +3930,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Märgi aken: too märgitud aken siia"
 
 #: ../../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -4056,7 +3938,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Märgi aken: hüppa märgitud aknale"
 
 #: ../../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -4064,39 +3946,35 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Märgi aken: vaheta märgitud aknaga"
 
 #: ../../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "Programmi kőrvaldamine"
+msgstr "Leia rakendus"
 
 #: ../../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "Keela reageerimast kiirklahvidele"
+msgstr "Näita kiirklahve"
 
 #: ../../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "ExitKey"
-msgstr "Lőpetan töö"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:223
-#, fuzzy
 msgid "Lock screen"
-msgstr "Dokin ikooni"
+msgstr "Lukusta ekraan"
 
 #: ../../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -4104,7 +3982,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Ava lõikelaua ajalugu"
 
 #: ../../src/keybind_descriptions.h:224
 msgid "ClipboardKey"

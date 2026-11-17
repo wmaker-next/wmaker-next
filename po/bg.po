@@ -708,15 +708,15 @@ msgstr "Иконки"
 
 #: ../src/dialog_icon.c:519
 msgid "List Mode"
-msgstr ""
+msgstr "Режим на списък"
 
 #: ../src/dialog_icon.c:524
 msgid "Names"
-msgstr ""
+msgstr "Имена"
 
 #: ../src/dialog_icon.c:531
 msgid "Thumbs"
-msgstr ""
+msgstr "Миниатюри"
 
 # ../src/dialog.c:551
 #: ../src/dialog_icon.c:539
@@ -840,9 +840,8 @@ msgstr "Да се свива автоматично"
 
 # ../src/dock.c:1079
 #: ../src/dock.c:1301
-#, fuzzy
 msgid "Auto Compact"
-msgstr "Да се свива автоматично"
+msgstr "Да се компресира автоматично"
 
 # ../src/dock.c:1085
 #: ../src/dock.c:1306 ../src/dock.c:1387
@@ -867,19 +866,17 @@ msgstr "не може да се направи подменю за настро�
 
 # ../src/dock.c:1085
 #: ../src/dock.c:1382
-#, fuzzy
 msgid "Auto Hide"
-msgstr "Да изплува автоматично"
+msgstr "Да се скрива автоматично"
 
 # ../src/winmenu.c:500
 #: ../src/dock.c:1417
-#, fuzzy
 msgid "Dock Options"
-msgstr "Предпочитания"
+msgstr "Предпочитания за дока"
 
 #: ../src/dock.c:1423
 msgid "Add a Drawer"
-msgstr ""
+msgstr "Добавяне на чекмедже"
 
 # ../src/dock.c:1118
 #: ../src/dock.c:1427
@@ -994,7 +991,7 @@ msgstr "Донеси тук"
 
 #: ../src/dock.c:5345
 msgid "Remove Drawer"
-msgstr ""
+msgstr "Премахване на чекмеджето"
 
 #: ../src/dock.c:6430
 msgid "All icons in this drawer will be detached!"
@@ -1178,11 +1175,11 @@ msgstr "грешка при изобразяване на %s"
 #: ../src/keybind_descriptions.h:46 ../src/keybind_descriptions.h:47
 #: ../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Виртуален работен плот"
 
 #: ../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Преместване на виртуалния работен плот към следващия ляв ръб"
 
 #: ../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -1190,7 +1187,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Преместване на виртуалния работен плот към следващия десен ръб"
 
 #: ../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -1198,7 +1195,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Преместване на виртуалния работен плот към следващия горен ръб"
 
 #: ../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -1206,7 +1203,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Преместване на виртуалния работен плот към следващия долен ръб"
 
 #: ../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -1214,7 +1211,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Преместване на виртуалния работен плот към началното му положение"
 
 #: ../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -1222,7 +1219,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Центриране на фокусирания прозорец във виртуалния работен плот"
 
 #: ../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -1230,7 +1227,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Закачане на фокусирания прозорец към изгледа на виртуалния работен плот"
 
 #: ../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -1241,11 +1238,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:222 ../src/keybind_descriptions.h:223
 #: ../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Сесия и разни"
 
 #: ../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
-msgstr ""
+msgstr "Превключване на езика на клавиатурата"
 
 #: ../src/keybind_descriptions.h:55
 msgid "ToggleKbdModeKey"
@@ -1253,7 +1250,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Избор на знаци с ударения и специални знаци"
 
 #: ../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -1262,13 +1259,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:62 ../src/keybind_descriptions.h:63
 #: ../src/keybind_descriptions.h:64
 msgid "Menus"
-msgstr ""
+msgstr "Менюта"
 
 # ../src/winspector.c:1601
 #: ../src/keybind_descriptions.h:62
-#, fuzzy
 msgid "Open applications menu"
-msgstr "Без иконка на приложението"
+msgstr "Отваряне на менюто с приложения"
 
 #: ../src/keybind_descriptions.h:62
 msgid "RootMenuKey"
@@ -1276,35 +1272,32 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:63
 msgid "Open window list menu"
-msgstr ""
+msgstr "Отваряне на списъка с прозорци"
 
 #: ../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Списък на прозорците"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
-msgstr ""
+msgstr "Отваряне на менюто с команди на прозореца"
 
 # ../src/switchmenu.c:114
 #: ../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Прозорци"
+msgstr ""
 
 # ../src/dock.c:2119 ../src/dock.c:2253
 #: ../src/keybind_descriptions.h:66 ../src/keybind_descriptions.h:67
 #: ../src/keybind_descriptions.h:68 ../src/keybind_descriptions.h:69
 #: ../src/keybind_descriptions.h:70 ../src/keybind_descriptions.h:71
 #: ../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "Скачване на иконка"
+msgstr "Док и екран"
 
 #: ../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
-msgstr ""
+msgstr "Вдигане/сваляне на дока"
 
 #: ../src/keybind_descriptions.h:66
 msgid "DockRaiseLowerKey"
@@ -1312,7 +1305,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
-msgstr ""
+msgstr "Вдигане/сваляне на Кламера"
 
 #: ../src/keybind_descriptions.h:67
 msgid "ClipRaiseLowerKey"
@@ -1320,7 +1313,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:68
 msgid "Switch to next screen/monitor"
-msgstr ""
+msgstr "Преминаване към следващия екран/монитор"
 
 #: ../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
@@ -1328,9 +1321,8 @@ msgstr ""
 
 # ../src/winspector.c:1452
 #: ../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "Capture the entire screen"
-msgstr "Винаги в рамките на екрана"
+msgstr "Заснемане на целия екран"
 
 #: ../src/keybind_descriptions.h:69
 msgid "ScreenCaptureKey"
@@ -1340,9 +1332,8 @@ msgstr ""
 # Затова го съкратих. (А.З.)
 # ../src/winspector.c:1262
 #: ../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "За всички прозорци"
+msgstr "Заснемане на прозорец"
 
 #: ../src/keybind_descriptions.h:70
 msgid "WindowCaptureKey"
@@ -1350,7 +1341,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Заснемане на част от екрана"
 
 #: ../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
@@ -1358,7 +1349,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:72
 msgid "Find the mouse pointer"
-msgstr ""
+msgstr "Намиране на показалеца на мишката"
 
 #: ../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -1397,39 +1388,33 @@ msgstr "Прозорци"
 
 # ../src/winmenu.c:452 ../src/winmenu.c:565
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "Miniaturize active window"
-msgstr "Минимизирай"
+msgstr "Минимизиране на активния прозорец"
 
 # ../src/winmenu.c:452 ../src/winmenu.c:565
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Минимизирай"
+msgstr ""
 
 # ../src/winmenu.c:452 ../src/winmenu.c:565
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "Miniaturize all windows"
-msgstr "Минимизирай"
+msgstr "Минимизиране на всички прозорци"
 
 # ../src/winmenu.c:452 ../src/winmenu.c:565
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "Минимизирай"
+msgstr ""
 
 # ../src/winmenu.c:452 ../src/winmenu.c:565
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Минимизирай"
+msgstr "Минимизиране на другите прозорци"
 
 # ../src/winmenu.c:452 ../src/winmenu.c:565
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "MiniaturizeOthersKey"
-msgstr "Минимизирай"
+msgstr ""
 
 # [ Start translation
 # Translated from English by (-:Stinger®:-)
@@ -1440,34 +1425,30 @@ msgstr "Минимизирай"
 # Съкратих "на приложение", защото няма място (А.З.)
 # ../src/winspector.c:1472
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "Hide active application"
-msgstr "Да се емулира иконка на приложението"
+msgstr "Скриване на активното приложение"
 
 # ../src/appicon.c:605 ../src/appicon.c:630 ../src/dock.c:1161
 # ../src/dock.c:1163 ../src/dock.c:3475 ../src/winmenu.c:469
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "HideKey"
-msgstr "Скрий"
+msgstr ""
 
 #
 # ../src/dock.c:949
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "Hide other applications"
-msgstr "не може да се стартира приложението %s\n"
+msgstr "Скриване на другите приложения"
 
 # За по-кратко "другите" вместо "останалите". (А.З.)
 # ../src/winspector.c:1431
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "HideOthersKey"
-msgstr "Скрий другите"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Превключване на показването на плота (минимизиране/възстановяване на всичко)"
 
 #: ../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
@@ -1477,9 +1458,8 @@ msgstr ""
 # Затова го съкратих. (А.З.)
 # ../src/winspector.c:1262
 #: ../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "За всички прозорци"
+msgstr "Показване на всички прозорци"
 
 #: ../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
@@ -1487,9 +1467,8 @@ msgstr ""
 
 # ../src/dock.c:1154
 #: ../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "Привлечи иконките"
+msgstr "Подреждане на иконките"
 
 #: ../src/keybind_descriptions.h:81
 msgid "ArrangeIconsKey"
@@ -1497,31 +1476,27 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
-msgstr ""
+msgstr "Преместване/преоразмеряване на активния прозорец"
 
 # ../src/winmenu.c:477
 #: ../src/keybind_descriptions.h:82
-#, fuzzy
 msgid "MoveResizeKey"
-msgstr "Преоразмеряване"
+msgstr ""
 
 # ../src/winspector.c:1316
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "Close active window"
-msgstr "Избор на прозорец"
+msgstr "Затваряне на активния прозорец"
 
 # ../src/rootmenu.c:226 ../src/winmenu.c:509
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Затвори"
+msgstr ""
 
 # ../src/dialog.c:1580
 #: ../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Рестартирай Уиндоу Мейкър"
+msgstr "Възстановяване на геометрията на активния прозорец"
 
 #: ../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -1529,129 +1504,116 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:85
 msgid "Maximize active window"
-msgstr ""
+msgstr "Максимизиране на активния прозорец"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
-msgstr ""
+msgstr "Максимизиране на активния прозорец вертикално"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
-msgstr ""
+msgstr "Максимизиране на активния прозорец хоризонтално"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
-msgstr ""
+msgstr "Максимизиране на активния прозорец в лявата половина"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
-msgstr ""
+msgstr "Максимизиране на активния прозорец в дясната половина"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
-msgstr ""
+msgstr "Максимизиране на активния прозорец в горната половина"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
-msgstr ""
+msgstr "Максимизиране на активния прозорец в долната половина"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:92
 msgid "Maximize active window top left corner"
-msgstr ""
+msgstr "Максимизиране на активния прозорец в горния ляв ъгъл"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:93
 msgid "Maximize active window top right corner"
-msgstr ""
+msgstr "Максимизиране на активния прозорец в горния десен ъгъл"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:94
 msgid "Maximize active window bottom left corner"
-msgstr ""
+msgstr "Максимизиране на активния прозорец в долния ляв ъгъл"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:95
 msgid "Maximize active window bottom right corner"
-msgstr ""
+msgstr "Максимизиране на активния прозорец в долния десен ъгъл"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "Максимизирай"
+msgstr ""
 
 # ../src/winspector.c:1316
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "Избор на прозорец"
+msgstr "Подреждане на активния прозорец на мозайка"
 
 # ../src/winmenu.c:444 ../src/winmenu.c:579
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "Максимизирай"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:97
 msgid "Move active window to left edge"
-msgstr ""
+msgstr "Преместване на активния прозорец към левия ръб"
 
 #: ../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
@@ -1659,7 +1621,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:98
 msgid "Move active window to right edge"
-msgstr ""
+msgstr "Преместване на активния прозорец към десния ръб"
 
 #: ../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
@@ -1667,7 +1629,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:99
 msgid "Move active window to top edge"
-msgstr ""
+msgstr "Преместване на активния прозорец към горния ръб"
 
 #: ../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
@@ -1675,7 +1637,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:100
 msgid "Move active window to bottom edge"
-msgstr ""
+msgstr "Преместване на активния прозорец към долния ръб"
 
 #: ../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
@@ -1683,7 +1645,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:101
 msgid "Move active window to left screen edge"
-msgstr ""
+msgstr "Преместване на активния прозорец към левия ръб на екрана"
 
 #: ../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
@@ -1691,7 +1653,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:102
 msgid "Move active window to right screen edge"
-msgstr ""
+msgstr "Преместване на активния прозорец към десния ръб на екрана"
 
 #: ../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
@@ -1699,7 +1661,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:103
 msgid "Move active window to top screen edge"
-msgstr ""
+msgstr "Преместване на активния прозорец към горния ръб на екрана"
 
 #: ../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
@@ -1707,7 +1669,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:104
 msgid "Move active window to bottom screen edge"
-msgstr ""
+msgstr "Преместване на активния прозорец към долния ръб на екрана"
 
 #: ../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
@@ -1715,7 +1677,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:105
 msgid "Grow active window to left edge"
-msgstr ""
+msgstr "Увеличаване на активния прозорец към левия ръб"
 
 #: ../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
@@ -1723,7 +1685,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:106
 msgid "Grow active window to right edge"
-msgstr ""
+msgstr "Увеличаване на активния прозорец към десния ръб"
 
 #: ../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
@@ -1731,7 +1693,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:107
 msgid "Grow active window to top edge"
-msgstr ""
+msgstr "Увеличаване на активния прозорец към горния ръб"
 
 #: ../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
@@ -1739,7 +1701,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:108
 msgid "Grow active window to bottom edge"
-msgstr ""
+msgstr "Увеличаване на активния прозорец към долния ръб"
 
 #: ../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
@@ -1747,7 +1709,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:109
 msgid "Shrink active window from left edge"
-msgstr ""
+msgstr "Намаляване на активния прозорец от левия ръб"
 
 #: ../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
@@ -1755,7 +1717,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:110
 msgid "Shrink active window from right edge"
-msgstr ""
+msgstr "Намаляване на активния прозорец от десния ръб"
 
 #: ../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
@@ -1763,7 +1725,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:111
 msgid "Shrink active window from top edge"
-msgstr ""
+msgstr "Намаляване на активния прозорец от горния ръб"
 
 #: ../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
@@ -1771,7 +1733,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:112
 msgid "Shrink active window from bottom edge"
-msgstr ""
+msgstr "Намаляване на активния прозорец от долния ръб"
 
 #: ../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
@@ -1781,9 +1743,8 @@ msgstr ""
 # Затова го съкратих. (А.З.)
 # ../src/winspector.c:1262
 #: ../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "За всички прозорци"
+msgstr "Превключване на цял екран за активния прозорец"
 
 #: ../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
@@ -1791,9 +1752,8 @@ msgstr ""
 
 # ../src/winspector.c:1316
 #: ../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "Избор на прозорец"
+msgstr "Центриране на активния прозорец"
 
 #: ../src/keybind_descriptions.h:114
 msgid "CenterKey"
@@ -1801,44 +1761,39 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "Превключване на състояние «винаги отгоре» на прозореца"
 
 # ../src/dock.c:1027 ../src/dock.c:1070 ../src/dock.c:1115 ../src/dock.c:3361
 #: ../src/keybind_descriptions.h:115
-#, fuzzy
 msgid "KeepOnTopKey"
-msgstr "Винаги отгоре"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "Превключване на състояние «винаги отдолу» на прозореца"
 
 # ../src/winmenu.c:416
 #: ../src/keybind_descriptions.h:116
-#, fuzzy
 msgid "KeepAtBottomKey"
-msgstr "Винаги най-отдолу"
+msgstr ""
 
 # ../src/dock.c:3387
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "Toggle window omnipresent status"
-msgstr "Смени вездесъщността"
+msgstr "Превключване на състояние «навсякъде» на прозореца"
 
 # Изненада: "omnipresent" се използва както за иконка, така и за прозорец.
 # Затова не може нито "вездесъщен", нито "вездесъщна" и съм използвал
 # безличното "вездесъщност". (А.З.)
 # ../src/dock.c:3392 ../src/winmenu.c:421 ../src/winspector.c:1380
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "OmnipresentKey"
-msgstr "Вездесъщност"
+msgstr ""
 
 # ../src/winspector.c:1316
 #: ../src/keybind_descriptions.h:118
-#, fuzzy
 msgid "Raise active window"
-msgstr "Избор на прозорец"
+msgstr "Вдигане на активния прозорец"
 
 #: ../src/keybind_descriptions.h:118
 msgid "RaiseKey"
@@ -1846,9 +1801,8 @@ msgstr ""
 
 # ../src/winspector.c:1316
 #: ../src/keybind_descriptions.h:119
-#, fuzzy
 msgid "Lower active window"
-msgstr "Избор на прозорец"
+msgstr "Сваляне на активния прозорец"
 
 #: ../src/keybind_descriptions.h:119
 msgid "LowerKey"
@@ -1856,7 +1810,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:120
 msgid "Raise/Lower window under mouse pointer"
-msgstr ""
+msgstr "Вдигане/сваляне на прозореца под показалеца"
 
 #: ../src/keybind_descriptions.h:120
 msgid "RaiseLowerKey"
@@ -1864,34 +1818,30 @@ msgstr ""
 
 # ../src/winspector.c:1316
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "Shade active window"
-msgstr "Избор на прозорец"
+msgstr "Свиване на активния прозорец"
 
 # Hide означава всички прозорци да се скрият.  Shade значи да се остави видима
 # само заглавната лента на прозореца. И понеже на другите места "hide" е
 # превеждано като "скрий", то тук промених "Скрий" на "Засенчи". (А.З.)
 # ../src/winmenu.c:461 ../src/winmenu.c:596
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "ShadeKey"
-msgstr "Свий"
+msgstr ""
 
 # ../src/winspector.c:1316
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "Select active window"
-msgstr "Избор на прозорец"
+msgstr "Избиране на активния прозорец"
 
 # ../src/dock.c:1128
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "Маркирай я"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
-msgstr ""
+msgstr "Пускане на нов екземпляр на приложението"
 
 #: ../src/keybind_descriptions.h:123
 msgid "WindowRelaunchKey"
@@ -1899,7 +1849,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "Преместване към десния/долния/левия/горния екран"
 
 #: ../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -1907,7 +1857,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "Преместване към левия/горния/десния/долния екран"
 
 #: ../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -1919,13 +1869,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:131 ../src/keybind_descriptions.h:132
 #: ../src/keybind_descriptions.h:133 ../src/keybind_descriptions.h:134
 #: ../src/keybind_descriptions.h:135 ../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Свойства на прозореца"
+msgstr "Бързи клавиши за прозорци"
 
 #: ../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 1"
 
 #: ../src/keybind_descriptions.h:127
 msgid "WindowShortcut1Key"
@@ -1933,7 +1882,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 2"
 
 #: ../src/keybind_descriptions.h:128
 msgid "WindowShortcut2Key"
@@ -1941,7 +1890,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 3"
 
 #: ../src/keybind_descriptions.h:129
 msgid "WindowShortcut3Key"
@@ -1949,7 +1898,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 4"
 
 #: ../src/keybind_descriptions.h:130
 msgid "WindowShortcut4Key"
@@ -1957,7 +1906,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 5"
 
 #: ../src/keybind_descriptions.h:131
 msgid "WindowShortcut5Key"
@@ -1965,7 +1914,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 6"
 
 #: ../src/keybind_descriptions.h:132
 msgid "WindowShortcut6Key"
@@ -1973,7 +1922,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 7"
 
 #: ../src/keybind_descriptions.h:133
 msgid "WindowShortcut7Key"
@@ -1981,7 +1930,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 8"
 
 #: ../src/keybind_descriptions.h:134
 msgid "WindowShortcut8Key"
@@ -1989,7 +1938,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 9"
 
 #: ../src/keybind_descriptions.h:135
 msgid "WindowShortcut9Key"
@@ -1997,7 +1946,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
-msgstr ""
+msgstr "Бърз клавиш за прозорец 10"
 
 #: ../src/keybind_descriptions.h:136
 msgid "WindowShortcut10Key"
@@ -2011,13 +1960,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:148 ../src/keybind_descriptions.h:149
 #: ../src/keybind_descriptions.h:150 ../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "Фокус и групи"
 
 # ../src/winspector.c:1316
 #: ../src/keybind_descriptions.h:138
-#, fuzzy
 msgid "Focus next window"
-msgstr "Избор на прозорец"
+msgstr "Фокусиране на следващия прозорец"
 
 #: ../src/keybind_descriptions.h:138
 msgid "FocusNextKey"
@@ -2025,7 +1973,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:139
 msgid "Focus previous window"
-msgstr ""
+msgstr "Фокусиране на предишния прозорец"
 
 #: ../src/keybind_descriptions.h:139
 msgid "FocusPrevKey"
@@ -2033,7 +1981,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:140
 msgid "Focus the window to the left"
-msgstr ""
+msgstr "Фокусиране на прозореца вляво"
 
 #: ../src/keybind_descriptions.h:140
 msgid "FocusWindowLeftKey"
@@ -2041,7 +1989,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:141
 msgid "Focus the window to the right"
-msgstr ""
+msgstr "Фокусиране на прозореца вдясно"
 
 #: ../src/keybind_descriptions.h:141
 msgid "FocusWindowRightKey"
@@ -2049,7 +1997,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:142
 msgid "Focus the window above"
-msgstr ""
+msgstr "Фокусиране на прозореца отгоре"
 
 #: ../src/keybind_descriptions.h:142
 msgid "FocusWindowUpKey"
@@ -2057,7 +2005,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:143
 msgid "Focus the window below"
-msgstr ""
+msgstr "Фокусиране на прозореца отдолу"
 
 #: ../src/keybind_descriptions.h:143
 msgid "FocusWindowDownKey"
@@ -2065,7 +2013,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:144
 msgid "Focus next window in group"
-msgstr ""
+msgstr "Фокусиране на следващия прозорец в групата"
 
 #: ../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
@@ -2073,7 +2021,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:145
 msgid "Focus previous window in group"
-msgstr ""
+msgstr "Фокусиране на предишния прозорец в групата"
 
 #: ../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
@@ -2081,9 +2029,8 @@ msgstr ""
 
 # ../src/winspector.c:1601
 #: ../src/keybind_descriptions.h:146
-#, fuzzy
 msgid "Switch to next application group"
-msgstr "Споделена иконка на приложението"
+msgstr "Преминаване към следващата група приложения"
 
 #: ../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
@@ -2091,9 +2038,8 @@ msgstr ""
 
 # ../src/winspector.c:1601
 #: ../src/keybind_descriptions.h:147
-#, fuzzy
 msgid "Switch to previous application group"
-msgstr "Споделена иконка на приложението"
+msgstr "Преминаване към предишната група приложения"
 
 #: ../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
@@ -2101,7 +2047,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:148
 msgid "Switch to next tab in group"
-msgstr ""
+msgstr "Преминаване към следващия раздел в групата"
 
 #: ../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
@@ -2109,7 +2055,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:149
 msgid "Switch to previous tab in group"
-msgstr ""
+msgstr "Преминаване към предишния раздел в групата"
 
 #: ../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
@@ -2117,7 +2063,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:150
 msgid "Attach window as tab"
-msgstr ""
+msgstr "Прикачване на прозореца като раздел"
 
 #: ../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -2125,7 +2071,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Откачване на раздела от групата"
 
 #: ../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -2162,49 +2108,44 @@ msgid "Workspaces"
 msgstr "Работни места"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "Open workspace pager"
-msgstr "Да се запази състоянието"
+msgstr "Отваряне на прегледа на работните места"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
-msgstr ""
+msgstr "Преминаване към следващото работно място"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
-msgstr ""
+msgstr "Преминаване към предишното работно място"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
-msgstr ""
+msgstr "Преминаване към последно използваното работно място"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
-msgstr ""
+msgstr "Преминаване към следващите десет работни места"
 
 #: ../src/keybind_descriptions.h:157
 msgid "NextWorkspaceLayerKey"
@@ -2212,7 +2153,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
-msgstr ""
+msgstr "Преминаване към предишните десет работни места"
 
 #: ../src/keybind_descriptions.h:158
 msgid "PrevWorkspaceLayerKey"
@@ -2220,152 +2161,134 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:159
 msgid "Switch to workspace on the left"
-msgstr ""
+msgstr "Преминаване към работното място вляво"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:160
 msgid "Switch to workspace on the right"
-msgstr ""
+msgstr "Преминаване към работното място вдясно"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "Switch to workspace above"
-msgstr "Да се запази състоянието"
+msgstr "Преминаване към работното място отгоре"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:162
 msgid "Switch to workspace below"
-msgstr ""
+msgstr "Преминаване към работното място отдолу"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
-msgstr ""
+msgstr "Преминаване към работно място 1"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
-msgstr ""
+msgstr "Преминаване към работно място 2"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
-msgstr ""
+msgstr "Преминаване към работно място 3"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
-msgstr ""
+msgstr "Преминаване към работно място 4"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
-msgstr ""
+msgstr "Преминаване към работно място 5"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
-msgstr ""
+msgstr "Преминаване към работно място 6"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
-msgstr ""
+msgstr "Преминаване към работно място 7"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
-msgstr ""
+msgstr "Преминаване към работно място 8"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
-msgstr ""
+msgstr "Преминаване към работно място 9"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
-msgstr ""
+msgstr "Преминаване към работно място 10"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "Move window to next workspace"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към следващото работно място"
 
 #: ../src/keybind_descriptions.h:173
 msgid "MoveToNextWorkspaceKey"
@@ -2373,11 +2296,8 @@ msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "Move window to previous workspace"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към предишното работно място"
 
 #: ../src/keybind_descriptions.h:174
 msgid "MoveToPrevWorkspaceKey"
@@ -2385,11 +2305,8 @@ msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "Move window to last used workspace"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към последно използваното работно място"
 
 #: ../src/keybind_descriptions.h:175
 msgid "MoveToLastWorkspaceKey"
@@ -2397,11 +2314,8 @@ msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "Move window to next ten workspaces"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към следващите десет работни места"
 
 #: ../src/keybind_descriptions.h:176
 msgid "MoveToNextWorkspaceLayerKey"
@@ -2409,11 +2323,8 @@ msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:177
-#, fuzzy
 msgid "Move window to previous ten workspaces"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към предишните десет работни места"
 
 #: ../src/keybind_descriptions.h:177
 msgid "MoveToPrevWorkspaceLayerKey"
@@ -2421,7 +2332,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:178
 msgid "Move window to workspace on the left"
-msgstr ""
+msgstr "Преместване на прозореца към работното място вляво"
 
 #: ../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
@@ -2429,7 +2340,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:179
 msgid "Move window to workspace on the right"
-msgstr ""
+msgstr "Преместване на прозореца към работното място вдясно"
 
 #: ../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
@@ -2437,25 +2348,18 @@ msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работното място отгоре"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "MoveToUpWorkspaceKey"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работното място отдолу"
 
 #: ../src/keybind_descriptions.h:181
 msgid "MoveToDownWorkspaceKey"
@@ -2463,279 +2367,202 @@ msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "Move window to workspace 1"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 1"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "Move window to workspace 2"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 2"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "Move window to workspace 3"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 3"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "Move window to workspace 4"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 4"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "Move window to workspace 5"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 5"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "Move window to workspace 6"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 6"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "Move window to workspace 7"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 7"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "Move window to workspace 8"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 8"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "Move window to workspace 9"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 9"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "Move window to workspace 10"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Преместване на прозореца към работно място 10"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 1"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 2"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 3"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 4"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 5"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 6"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 7"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 8"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "Работни места"
+msgstr ""
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Превключване на прозореца на работно място 9"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:201
 msgid "Toggle window on workspace 10"
-msgstr ""
+msgstr "Превключване на прозореца на работно място 10"
 
 # ../src/workspace.c:863
 #: ../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "ToggleWorkspace10Key"
-msgstr "Работни места"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:203 ../src/keybind_descriptions.h:204
 #: ../src/keybind_descriptions.h:205 ../src/keybind_descriptions.h:206
@@ -2743,12 +2570,11 @@ msgstr "Работни места"
 #: ../src/keybind_descriptions.h:209 ../src/keybind_descriptions.h:210
 #: ../src/keybind_descriptions.h:211 ../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Мозайка и подредба"
 
 #: ../src/keybind_descriptions.h:203
-#, fuzzy
 msgid "Cycle workspace tiling layout"
-msgstr "Да се запази състоянието"
+msgstr "Превключване на мозаечната подредба на работното място"
 
 #: ../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -2756,7 +2582,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Превключване на мозаечната подредба на работното място назад"
 
 #: ../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -2764,16 +2590,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Размяна на оста на мозаечната подредба"
 
 #: ../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:206
-#, fuzzy
 msgid "Set workspace layout to float"
-msgstr "Да се запази състоянието"
+msgstr "Задаване на подредбата на работното място като плаваща"
 
 #: ../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -2781,7 +2606,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Увеличаване на броя водещи в подредбата"
 
 #: ../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -2789,7 +2614,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Намаляване на броя водещи в подредбата"
 
 #: ../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -2797,7 +2622,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Увеличаване на дела на водещия в подредбата"
 
 #: ../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -2805,7 +2630,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Намаляване на дела на водещия в подредбата"
 
 #: ../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
@@ -2813,7 +2638,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:211
 msgid "Toggle tiling for active window"
-msgstr ""
+msgstr "Превключване на мозайката за активния прозорец"
 
 #: ../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
@@ -2821,9 +2646,8 @@ msgstr ""
 
 # ../src/dialog.c:1581
 #: ../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "Стартирай друг администратор на прозорците"
+msgstr "Размяна на активния прозорец с водещия"
 
 #: ../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -2833,17 +2657,13 @@ msgstr ""
 #: ../src/keybind_descriptions.h:214 ../src/keybind_descriptions.h:215
 #: ../src/keybind_descriptions.h:216 ../src/keybind_descriptions.h:217
 #: ../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Прозорци"
+msgstr "Маркери на прозорци"
 
 # ../src/winspector.c:1382
 #: ../src/keybind_descriptions.h:214
-#, fuzzy
 msgid "Mark window: set mark"
-msgstr ""
-"Прави прозореца да присъства\n"
-"на всички работни места."
+msgstr "Маркиране на прозорец: задаване на маркер"
 
 #: ../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -2851,7 +2671,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "Маркиране на прозорец: премахване на маркера"
 
 #: ../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -2859,7 +2679,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Маркиране на прозорец: довеждане на маркирания прозорец тук"
 
 #: ../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -2867,7 +2687,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Маркиране на прозорец: преминаване към маркирания прозорец"
 
 #: ../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -2875,7 +2695,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Маркиране на прозорец: размяна с маркирания прозорец"
 
 #: ../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
@@ -2884,9 +2704,8 @@ msgstr ""
 #
 # ../src/appicon.c:585 ../src/dock.c:282 ../src/winmenu.c:125
 #: ../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "Убиване на приложение"
+msgstr "Намиране на приложение"
 
 #: ../src/keybind_descriptions.h:220
 msgid "RunKey"
@@ -2894,9 +2713,8 @@ msgstr ""
 
 # ../src/winspector.c:1437
 #: ../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "Да не се прихващат бързи клавиши"
+msgstr "Показване на бързите клавиши"
 
 #: ../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
@@ -2904,21 +2722,18 @@ msgstr ""
 
 # ../src/dialog.c:1580
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "Exit Window Maker"
-msgstr "Рестартирай Уиндоу Мейкър"
+msgstr "Изход от Window Maker"
 
 # ../src/rootmenu.c:186 ../src/rootmenu.c:188
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "ExitKey"
-msgstr "Изход"
+msgstr ""
 
 # ../src/dock.c:2119 ../src/dock.c:2253
 #: ../src/keybind_descriptions.h:223
-#, fuzzy
 msgid "Lock screen"
-msgstr "Скачване на иконка"
+msgstr "Заключване на екрана"
 
 #: ../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -2926,7 +2741,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Отваряне на историята на буфера за обмен"
 
 #: ../src/keybind_descriptions.h:224
 msgid "ClipboardKey"
@@ -4024,7 +3839,7 @@ msgstr ""
 
 #: ../src/winmenu.c:90
 msgid "Restore geometry"
-msgstr ""
+msgstr "Възстановяване на геометрията"
 
 #: ../src/winmenu.c:91
 msgid "Region snap"

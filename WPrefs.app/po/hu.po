@@ -1087,7 +1087,7 @@ msgstr "Műveletek"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:573
 msgid "List Mode"
-msgstr ""
+msgstr "Listanézet"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:578
 #, fuzzy
@@ -2653,11 +2653,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:46 ../../src/keybind_descriptions.h:47
 #: ../../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Virtuális asztal"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Virtuális asztal áthelyezése a következő bal szélre"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -2665,7 +2665,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Virtuális asztal áthelyezése a következő jobb szélre"
 
 #: ../../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -2673,7 +2673,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Virtuális asztal áthelyezése a következő felső szélre"
 
 #: ../../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -2681,7 +2681,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Virtuális asztal áthelyezése a következő alsó szélre"
 
 #: ../../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -2689,7 +2689,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Virtuális asztal áthelyezése a kezdőhelyére"
 
 #: ../../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -2697,7 +2697,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Fókuszált ablak középre helyezése a virtuális asztalon"
 
 #: ../../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -2705,7 +2705,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Fókuszált ablak rögzítése a virtuális asztal nézetéhez"
 
 #: ../../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -2716,7 +2716,7 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:222 ../../src/keybind_descriptions.h:223
 #: ../../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Munkamenet és egyéb"
 
 #: ../../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
@@ -2728,7 +2728,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Ékezetes és különleges karakterek választása"
 
 #: ../../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -2736,9 +2736,8 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:62 ../../src/keybind_descriptions.h:63
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "Menus"
-msgstr "Menüpontok"
+msgstr "Menük"
 
 #: ../../src/keybind_descriptions.h:62
 msgid "Open applications menu"
@@ -2753,49 +2752,43 @@ msgid "Open window list menu"
 msgstr "Ablakok menü megnyitása"
 
 #: ../../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Ablakok menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
 msgstr "Ablak-parancsok menü megnyitása"
 
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Ablakok menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:66 ../../src/keybind_descriptions.h:67
 #: ../../src/keybind_descriptions.h:68 ../../src/keybind_descriptions.h:69
 #: ../../src/keybind_descriptions.h:70 ../../src/keybind_descriptions.h:71
 #: ../../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "Dokk beállítások"
+msgstr "Dokk és képernyő"
 
 #: ../../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
 msgstr "Dokk előtérbe/háttérbe"
 
 #: ../../src/keybind_descriptions.h:66
-#, fuzzy
 msgid "DockRaiseLowerKey"
-msgstr "Dokk előtérbe/háttérbe"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
 msgstr "Kapocs előtérbe/háttérbe"
 
 #: ../../src/keybind_descriptions.h:67
-#, fuzzy
 msgid "ClipRaiseLowerKey"
-msgstr "Kapocs előtérbe/háttérbe"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:68
-#, fuzzy
 msgid "Switch to next screen/monitor"
-msgstr "Következő képernyőre/monitorra vált"
+msgstr "Váltás a következő képernyőre/monitorra"
 
 #: ../../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
@@ -2803,35 +2796,31 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:69
 msgid "Capture the entire screen"
-msgstr ""
+msgstr "Teljes képernyő rögzítése"
 
 #: ../../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "ScreenCaptureKey"
-msgstr "Megtanul"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "Az összes ablak ikonállapotba tétele"
+msgstr "Ablak rögzítése"
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "WindowCaptureKey"
-msgstr "Megtanul"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Képernyőrészlet rögzítése"
 
 #: ../../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Find the mouse pointer"
-msgstr "...amelyikre az egér mutat"
+msgstr "Egérmutató megtalálása"
 
 #: ../../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -2863,32 +2852,28 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:120 ../../src/keybind_descriptions.h:121
 #: ../../src/keybind_descriptions.h:122 ../../src/keybind_descriptions.h:123
 #: ../../src/keybind_descriptions.h:124 ../../src/keybind_descriptions.h:125
-#, fuzzy
 msgid "Windows"
-msgstr "Ablakok kiválasztása"
+msgstr "Ablakok"
 
 #: ../../src/keybind_descriptions.h:74
 msgid "Miniaturize active window"
 msgstr "Aktuális ablak ikonállapotba tétele"
 
 #: ../../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Aktuális ablak ikonállapotba tétele"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:75
 msgid "Miniaturize all windows"
 msgstr "Az összes ablak ikonállapotba tétele"
 
 #: ../../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "Az összes ablak ikonállapotba tétele"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Aktuális ablak ikonállapotba tétele"
+msgstr "Más ablakok minimalizálása"
 
 #: ../../src/keybind_descriptions.h:76
 msgid "MiniaturizeOthersKey"
@@ -2912,53 +2897,47 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Asztal megjelenítésének váltása (minden minimalizálása/visszaállítása)"
 
 #: ../../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "Minden ablak mutatása"
+msgstr "Minden ablak megjelenítése"
 
 #: ../../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "Ikonok elrendezése"
+msgstr "Ikonok rendezése"
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "ArrangeIconsKey"
-msgstr "Ikonok elrendezése"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
 msgstr "Aktuális ablak mozgatása/átméretezése"
 
 #: ../../src/keybind_descriptions.h:82
-#, fuzzy
 msgid "MoveResizeKey"
-msgstr "Teli mozgatás/méretezés"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:83
 msgid "Close active window"
 msgstr "Aktuális ablak bezárása"
 
 #: ../../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Bezár"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Aktuális ablak előtérbe"
+msgstr "Aktív ablak geometriájának visszaállítása"
 
 #: ../../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -2969,280 +2948,244 @@ msgid "Maximize active window"
 msgstr "Aktuális ablak teljes méretűre"
 
 #: ../../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
 msgstr "Aktuális ablak fűggölegesen teljes méretűre"
 
 #: ../../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
 msgstr "Aktuális ablak vízszintesen teljes méretűre"
 
 #: ../../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
 msgstr "Aktuális ablak balra teljes méretűre"
 
 #: ../../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
 msgstr "Aktuális ablak jobbra teljes méretűre"
 
 #: ../../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
 msgstr "Aktuális ablak felül teljes méretűre"
 
 #: ../../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
 msgstr "Aktuális ablak alul teljes méretűre"
 
 #: ../../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "Maximize active window top left corner"
-msgstr "Aktuális ablak bal felül teljes méretűre"
+msgstr "Aktív ablak maximalizálása a bal felső sarokra"
 
 #: ../../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "Maximize active window top right corner"
-msgstr "Aktuális ablak jobb felül teljes méretűre"
+msgstr "Aktív ablak maximalizálása a jobb felső sarokra"
 
 #: ../../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "Maximize active window bottom left corner"
-msgstr "Aktuális ablak balra alul teljes méretűre"
+msgstr "Aktív ablak maximalizálása a bal alsó sarokra"
 
 #: ../../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "Maximize active window bottom right corner"
-msgstr "Aktuális ablak balra alul teljes méretűre"
+msgstr "Aktív ablak maximalizálása a jobb alsó sarokra"
 
 #: ../../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "Aktuális ablak bezárása"
+msgstr "Aktív ablak csempézése"
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "Nagyít"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:97
-#, fuzzy
 msgid "Move active window to left edge"
-msgstr "Aktuális ablak felül teljes méretűre"
+msgstr "Aktív ablak mozgatása a bal szélre"
 
 #: ../../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:98
-#, fuzzy
 msgid "Move active window to right edge"
-msgstr "Aktuális ablak jobbra teljes méretűre"
+msgstr "Aktív ablak mozgatása a jobb szélre"
 
 #: ../../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:99
-#, fuzzy
 msgid "Move active window to top edge"
-msgstr "Aktuális ablak bal felül teljes méretűre"
+msgstr "Aktív ablak mozgatása a felső szélre"
 
 #: ../../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:100
-#, fuzzy
 msgid "Move active window to bottom edge"
-msgstr "Aktuális ablak balra alul teljes méretűre"
+msgstr "Aktív ablak mozgatása az alsó szélre"
 
 #: ../../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:101
-#, fuzzy
 msgid "Move active window to left screen edge"
-msgstr "Aktuális ablak bal felül teljes méretűre"
+msgstr "Aktív ablak mozgatása a képernyő bal szélére"
 
 #: ../../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:102
-#, fuzzy
 msgid "Move active window to right screen edge"
-msgstr "Aktuális ablak jobb felül teljes méretűre"
+msgstr "Aktív ablak mozgatása a képernyő jobb szélére"
 
 #: ../../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:103
-#, fuzzy
 msgid "Move active window to top screen edge"
-msgstr "Aktuális ablak bal felül teljes méretűre"
+msgstr "Aktív ablak mozgatása a képernyő felső szélére"
 
 #: ../../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:104
-#, fuzzy
 msgid "Move active window to bottom screen edge"
-msgstr "Aktuális ablak balra alul teljes méretűre"
+msgstr "Aktív ablak mozgatása a képernyő alsó szélére"
 
 #: ../../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:105
-#, fuzzy
 msgid "Grow active window to left edge"
-msgstr "Aktuális ablak felül teljes méretűre"
+msgstr "Aktív ablak növelése a bal szél felé"
 
 #: ../../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:106
-#, fuzzy
 msgid "Grow active window to right edge"
-msgstr "Aktuális ablak jobbra teljes méretűre"
+msgstr "Aktív ablak növelése a jobb szél felé"
 
 #: ../../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:107
-#, fuzzy
 msgid "Grow active window to top edge"
-msgstr "Aktuális ablak háttérbe"
+msgstr "Aktív ablak növelése a felső szél felé"
 
 #: ../../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:108
-#, fuzzy
 msgid "Grow active window to bottom edge"
-msgstr "Aktuális ablak balra alul teljes méretűre"
+msgstr "Aktív ablak növelése az alsó szél felé"
 
 #: ../../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:109
-#, fuzzy
 msgid "Shrink active window from left edge"
-msgstr "Aktuális ablak balra teljes méretűre"
+msgstr "Aktív ablak csökkentése a bal szélről"
 
 #: ../../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:110
-#, fuzzy
 msgid "Shrink active window from right edge"
-msgstr "Aktuális ablak jobbra teljes méretűre"
+msgstr "Aktív ablak csökkentése a jobb szélről"
 
 #: ../../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:111
-#, fuzzy
 msgid "Shrink active window from top edge"
-msgstr "Aktuális ablak bal felül teljes méretűre"
+msgstr "Aktív ablak csökkentése a felső szélről"
 
 #: ../../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:112
-#, fuzzy
 msgid "Shrink active window from bottom edge"
-msgstr "Aktuális ablak balra alul teljes méretűre"
+msgstr "Aktív ablak csökkentése az alsó szélről"
 
 #: ../../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "Aktuális ablak háttérbe"
+msgstr "Teljes képernyő váltása az aktív ablakra"
 
 #: ../../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "Aktuális ablak háttérbe"
+msgstr "Aktív ablak középre helyezése"
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "CenterKey"
-msgstr "Középre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "Ablak «mindig felül» állapotának váltása"
 
 #: ../../src/keybind_descriptions.h:115
 msgid "KeepOnTopKey"
@@ -3250,16 +3193,15 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "Ablak «mindig alul» állapotának váltása"
 
 #: ../../src/keybind_descriptions.h:116
 msgid "KeepAtBottomKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "Toggle window omnipresent status"
-msgstr "Ablak az előző tíz munkafelületre"
+msgstr "Ablak «mindenütt jelen lévő» állapotának váltása"
 
 #: ../../src/keybind_descriptions.h:117
 msgid "OmnipresentKey"
@@ -3286,9 +3228,8 @@ msgid "Raise/Lower window under mouse pointer"
 msgstr "Egér mutató alatti ablak előtérbe/háttérbe"
 
 #: ../../src/keybind_descriptions.h:120
-#, fuzzy
 msgid "RaiseLowerKey"
-msgstr "Dokk előtérbe/háttérbe"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:121
 msgid "Shade active window"
@@ -3303,22 +3244,20 @@ msgid "Select active window"
 msgstr "Aktuális ablak kijelölése"
 
 #: ../../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "Válassz fájlt"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
 msgstr "Alkalmazás új példányának indítása"
 
 #: ../../src/keybind_descriptions.h:123
-#, fuzzy
 msgid "WindowRelaunchKey"
-msgstr "Ablak lehelyezés"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "Áthelyezés a jobb/alsó/bal/felső képernyőre"
 
 #: ../../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -3326,7 +3265,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "Áthelyezés a bal/felső/jobb/alsó képernyőre"
 
 #: ../../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -3337,90 +3276,80 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:131 ../../src/keybind_descriptions.h:132
 #: ../../src/keybind_descriptions.h:133 ../../src/keybind_descriptions.h:134
 #: ../../src/keybind_descriptions.h:135 ../../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Gyorsbillentyű"
+msgstr "Ablak gyorsbillentyűk"
 
 #: ../../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
 msgstr "Gyorsbillentyű az első ablakra"
 
 #: ../../src/keybind_descriptions.h:127
-#, fuzzy
 msgid "WindowShortcut1Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
 msgstr "Gyorsbillentyű a második ablakra"
 
 #: ../../src/keybind_descriptions.h:128
-#, fuzzy
 msgid "WindowShortcut2Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
 msgstr "Gyorsbillentyű a harmadik ablakra"
 
 #: ../../src/keybind_descriptions.h:129
-#, fuzzy
 msgid "WindowShortcut3Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
 msgstr "Gyorsbillentyű a negyedik ablakra"
 
 #: ../../src/keybind_descriptions.h:130
-#, fuzzy
 msgid "WindowShortcut4Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
 msgstr "Gyorsbillentyű az ötödik ablakra"
 
 #: ../../src/keybind_descriptions.h:131
-#, fuzzy
 msgid "WindowShortcut5Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
 msgstr "Gyorsbillentyű a hatodik ablakra"
 
 #: ../../src/keybind_descriptions.h:132
-#, fuzzy
 msgid "WindowShortcut6Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
 msgstr "Gyorsbillentyű a hetedik ablakra"
 
 #: ../../src/keybind_descriptions.h:133
-#, fuzzy
 msgid "WindowShortcut7Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
 msgstr "Gyorsbillentyű a nyolcadik ablakra"
 
 #: ../../src/keybind_descriptions.h:134
-#, fuzzy
 msgid "WindowShortcut8Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
 msgstr "Gyorsbillentyű a kilencedik ablakra"
 
 #: ../../src/keybind_descriptions.h:135
-#, fuzzy
 msgid "WindowShortcut9Key"
-msgstr "Gyorsbillentyű"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
@@ -3438,7 +3367,7 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:148 ../../src/keybind_descriptions.h:149
 #: ../../src/keybind_descriptions.h:150 ../../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "Fókusz és csoportok"
 
 #: ../../src/keybind_descriptions.h:138
 msgid "Focus next window"
@@ -3457,103 +3386,88 @@ msgid "FocusPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:140
-#, fuzzy
 msgid "Focus the window to the left"
-msgstr "A fókuszált ablak címsora"
+msgstr "Bal oldali ablak fókuszálása"
 
 #: ../../src/keybind_descriptions.h:140
-#, fuzzy
 msgid "FocusWindowLeftKey"
-msgstr "Fókuszált ablak"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:141
-#, fuzzy
 msgid "Focus the window to the right"
-msgstr "A fókuszált ablak címsora"
+msgstr "Jobb oldali ablak fókuszálása"
 
 #: ../../src/keybind_descriptions.h:141
-#, fuzzy
 msgid "FocusWindowRightKey"
-msgstr "A fókuszált ablak címsora"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:142
-#, fuzzy
 msgid "Focus the window above"
-msgstr "Fókusz a következő ablakra"
+msgstr "Felső ablak fókuszálása"
 
 #: ../../src/keybind_descriptions.h:142
-#, fuzzy
 msgid "FocusWindowUpKey"
-msgstr "Fókuszált ablak"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:143
-#, fuzzy
 msgid "Focus the window below"
-msgstr "Fókusz a következő ablakra"
+msgstr "Alsó ablak fókuszálása"
 
 #: ../../src/keybind_descriptions.h:143
-#, fuzzy
 msgid "FocusWindowDownKey"
-msgstr "Fókuszált ablak"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:144
-#, fuzzy
 msgid "Focus next window in group"
-msgstr "Fókusz a következő ablakra"
+msgstr "Csoport következő ablakának fókuszálása"
 
 #: ../../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:145
-#, fuzzy
 msgid "Focus previous window in group"
-msgstr "Fókusz az előző ablakra"
+msgstr "Csoport előző ablakának fókuszálása"
 
 #: ../../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:146
-#, fuzzy
 msgid "Switch to next application group"
-msgstr "Váltás a következő tíz munkafelületre"
+msgstr "Váltás a következő alkalmazáscsoportra"
 
 #: ../../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:147
-#, fuzzy
 msgid "Switch to previous application group"
-msgstr "Váltás az előző tíz munkafelületre"
+msgstr "Váltás az előző alkalmazáscsoportra"
 
 #: ../../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:148
-#, fuzzy
 msgid "Switch to next tab in group"
-msgstr "Váltás a következő tíz munkafelületre"
+msgstr "Váltás a csoport következő fülére"
 
 #: ../../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:149
-#, fuzzy
 msgid "Switch to previous tab in group"
-msgstr "Váltás az előző tíz munkafelületre"
+msgstr "Váltás a csoport előző fülére"
 
 #: ../../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:150
-#, fuzzy
 msgid "Attach window as tab"
-msgstr "Automatikus ablak előrerakás késleltetése"
+msgstr "Ablak csatolása fülként"
 
 #: ../../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -3561,7 +3475,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Fül leválasztása a csoportról"
 
 #: ../../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -3592,46 +3506,40 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:197 ../../src/keybind_descriptions.h:198
 #: ../../src/keybind_descriptions.h:199 ../../src/keybind_descriptions.h:200
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "Workspaces"
-msgstr "Munkafelület menü"
+msgstr "Munkafelületek"
 
 #: ../../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "Open workspace pager"
-msgstr ": Munkafelületek almenü megnyitása"
+msgstr "Munkafelület-nézegető megnyitása"
 
 #: ../../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
 msgstr "Váltás a következő munkafelületre"
 
 #: ../../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
 msgstr "Váltás az előző munkafelületre"
 
 #: ../../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
 msgstr "Váltás az utolsó munkafelületre"
 
 #: ../../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
@@ -3650,143 +3558,124 @@ msgid "PrevWorkspaceLayerKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "Switch to workspace on the left"
-msgstr "Váltás az első munkafelületre"
+msgstr "Váltás a bal oldali munkafelületre"
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "Switch to workspace on the right"
-msgstr "Váltás az első munkafelületre"
+msgstr "Váltás a jobb oldali munkafelületre"
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "Munkafelület váltás"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "Switch to workspace above"
-msgstr "Váltás az első munkafelületre"
+msgstr "Váltás a felső munkafelületre"
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "Switch to workspace below"
-msgstr "Váltás az első munkafelületre"
+msgstr "Váltás az alsó munkafelületre"
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
 msgstr "Váltás az első munkafelületre"
 
 #: ../../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
 msgstr "Váltás a második munkafelületre"
 
 #: ../../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
 msgstr "Váltás a harmadik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
 msgstr "Váltás a negyedik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
 msgstr "Váltás az ötödik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
 msgstr "Váltás a hatodik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
 msgstr "Váltás a hetedik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
 msgstr "Váltás a nyolcadik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
 msgstr "Váltás a kilencedik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
 msgstr "Váltás a tizedik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:173
 msgid "Move window to next workspace"
 msgstr "Ablak a következő munkafelületre"
 
 #: ../../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "MoveToNextWorkspaceKey"
-msgstr "Ablak a következő munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:174
 msgid "Move window to previous workspace"
@@ -3821,226 +3710,192 @@ msgid "MoveToPrevWorkspaceLayerKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:178
-#, fuzzy
 msgid "Move window to workspace on the left"
-msgstr "Ablak az első munkafelületre"
+msgstr "Ablak áthelyezése a bal oldali munkafelületre"
 
 #: ../../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:179
-#, fuzzy
 msgid "Move window to workspace on the right"
-msgstr "Ablak az első munkafelületre"
+msgstr "Ablak áthelyezése a jobb oldali munkafelületre"
 
 #: ../../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "Ablak az első munkafelületre"
+msgstr "Ablak áthelyezése a felső munkafelületre"
 
 #: ../../src/keybind_descriptions.h:180
 msgid "MoveToUpWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "Ablak az első munkafelületre"
+msgstr "Ablak áthelyezése az alsó munkafelületre"
 
 #: ../../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "MoveToDownWorkspaceKey"
-msgstr "Ablak az első munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:182
 msgid "Move window to workspace 1"
 msgstr "Ablak az első munkafelületre"
 
 #: ../../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "Ablak az első munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:183
 msgid "Move window to workspace 2"
 msgstr "Ablak a második munkafelületre"
 
 #: ../../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "Ablak a második munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:184
 msgid "Move window to workspace 3"
 msgstr "Ablak a harmadik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "Ablak a harmadik munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:185
 msgid "Move window to workspace 4"
 msgstr "Ablak a negyedik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "Ablak a negyedik munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:186
 msgid "Move window to workspace 5"
 msgstr "Ablak az ötödik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "Ablak az ötödik munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:187
 msgid "Move window to workspace 6"
 msgstr "Ablak a hatodik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "Ablak a hatodik munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:188
 msgid "Move window to workspace 7"
 msgstr "Ablak a hetedik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "Ablak a hetedik munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:189
 msgid "Move window to workspace 8"
 msgstr "Ablak a nyolcadik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "Ablak a nyolcadik munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:190
 msgid "Move window to workspace 9"
 msgstr "Ablak a kilencedik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "Ablak a kilencedik munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:191
 msgid "Move window to workspace 10"
 msgstr "Ablak a tizedik munkafelületre"
 
 #: ../../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "Ablak a tizedik munkafelületre"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "Ablak az első munkafelületre"
+msgstr "Ablak váltása a(z) 1. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "Ablak a második munkafelületre"
+msgstr "Ablak váltása a(z) 2. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "Ablak a harmadik munkafelületre"
+msgstr "Ablak váltása a(z) 3. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "Ablak a negyedik munkafelületre"
+msgstr "Ablak váltása a(z) 4. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "Ablak az ötödik munkafelületre"
+msgstr "Ablak váltása a(z) 5. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "Ablak a hatodik munkafelületre"
+msgstr "Ablak váltása a(z) 6. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "Ablak a hetedik munkafelületre"
+msgstr "Ablak váltása a(z) 7. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "Ablak a nyolcadik munkafelületre"
+msgstr "Ablak váltása a(z) 8. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "Ablak a kilencedik munkafelületre"
+msgstr "Ablak váltása a(z) 9. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "Munkafelület menü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "Toggle window on workspace 10"
-msgstr "Ablak a tizedik munkafelületre"
+msgstr "Ablak váltása a(z) 10. munkafelületen"
 
 #: ../../src/keybind_descriptions.h:201
 msgid "ToggleWorkspace10Key"
@@ -4052,11 +3907,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:209 ../../src/keybind_descriptions.h:210
 #: ../../src/keybind_descriptions.h:211 ../../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Csempézés és elrendezés"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "Cycle workspace tiling layout"
-msgstr ""
+msgstr "Munkafelület csempézési elrendezésének váltása"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -4064,7 +3919,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Munkafelület csempézési elrendezésének váltása visszafelé"
 
 #: ../../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -4072,7 +3927,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Csempézési elrendezés tengelyének cseréje"
 
 #: ../../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
@@ -4080,7 +3935,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:206
 msgid "Set workspace layout to float"
-msgstr ""
+msgstr "Munkafelület elrendezésének beállítása lebegőre"
 
 #: ../../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -4088,7 +3943,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Elrendezés mestereinek növelése"
 
 #: ../../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -4096,7 +3951,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Elrendezés mestereinek csökkentése"
 
 #: ../../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -4104,7 +3959,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Elrendezés mesterarányának növelése"
 
 #: ../../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -4112,25 +3967,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Elrendezés mesterarányának csökkentése"
 
 #: ../../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:211
-#, fuzzy
 msgid "Toggle tiling for active window"
-msgstr "Aktuális ablak háttérbe"
+msgstr "Csempézés váltása az aktív ablakra"
 
 #: ../../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "Aktuális ablak felül teljes méretűre"
+msgstr "Aktív ablak cseréje a mesterre"
 
 #: ../../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -4139,13 +3992,12 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:214 ../../src/keybind_descriptions.h:215
 #: ../../src/keybind_descriptions.h:216 ../../src/keybind_descriptions.h:217
 #: ../../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Kilépés"
+msgstr "Ablakjelölések"
 
 #: ../../src/keybind_descriptions.h:214
 msgid "Mark window: set mark"
-msgstr ""
+msgstr "Ablak jelölése: jelölő beállítása"
 
 #: ../../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -4153,7 +4005,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "Ablak jelölése: jelölő eltávolítása"
 
 #: ../../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -4161,7 +4013,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Ablak jelölése: jelölt ablak idehozása"
 
 #: ../../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -4169,7 +4021,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Ablak jelölése: ugrás a jelölt ablakra"
 
 #: ../../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -4177,25 +4029,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Ablak jelölése: csere a jelölt ablakkal"
 
 #: ../../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "Aktuális alkalmazás elrejtése"
+msgstr "Alkalmazás keresése"
 
 #: ../../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "Gyorsbillentyű"
+msgstr "Gyorsbillentyűk megjelenítése"
 
 #: ../../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
@@ -4207,7 +4057,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:223
 msgid "Lock screen"
-msgstr ""
+msgstr "Képernyő zárolása"
 
 #: ../../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -4215,7 +4065,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Vágólap előzményeinek megnyitása"
 
 #: ../../src/keybind_descriptions.h:224
 msgid "ClipboardKey"

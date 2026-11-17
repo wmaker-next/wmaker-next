@@ -582,15 +582,15 @@ msgstr "아이콘"
 
 #: ../src/dialog_icon.c:519
 msgid "List Mode"
-msgstr ""
+msgstr "목록 모드"
 
 #: ../src/dialog_icon.c:524
 msgid "Names"
-msgstr ""
+msgstr "이름"
 
 #: ../src/dialog_icon.c:531
 msgid "Thumbs"
-msgstr ""
+msgstr "섬네일"
 
 #: ../src/dialog_icon.c:539
 msgid "Preview"
@@ -689,9 +689,8 @@ msgid "Auto Collapse"
 msgstr "자동 축소"
 
 #: ../src/dock.c:1301
-#, fuzzy
 msgid "Auto Compact"
-msgstr "자동 축소"
+msgstr "자동 압축"
 
 #: ../src/dock.c:1306 ../src/dock.c:1387
 msgid "Auto Raise"
@@ -710,14 +709,12 @@ msgid "could not create options submenu for Dock menu"
 msgstr "독 위치 메뉴를 위한 옵션 하부메뉴를 만들 수 없습니다"
 
 #: ../src/dock.c:1382
-#, fuzzy
 msgid "Auto Hide"
-msgstr "자동 올림"
+msgstr "자동 숨김"
 
 #: ../src/dock.c:1417
-#, fuzzy
 msgid "Dock Options"
-msgstr "옵션"
+msgstr "독 옵션"
 
 #: ../src/dock.c:1423
 msgid "Add a Drawer"
@@ -948,11 +945,11 @@ msgstr "이미지 렌더링 오류: %s"
 #: ../src/keybind_descriptions.h:46 ../src/keybind_descriptions.h:47
 #: ../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "가상 데스크톱"
 
 #: ../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "가상 데스크톱을 다음 왼쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -960,7 +957,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "가상 데스크톱을 다음 오른쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -968,7 +965,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "가상 데스크톱을 다음 위쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -976,7 +973,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "가상 데스크톱을 다음 아래쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -984,7 +981,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "가상 데스크톱을 원래 위치로 이동"
 
 #: ../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -992,7 +989,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "초점 창을 가상 데스크톱 가운데에 배치"
 
 #: ../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -1000,7 +997,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "초점 창을 가상 데스크톱 보기 영역에 고정"
 
 #: ../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -1011,11 +1008,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:222 ../src/keybind_descriptions.h:223
 #: ../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "세션 및 기타"
 
 #: ../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
-msgstr ""
+msgstr "키보드 언어 전환"
 
 #: ../src/keybind_descriptions.h:55
 msgid "ToggleKbdModeKey"
@@ -1023,7 +1020,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "액센트 및 특수 문자 선택"
 
 #: ../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -1032,12 +1029,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:62 ../src/keybind_descriptions.h:63
 #: ../src/keybind_descriptions.h:64
 msgid "Menus"
-msgstr ""
+msgstr "메뉴"
 
 #: ../src/keybind_descriptions.h:62
-#, fuzzy
 msgid "Open applications menu"
-msgstr "응용프로그램 아이콘 없음"
+msgstr "응용프로그램 메뉴 열기"
 
 #: ../src/keybind_descriptions.h:62
 msgid "RootMenuKey"
@@ -1045,33 +1041,30 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:63
 msgid "Open window list menu"
-msgstr ""
+msgstr "창 목록 열기"
 
 #: ../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "창 목록"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
-msgstr ""
+msgstr "창 명령 메뉴 열기"
 
 #: ../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "창"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:66 ../src/keybind_descriptions.h:67
 #: ../src/keybind_descriptions.h:68 ../src/keybind_descriptions.h:69
 #: ../src/keybind_descriptions.h:70 ../src/keybind_descriptions.h:71
 #: ../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "독 아이콘"
+msgstr "독 및 화면"
 
 #: ../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
-msgstr ""
+msgstr "독 올리기/내리기"
 
 #: ../src/keybind_descriptions.h:66
 msgid "DockRaiseLowerKey"
@@ -1079,7 +1072,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
-msgstr ""
+msgstr "클립 올리기/내리기"
 
 #: ../src/keybind_descriptions.h:67
 msgid "ClipRaiseLowerKey"
@@ -1087,25 +1080,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:68
 msgid "Switch to next screen/monitor"
-msgstr ""
+msgstr "다음 화면/모니터로 전환"
 
 #: ../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "Capture the entire screen"
-msgstr "항상 화면 안에 위치"
+msgstr "전체 화면 캡처"
 
 #: ../src/keybind_descriptions.h:69
 msgid "ScreenCaptureKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "모든 창의 기본값으로"
+msgstr "창 캡처"
 
 #: ../src/keybind_descriptions.h:70
 msgid "WindowCaptureKey"
@@ -1113,7 +1104,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "화면의 일부 캡처"
 
 #: ../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
@@ -1121,7 +1112,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:72
 msgid "Find the mouse pointer"
-msgstr ""
+msgstr "마우스 포인터 찾기"
 
 #: ../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -1158,76 +1149,64 @@ msgid "Windows"
 msgstr "창"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "Miniaturize active window"
-msgstr "최소화"
+msgstr "활성 창 최소화"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "최소화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "Miniaturize all windows"
-msgstr "최소화"
+msgstr "모든 창 최소화"
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "최소화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "최소화"
+msgstr "다른 창 최소화"
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "MiniaturizeOthersKey"
-msgstr "최소화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "Hide active application"
-msgstr "응용프로그램 아이콘 흉내내기"
+msgstr "활성 응용프로그램 숨김"
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "HideKey"
-msgstr "숨김"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "Hide other applications"
-msgstr "응용프로그램 %s을 실행할 수 없습니다"
+msgstr "다른 응용프로그램 숨김"
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "HideOthersKey"
-msgstr "'다른 것들 숨김'을 무시함"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "데스크톱 표시 전환(모두 최소화/복원)"
 
 #: ../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "모든 창의 기본값으로"
+msgstr "모든 창 표시"
 
 #: ../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "아이콘 모음"
+msgstr "아이콘 정렬"
 
 #: ../src/keybind_descriptions.h:81
 msgid "ArrangeIconsKey"
@@ -1235,26 +1214,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
-msgstr ""
+msgstr "활성 창 이동/크기 조절"
 
 #: ../src/keybind_descriptions.h:82
 msgid "MoveResizeKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "Close active window"
-msgstr "창 선택"
+msgstr "활성 창 닫기"
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "닫기"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "윈도우 메이커 재시작"
+msgstr "활성 창 기하 복원"
 
 #: ../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -1262,116 +1238,103 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:85
 msgid "Maximize active window"
-msgstr ""
+msgstr "활성 창 최대화"
 
 #: ../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
-msgstr ""
+msgstr "활성 창 세로 최대화"
 
 #: ../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
-msgstr ""
+msgstr "활성 창 가로 최대화"
 
 #: ../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
-msgstr ""
+msgstr "활성 창을 왼쪽 절반에 최대화"
 
 #: ../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
-msgstr ""
+msgstr "활성 창을 오른쪽 절반에 최대화"
 
 #: ../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
-msgstr ""
+msgstr "활성 창을 위쪽 절반에 최대화"
 
 #: ../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
-msgstr ""
+msgstr "활성 창을 아래쪽 절반에 최대화"
 
 #: ../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:92
 msgid "Maximize active window top left corner"
-msgstr ""
+msgstr "활성 창을 왼쪽 위 모서리에 최대화"
 
 #: ../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:93
 msgid "Maximize active window top right corner"
-msgstr ""
+msgstr "활성 창을 오른쪽 위 모서리에 최대화"
 
 #: ../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:94
 msgid "Maximize active window bottom left corner"
-msgstr ""
+msgstr "활성 창을 왼쪽 아래 모서리에 최대화"
 
 #: ../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:95
 msgid "Maximize active window bottom right corner"
-msgstr ""
+msgstr "활성 창을 오른쪽 아래 모서리에 최대화"
 
 #: ../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "창 선택"
+msgstr "활성 창 바둑판 배치"
 
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "최대화"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:97
 msgid "Move active window to left edge"
-msgstr ""
+msgstr "활성 창을 왼쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
@@ -1379,7 +1342,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:98
 msgid "Move active window to right edge"
-msgstr ""
+msgstr "활성 창을 오른쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
@@ -1387,7 +1350,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:99
 msgid "Move active window to top edge"
-msgstr ""
+msgstr "활성 창을 위쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
@@ -1395,7 +1358,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:100
 msgid "Move active window to bottom edge"
-msgstr ""
+msgstr "활성 창을 아래쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
@@ -1403,7 +1366,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:101
 msgid "Move active window to left screen edge"
-msgstr ""
+msgstr "활성 창을 화면 왼쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
@@ -1411,7 +1374,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:102
 msgid "Move active window to right screen edge"
-msgstr ""
+msgstr "활성 창을 화면 오른쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
@@ -1419,7 +1382,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:103
 msgid "Move active window to top screen edge"
-msgstr ""
+msgstr "활성 창을 화면 위쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
@@ -1427,7 +1390,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:104
 msgid "Move active window to bottom screen edge"
-msgstr ""
+msgstr "활성 창을 화면 아래쪽 가장자리로 이동"
 
 #: ../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
@@ -1435,7 +1398,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:105
 msgid "Grow active window to left edge"
-msgstr ""
+msgstr "활성 창을 왼쪽 가장자리까지 확장"
 
 #: ../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
@@ -1443,7 +1406,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:106
 msgid "Grow active window to right edge"
-msgstr ""
+msgstr "활성 창을 오른쪽 가장자리까지 확장"
 
 #: ../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
@@ -1451,7 +1414,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:107
 msgid "Grow active window to top edge"
-msgstr ""
+msgstr "활성 창을 위쪽 가장자리까지 확장"
 
 #: ../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
@@ -1459,7 +1422,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:108
 msgid "Grow active window to bottom edge"
-msgstr ""
+msgstr "활성 창을 아래쪽 가장자리까지 확장"
 
 #: ../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
@@ -1467,7 +1430,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:109
 msgid "Shrink active window from left edge"
-msgstr ""
+msgstr "활성 창을 왼쪽 가장자리에서 축소"
 
 #: ../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
@@ -1475,7 +1438,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:110
 msgid "Shrink active window from right edge"
-msgstr ""
+msgstr "활성 창을 오른쪽 가장자리에서 축소"
 
 #: ../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
@@ -1483,7 +1446,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:111
 msgid "Shrink active window from top edge"
-msgstr ""
+msgstr "활성 창을 위쪽 가장자리에서 축소"
 
 #: ../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
@@ -1491,25 +1454,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:112
 msgid "Shrink active window from bottom edge"
-msgstr ""
+msgstr "활성 창을 아래쪽 가장자리에서 축소"
 
 #: ../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "모든 창의 기본값으로"
+msgstr "활성 창 전체 화면 전환"
 
 #: ../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "창 선택"
+msgstr "활성 창 가운데 배치"
 
 #: ../src/keybind_descriptions.h:114
 msgid "CenterKey"
@@ -1517,45 +1478,39 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "창 '항상 위로' 상태 전환"
 
 #: ../src/keybind_descriptions.h:115
-#, fuzzy
 msgid "KeepOnTopKey"
-msgstr "항상 위로"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "창 '항상 아래로' 상태 전환"
 
 #: ../src/keybind_descriptions.h:116
-#, fuzzy
 msgid "KeepAtBottomKey"
-msgstr "항상 아래로/가라앉음"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "Toggle window omnipresent status"
-msgstr "항상 보임 선택/취소"
+msgstr "창 '모든 곳에' 상태 전환"
 
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "OmnipresentKey"
-msgstr "항상 보임"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:118
-#, fuzzy
 msgid "Raise active window"
-msgstr "창 선택"
+msgstr "활성 창 올리기"
 
 #: ../src/keybind_descriptions.h:118
 msgid "RaiseKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:119
-#, fuzzy
 msgid "Lower active window"
-msgstr "창 선택"
+msgstr "활성 창 내리기"
 
 #: ../src/keybind_descriptions.h:119
 msgid "LowerKey"
@@ -1563,35 +1518,31 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:120
 msgid "Raise/Lower window under mouse pointer"
-msgstr ""
+msgstr "마우스 포인터 아래 창 올리기/내리기"
 
 #: ../src/keybind_descriptions.h:120
 msgid "RaiseLowerKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "Shade active window"
-msgstr "창 선택"
+msgstr "활성 창 가림"
 
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "ShadeKey"
-msgstr "가림"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "Select active window"
-msgstr "창 선택"
+msgstr "활성 창 선택"
 
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "선택됨"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
-msgstr ""
+msgstr "응용프로그램 새 인스턴스 실행"
 
 #: ../src/keybind_descriptions.h:123
 msgid "WindowRelaunchKey"
@@ -1599,7 +1550,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "오른쪽/아래/왼쪽/위 화면으로 이동"
 
 #: ../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -1607,7 +1558,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "왼쪽/위/오른쪽/아래 화면으로 이동"
 
 #: ../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -1618,13 +1569,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:131 ../src/keybind_descriptions.h:132
 #: ../src/keybind_descriptions.h:133 ../src/keybind_descriptions.h:134
 #: ../src/keybind_descriptions.h:135 ../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "창 속성"
+msgstr "창 단축키"
 
 #: ../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
-msgstr ""
+msgstr "창 1 단축키"
 
 #: ../src/keybind_descriptions.h:127
 msgid "WindowShortcut1Key"
@@ -1632,7 +1582,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
-msgstr ""
+msgstr "창 2 단축키"
 
 #: ../src/keybind_descriptions.h:128
 msgid "WindowShortcut2Key"
@@ -1640,7 +1590,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
-msgstr ""
+msgstr "창 3 단축키"
 
 #: ../src/keybind_descriptions.h:129
 msgid "WindowShortcut3Key"
@@ -1648,7 +1598,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
-msgstr ""
+msgstr "창 4 단축키"
 
 #: ../src/keybind_descriptions.h:130
 msgid "WindowShortcut4Key"
@@ -1656,7 +1606,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
-msgstr ""
+msgstr "창 5 단축키"
 
 #: ../src/keybind_descriptions.h:131
 msgid "WindowShortcut5Key"
@@ -1664,7 +1614,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
-msgstr ""
+msgstr "창 6 단축키"
 
 #: ../src/keybind_descriptions.h:132
 msgid "WindowShortcut6Key"
@@ -1672,7 +1622,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
-msgstr ""
+msgstr "창 7 단축키"
 
 #: ../src/keybind_descriptions.h:133
 msgid "WindowShortcut7Key"
@@ -1680,7 +1630,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
-msgstr ""
+msgstr "창 8 단축키"
 
 #: ../src/keybind_descriptions.h:134
 msgid "WindowShortcut8Key"
@@ -1688,7 +1638,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
-msgstr ""
+msgstr "창 9 단축키"
 
 #: ../src/keybind_descriptions.h:135
 msgid "WindowShortcut9Key"
@@ -1696,7 +1646,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
-msgstr ""
+msgstr "창 10 단축키"
 
 #: ../src/keybind_descriptions.h:136
 msgid "WindowShortcut10Key"
@@ -1710,12 +1660,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:148 ../src/keybind_descriptions.h:149
 #: ../src/keybind_descriptions.h:150 ../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "초점 및 그룹"
 
 #: ../src/keybind_descriptions.h:138
-#, fuzzy
 msgid "Focus next window"
-msgstr "창 선택"
+msgstr "다음 창에 초점"
 
 #: ../src/keybind_descriptions.h:138
 msgid "FocusNextKey"
@@ -1723,7 +1672,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:139
 msgid "Focus previous window"
-msgstr ""
+msgstr "이전 창에 초점"
 
 #: ../src/keybind_descriptions.h:139
 msgid "FocusPrevKey"
@@ -1731,7 +1680,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:140
 msgid "Focus the window to the left"
-msgstr ""
+msgstr "왼쪽 창에 초점"
 
 #: ../src/keybind_descriptions.h:140
 msgid "FocusWindowLeftKey"
@@ -1739,7 +1688,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:141
 msgid "Focus the window to the right"
-msgstr ""
+msgstr "오른쪽 창에 초점"
 
 #: ../src/keybind_descriptions.h:141
 msgid "FocusWindowRightKey"
@@ -1747,7 +1696,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:142
 msgid "Focus the window above"
-msgstr ""
+msgstr "위쪽 창에 초점"
 
 #: ../src/keybind_descriptions.h:142
 msgid "FocusWindowUpKey"
@@ -1755,7 +1704,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:143
 msgid "Focus the window below"
-msgstr ""
+msgstr "아래쪽 창에 초점"
 
 #: ../src/keybind_descriptions.h:143
 msgid "FocusWindowDownKey"
@@ -1763,7 +1712,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:144
 msgid "Focus next window in group"
-msgstr ""
+msgstr "그룹의 다음 창에 초점"
 
 #: ../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
@@ -1771,25 +1720,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:145
 msgid "Focus previous window in group"
-msgstr ""
+msgstr "그룹의 이전 창에 초점"
 
 #: ../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:146
-#, fuzzy
 msgid "Switch to next application group"
-msgstr "응용프로그램 아이콘 공유"
+msgstr "다음 응용프로그램 그룹으로 전환"
 
 #: ../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:147
-#, fuzzy
 msgid "Switch to previous application group"
-msgstr "응용프로그램 아이콘 공유"
+msgstr "이전 응용프로그램 그룹으로 전환"
 
 #: ../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
@@ -1797,7 +1744,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:148
 msgid "Switch to next tab in group"
-msgstr ""
+msgstr "그룹의 다음 탭으로 전환"
 
 #: ../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
@@ -1805,7 +1752,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:149
 msgid "Switch to previous tab in group"
-msgstr ""
+msgstr "그룹의 이전 탭으로 전환"
 
 #: ../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
@@ -1813,7 +1760,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:150
 msgid "Attach window as tab"
-msgstr ""
+msgstr "창을 탭으로 연결"
 
 #: ../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -1821,7 +1768,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "탭을 그룹에서 분리"
 
 #: ../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -1857,45 +1804,40 @@ msgid "Workspaces"
 msgstr "작업공간"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "Open workspace pager"
-msgstr "작업공간 상태 저장"
+msgstr "작업공간 탐색기 열기"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
-msgstr ""
+msgstr "다음 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
-msgstr ""
+msgstr "이전 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
-msgstr ""
+msgstr "마지막으로 사용한 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
-msgstr ""
+msgstr "다음 열 개 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:157
 msgid "NextWorkspaceLayerKey"
@@ -1903,7 +1845,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
-msgstr ""
+msgstr "이전 열 개 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:158
 msgid "PrevWorkspaceLayerKey"
@@ -1911,171 +1853,151 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:159
 msgid "Switch to workspace on the left"
-msgstr ""
+msgstr "왼쪽 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:160
 msgid "Switch to workspace on the right"
-msgstr ""
+msgstr "오른쪽 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "Switch to workspace above"
-msgstr "작업공간 상태 저장"
+msgstr "위쪽 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:162
 msgid "Switch to workspace below"
-msgstr ""
+msgstr "아래쪽 작업공간으로 전환"
 
 #: ../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
-msgstr ""
+msgstr "작업공간 1(으)로 전환"
 
 #: ../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
-msgstr ""
+msgstr "작업공간 2(으)로 전환"
 
 #: ../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
-msgstr ""
+msgstr "작업공간 3(으)로 전환"
 
 #: ../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
-msgstr ""
+msgstr "작업공간 4(으)로 전환"
 
 #: ../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
-msgstr ""
+msgstr "작업공간 5(으)로 전환"
 
 #: ../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
-msgstr ""
+msgstr "작업공간 6(으)로 전환"
 
 #: ../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
-msgstr ""
+msgstr "작업공간 7(으)로 전환"
 
 #: ../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
-msgstr ""
+msgstr "작업공간 8(으)로 전환"
 
 #: ../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
-msgstr ""
+msgstr "작업공간 9(으)로 전환"
 
 #: ../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
-msgstr ""
+msgstr "작업공간 10(으)로 전환"
 
 #: ../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "Move window to next workspace"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 다음 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:173
 msgid "MoveToNextWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "Move window to previous workspace"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 이전 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:174
 msgid "MoveToPrevWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "Move window to last used workspace"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 마지막으로 사용한 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:175
 msgid "MoveToLastWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "Move window to next ten workspaces"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 다음 열 개 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:176
 msgid "MoveToNextWorkspaceLayerKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:177
-#, fuzzy
 msgid "Move window to previous ten workspaces"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 이전 열 개 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:177
 msgid "MoveToPrevWorkspaceLayerKey"
@@ -2083,7 +2005,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:178
 msgid "Move window to workspace on the left"
-msgstr ""
+msgstr "창을 왼쪽 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
@@ -2091,229 +2013,187 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:179
 msgid "Move window to workspace on the right"
-msgstr ""
+msgstr "창을 오른쪽 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 위쪽 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "MoveToUpWorkspaceKey"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 아래쪽 작업공간으로 이동"
 
 #: ../src/keybind_descriptions.h:181
 msgid "MoveToDownWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "Move window to workspace 1"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 1(으)로 이동"
 
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "Move window to workspace 2"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 2(으)로 이동"
 
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "Move window to workspace 3"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 3(으)로 이동"
 
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "Move window to workspace 4"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 4(으)로 이동"
 
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "Move window to workspace 5"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 5(으)로 이동"
 
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "Move window to workspace 6"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 6(으)로 이동"
 
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "Move window to workspace 7"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 7(으)로 이동"
 
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "Move window to workspace 8"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 8(으)로 이동"
 
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "Move window to workspace 9"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 9(으)로 이동"
 
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "Move window to workspace 10"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창을 작업공간 10(으)로 이동"
 
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 1의 창 전환"
 
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 2의 창 전환"
 
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 3의 창 전환"
 
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 4의 창 전환"
 
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 5의 창 전환"
 
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 6의 창 전환"
 
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 7의 창 전환"
 
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 8의 창 전환"
 
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "작업공간 9의 창 전환"
 
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "작업공간"
-
-#: ../src/keybind_descriptions.h:201
-msgid "Toggle window on workspace 10"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:201
-#, fuzzy
+msgid "Toggle window on workspace 10"
+msgstr "작업공간 10의 창 전환"
+
+#: ../src/keybind_descriptions.h:201
 msgid "ToggleWorkspace10Key"
-msgstr "작업공간"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:203 ../src/keybind_descriptions.h:204
 #: ../src/keybind_descriptions.h:205 ../src/keybind_descriptions.h:206
@@ -2321,12 +2201,11 @@ msgstr "작업공간"
 #: ../src/keybind_descriptions.h:209 ../src/keybind_descriptions.h:210
 #: ../src/keybind_descriptions.h:211 ../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "바둑판 및 레이아웃"
 
 #: ../src/keybind_descriptions.h:203
-#, fuzzy
 msgid "Cycle workspace tiling layout"
-msgstr "작업공간 상태 저장"
+msgstr "작업공간 바둑판 레이아웃 전환"
 
 #: ../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -2334,7 +2213,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "작업공간 바둑판 레이아웃 역방향 전환"
 
 #: ../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -2342,16 +2221,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "바둑판 레이아웃 축 교환"
 
 #: ../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:206
-#, fuzzy
 msgid "Set workspace layout to float"
-msgstr "작업공간 상태 저장"
+msgstr "작업공간 레이아웃을 떠다니기로 설정"
 
 #: ../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -2359,7 +2237,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "레이아웃 마스터 수 증가"
 
 #: ../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -2367,7 +2245,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "레이아웃 마스터 수 감소"
 
 #: ../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -2375,7 +2253,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "레이아웃 마스터 비율 증가"
 
 #: ../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -2383,7 +2261,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "레이아웃 마스터 비율 감소"
 
 #: ../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
@@ -2391,16 +2269,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:211
 msgid "Toggle tiling for active window"
-msgstr ""
+msgstr "활성 창 바둑판 배치 전환"
 
 #: ../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "대체용 창 관리자를 시작..."
+msgstr "활성 창과 마스터 교환"
 
 #: ../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -2409,14 +2286,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:214 ../src/keybind_descriptions.h:215
 #: ../src/keybind_descriptions.h:216 ../src/keybind_descriptions.h:217
 #: ../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "창"
+msgstr "창 표시"
 
 #: ../src/keybind_descriptions.h:214
-#, fuzzy
 msgid "Mark window: set mark"
-msgstr "모든 작업공간에서 창이 보이도록 합니다."
+msgstr "창 표시: 표시 설정"
 
 #: ../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -2424,7 +2299,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "창 표시: 표시 해제"
 
 #: ../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -2432,7 +2307,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "창 표시: 표시된 창을 여기로 가져오기"
 
 #: ../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -2440,7 +2315,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "창 표시: 표시된 창으로 이동"
 
 #: ../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -2448,44 +2323,39 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "창 표시: 표시된 창과 교환"
 
 #: ../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "응용프로그램을 강제 종료"
+msgstr "응용프로그램 찾기"
 
 #: ../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "키보드 단축키 연결 안함"
+msgstr "키보드 단축키 표시"
 
 #: ../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "Exit Window Maker"
-msgstr "윈도우 메이커 재시작"
+msgstr "Window Maker 종료"
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "ExitKey"
-msgstr "종료"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:223
-#, fuzzy
 msgid "Lock screen"
-msgstr "독 아이콘"
+msgstr "화면 잠금"
 
 #: ../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -2493,7 +2363,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "클립보드 기록 열기"
 
 #: ../src/keybind_descriptions.h:224
 msgid "ClipboardKey"
@@ -3401,7 +3271,7 @@ msgstr ""
 
 #: ../src/winmenu.c:90
 msgid "Restore geometry"
-msgstr ""
+msgstr "기하 복원"
 
 #: ../src/winmenu.c:91
 msgid "Region snap"

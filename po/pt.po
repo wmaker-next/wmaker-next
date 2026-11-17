@@ -593,15 +593,15 @@ msgstr "Ícones"
 
 #: ../src/dialog_icon.c:519
 msgid "List Mode"
-msgstr ""
+msgstr "Modo de lista"
 
 #: ../src/dialog_icon.c:524
 msgid "Names"
-msgstr ""
+msgstr "Nomes"
 
 #: ../src/dialog_icon.c:531
 msgid "Thumbs"
-msgstr ""
+msgstr "Miniaturas"
 
 #: ../src/dialog_icon.c:539
 msgid "Preview"
@@ -702,7 +702,7 @@ msgstr "Recolher autom."
 
 #: ../src/dock.c:1301
 msgid "Auto Compact"
-msgstr ""
+msgstr "Compactar autom."
 
 #: ../src/dock.c:1306 ../src/dock.c:1387
 #, fuzzy
@@ -723,18 +723,16 @@ msgid "could not create options submenu for Dock menu"
 msgstr "não foi possível criar opções de submenu para o menu do Clip"
 
 #: ../src/dock.c:1382
-#, fuzzy
 msgid "Auto Hide"
-msgstr "Ocultar"
+msgstr "Ocultar autom."
 
 #: ../src/dock.c:1417
-#, fuzzy
 msgid "Dock Options"
-msgstr "Opções"
+msgstr "Opções do Dock"
 
 #: ../src/dock.c:1423
 msgid "Add a Drawer"
-msgstr ""
+msgstr "Adicionar uma gaveta"
 
 #: ../src/dock.c:1427
 msgid "Clip Options"
@@ -827,7 +825,7 @@ msgstr "Trazer para aqui"
 
 #: ../src/dock.c:5345
 msgid "Remove Drawer"
-msgstr ""
+msgstr "Remover a gaveta"
 
 #: ../src/dock.c:6430
 msgid "All icons in this drawer will be detached!"
@@ -964,11 +962,11 @@ msgstr "erro na apresentação de imagem:%s"
 #: ../src/keybind_descriptions.h:46 ../src/keybind_descriptions.h:47
 #: ../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Ambiente de trabalho virtual"
 
 #: ../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Mover o ambiente virtual para a borda esquerda seguinte"
 
 #: ../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -976,7 +974,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Mover o ambiente virtual para a borda direita seguinte"
 
 #: ../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -984,7 +982,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Mover o ambiente virtual para a borda superior seguinte"
 
 #: ../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -992,7 +990,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Mover o ambiente virtual para a borda inferior seguinte"
 
 #: ../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -1000,7 +998,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Mover o ambiente virtual para a sua origem"
 
 #: ../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -1008,7 +1006,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Centrar a janela focada no ambiente virtual"
 
 #: ../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -1016,7 +1014,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Fixar a janela focada à área visível do ambiente virtual"
 
 #: ../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -1027,11 +1025,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:222 ../src/keybind_descriptions.h:223
 #: ../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Sessão e diversos"
 
 #: ../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
-msgstr ""
+msgstr "Alternar o idioma do teclado"
 
 #: ../src/keybind_descriptions.h:55
 msgid "ToggleKbdModeKey"
@@ -1039,7 +1037,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Escolher caracteres acentuados e especiais"
 
 #: ../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -1048,12 +1046,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:62 ../src/keybind_descriptions.h:63
 #: ../src/keybind_descriptions.h:64
 msgid "Menus"
-msgstr ""
+msgstr "Menus"
 
 #: ../src/keybind_descriptions.h:62
-#, fuzzy
 msgid "Open applications menu"
-msgstr "Sem ícone de aplicação"
+msgstr "Abrir o menu de aplicações"
 
 #: ../src/keybind_descriptions.h:62
 msgid "RootMenuKey"
@@ -1061,53 +1058,46 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:63
 msgid "Open window list menu"
-msgstr ""
+msgstr "Abrir a lista de janelas"
 
 #: ../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Janelas"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
-msgstr ""
+msgstr "Abrir o menu de comandos da janela"
 
 #: ../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Janelas"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:66 ../src/keybind_descriptions.h:67
 #: ../src/keybind_descriptions.h:68 ../src/keybind_descriptions.h:69
 #: ../src/keybind_descriptions.h:70 ../src/keybind_descriptions.h:71
 #: ../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "Posicionar ícone"
+msgstr "Dock e ecrã"
 
 #: ../src/keybind_descriptions.h:66
-#, fuzzy
 msgid "Raise/Lower Dock"
-msgstr "Subir/descer autom."
+msgstr "Subir/descer o Dock"
 
 #: ../src/keybind_descriptions.h:66
-#, fuzzy
 msgid "DockRaiseLowerKey"
-msgstr "Subir/descer autom."
+msgstr ""
 
 #: ../src/keybind_descriptions.h:67
-#, fuzzy
 msgid "Raise/Lower Clip"
-msgstr "Subir/descer autom."
+msgstr "Subir/descer o Clip"
 
 #: ../src/keybind_descriptions.h:67
-#, fuzzy
 msgid "ClipRaiseLowerKey"
-msgstr "Subir/descer autom."
+msgstr ""
 
 #: ../src/keybind_descriptions.h:68
 msgid "Switch to next screen/monitor"
-msgstr ""
+msgstr "Mudar para o ecrã/monitor seguinte"
 
 #: ../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
@@ -1115,16 +1105,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:69
 msgid "Capture the entire screen"
-msgstr ""
+msgstr "Capturar todo o ecrã"
 
 #: ../src/keybind_descriptions.h:69
 msgid "ScreenCaptureKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "Predefinições para todas as janelas"
+msgstr "Capturar uma janela"
 
 #: ../src/keybind_descriptions.h:70
 msgid "WindowCaptureKey"
@@ -1132,7 +1121,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Capturar uma porção do ecrã"
 
 #: ../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
@@ -1140,7 +1129,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:72
 msgid "Find the mouse pointer"
-msgstr ""
+msgstr "Encontrar o ponteiro do rato"
 
 #: ../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -1177,76 +1166,64 @@ msgid "Windows"
 msgstr "Janelas"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "Miniaturize active window"
-msgstr "Minimizar"
+msgstr "Minimizar a janela ativa"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Minimizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "Miniaturize all windows"
-msgstr "Minimizar"
+msgstr "Minimizar todas as janelas"
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "Minimizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Minimizar"
+msgstr "Minimizar as outras janelas"
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "MiniaturizeOthersKey"
-msgstr "Minimizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "Hide active application"
-msgstr "Terminar Aplicação"
+msgstr "Ocultar a aplicação ativa"
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "HideKey"
-msgstr "Ocultar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "Hide other applications"
-msgstr "não foi possível executar aplicação %s\n"
+msgstr "Ocultar as outras aplicações"
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "HideOthersKey"
-msgstr "Ignorar Esconder Outros"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Alternar mostrar ambiente (minimizar/restaurar tudo)"
 
 #: ../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "Predefinições para todas as janelas"
+msgstr "Mostrar todas as janelas"
 
 #: ../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "Atrair ícones"
+msgstr "Organizar ícones"
 
 #: ../src/keybind_descriptions.h:81
 msgid "ArrangeIconsKey"
@@ -1254,27 +1231,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
-msgstr ""
+msgstr "Mover/alterar o tamanho da janela ativa"
 
 #: ../src/keybind_descriptions.h:82
-#, fuzzy
 msgid "MoveResizeKey"
-msgstr "Redimensionar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "Close active window"
-msgstr "Selecionar janela"
+msgstr "Fechar a janela ativa"
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Fechar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Reiniciar o WindowMaker"
+msgstr "Restaurar a geometria da janela ativa"
 
 #: ../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -1282,116 +1255,103 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:85
 msgid "Maximize active window"
-msgstr ""
+msgstr "Maximizar a janela ativa"
 
 #: ../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
-msgstr ""
+msgstr "Maximizar a janela ativa verticalmente"
 
 #: ../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
-msgstr ""
+msgstr "Maximizar a janela ativa horizontalmente"
 
 #: ../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
-msgstr ""
+msgstr "Maximizar a janela ativa na metade esquerda"
 
 #: ../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
-msgstr ""
+msgstr "Maximizar a janela ativa na metade direita"
 
 #: ../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
-msgstr ""
+msgstr "Maximizar a janela ativa na metade superior"
 
 #: ../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
-msgstr ""
+msgstr "Maximizar a janela ativa na metade inferior"
 
 #: ../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:92
 msgid "Maximize active window top left corner"
-msgstr ""
+msgstr "Maximizar a janela ativa no canto superior esquerdo"
 
 #: ../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:93
 msgid "Maximize active window top right corner"
-msgstr ""
+msgstr "Maximizar a janela ativa no canto superior direito"
 
 #: ../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:94
 msgid "Maximize active window bottom left corner"
-msgstr ""
+msgstr "Maximizar a janela ativa no canto inferior esquerdo"
 
 #: ../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:95
 msgid "Maximize active window bottom right corner"
-msgstr ""
+msgstr "Maximizar a janela ativa no canto inferior direito"
 
 #: ../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "Selecionar janela"
+msgstr "Dispor a janela ativa em mosaico"
 
 #: ../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "Maximizar"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:97
 msgid "Move active window to left edge"
-msgstr ""
+msgstr "Mover a janela ativa para a borda esquerda"
 
 #: ../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
@@ -1399,7 +1359,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:98
 msgid "Move active window to right edge"
-msgstr ""
+msgstr "Mover a janela ativa para a borda direita"
 
 #: ../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
@@ -1407,7 +1367,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:99
 msgid "Move active window to top edge"
-msgstr ""
+msgstr "Mover a janela ativa para a borda superior"
 
 #: ../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
@@ -1415,7 +1375,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:100
 msgid "Move active window to bottom edge"
-msgstr ""
+msgstr "Mover a janela ativa para a borda inferior"
 
 #: ../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
@@ -1423,7 +1383,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:101
 msgid "Move active window to left screen edge"
-msgstr ""
+msgstr "Mover a janela ativa para a borda esquerda do ecrã"
 
 #: ../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
@@ -1431,7 +1391,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:102
 msgid "Move active window to right screen edge"
-msgstr ""
+msgstr "Mover a janela ativa para a borda direita do ecrã"
 
 #: ../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
@@ -1439,7 +1399,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:103
 msgid "Move active window to top screen edge"
-msgstr ""
+msgstr "Mover a janela ativa para a borda superior do ecrã"
 
 #: ../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
@@ -1447,7 +1407,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:104
 msgid "Move active window to bottom screen edge"
-msgstr ""
+msgstr "Mover a janela ativa para a borda inferior do ecrã"
 
 #: ../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
@@ -1455,7 +1415,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:105
 msgid "Grow active window to left edge"
-msgstr ""
+msgstr "Expandir a janela ativa para a borda esquerda"
 
 #: ../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
@@ -1463,7 +1423,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:106
 msgid "Grow active window to right edge"
-msgstr ""
+msgstr "Expandir a janela ativa para a borda direita"
 
 #: ../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
@@ -1471,7 +1431,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:107
 msgid "Grow active window to top edge"
-msgstr ""
+msgstr "Expandir a janela ativa para a borda superior"
 
 #: ../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
@@ -1479,7 +1439,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:108
 msgid "Grow active window to bottom edge"
-msgstr ""
+msgstr "Expandir a janela ativa para a borda inferior"
 
 #: ../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
@@ -1487,7 +1447,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:109
 msgid "Shrink active window from left edge"
-msgstr ""
+msgstr "Reduzir a janela ativa desde a borda esquerda"
 
 #: ../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
@@ -1495,7 +1455,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:110
 msgid "Shrink active window from right edge"
-msgstr ""
+msgstr "Reduzir a janela ativa desde a borda direita"
 
 #: ../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
@@ -1503,7 +1463,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:111
 msgid "Shrink active window from top edge"
-msgstr ""
+msgstr "Reduzir a janela ativa desde a borda superior"
 
 #: ../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
@@ -1511,25 +1471,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:112
 msgid "Shrink active window from bottom edge"
-msgstr ""
+msgstr "Reduzir a janela ativa desde a borda inferior"
 
 #: ../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "Predefinições para todas as janelas"
+msgstr "Alternar ecrã inteiro para a janela ativa"
 
 #: ../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "Selecionar janela"
+msgstr "Centrar a janela ativa"
 
 #: ../src/keybind_descriptions.h:114
 msgid "CenterKey"
@@ -1537,35 +1495,31 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "Alternar o estado «sobre outros» da janela"
 
 #: ../src/keybind_descriptions.h:115
-#, fuzzy
 msgid "KeepOnTopKey"
-msgstr "Manter sobre outros"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "Alternar o estado «por baixo de todos» da janela"
 
 #: ../src/keybind_descriptions.h:116
-#, fuzzy
 msgid "KeepAtBottomKey"
-msgstr "Manter por baixo"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "Toggle window omnipresent status"
-msgstr "Ativar o Omnipresente"
+msgstr "Alternar o estado «omnipresente» da janela"
 
 #: ../src/keybind_descriptions.h:117
-#, fuzzy
 msgid "OmnipresentKey"
-msgstr "Omnipresente"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:118
 msgid "Raise active window"
-msgstr ""
+msgstr "Elevar a janela ativa"
 
 #: ../src/keybind_descriptions.h:118
 msgid "RaiseKey"
@@ -1573,7 +1527,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:119
 msgid "Lower active window"
-msgstr ""
+msgstr "Baixar a janela ativa"
 
 #: ../src/keybind_descriptions.h:119
 msgid "LowerKey"
@@ -1581,36 +1535,31 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:120
 msgid "Raise/Lower window under mouse pointer"
-msgstr ""
+msgstr "Subir/descer a janela sob o ponteiro"
 
 #: ../src/keybind_descriptions.h:120
-#, fuzzy
 msgid "RaiseLowerKey"
-msgstr "Subir/descer autom."
+msgstr ""
 
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "Shade active window"
-msgstr "Selecionar janela"
+msgstr "Sombrear a janela ativa"
 
 #: ../src/keybind_descriptions.h:121
-#, fuzzy
 msgid "ShadeKey"
-msgstr "Sombrear"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "Select active window"
-msgstr "Selecionar ação"
+msgstr "Selecionar a janela ativa"
 
 #: ../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "Selecionado"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
-msgstr ""
+msgstr "Iniciar uma nova instância da aplicação"
 
 #: ../src/keybind_descriptions.h:123
 msgid "WindowRelaunchKey"
@@ -1618,7 +1567,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "Mover para o ecrã direito/baixo/esquerdo/cima"
 
 #: ../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -1626,7 +1575,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "Mover para o ecrã esquerdo/cima/direito/baixo"
 
 #: ../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -1637,13 +1586,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:131 ../src/keybind_descriptions.h:132
 #: ../src/keybind_descriptions.h:133 ../src/keybind_descriptions.h:134
 #: ../src/keybind_descriptions.h:135 ../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Atributos de janelas"
+msgstr "Atalhos de janela"
 
 #: ../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
-msgstr ""
+msgstr "Atalho para a janela 1"
 
 #: ../src/keybind_descriptions.h:127
 msgid "WindowShortcut1Key"
@@ -1651,7 +1599,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
-msgstr ""
+msgstr "Atalho para a janela 2"
 
 #: ../src/keybind_descriptions.h:128
 msgid "WindowShortcut2Key"
@@ -1659,7 +1607,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
-msgstr ""
+msgstr "Atalho para a janela 3"
 
 #: ../src/keybind_descriptions.h:129
 msgid "WindowShortcut3Key"
@@ -1667,7 +1615,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
-msgstr ""
+msgstr "Atalho para a janela 4"
 
 #: ../src/keybind_descriptions.h:130
 msgid "WindowShortcut4Key"
@@ -1675,7 +1623,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
-msgstr ""
+msgstr "Atalho para a janela 5"
 
 #: ../src/keybind_descriptions.h:131
 msgid "WindowShortcut5Key"
@@ -1683,7 +1631,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
-msgstr ""
+msgstr "Atalho para a janela 6"
 
 #: ../src/keybind_descriptions.h:132
 msgid "WindowShortcut6Key"
@@ -1691,7 +1639,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
-msgstr ""
+msgstr "Atalho para a janela 7"
 
 #: ../src/keybind_descriptions.h:133
 msgid "WindowShortcut7Key"
@@ -1699,7 +1647,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
-msgstr ""
+msgstr "Atalho para a janela 8"
 
 #: ../src/keybind_descriptions.h:134
 msgid "WindowShortcut8Key"
@@ -1707,7 +1655,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
-msgstr ""
+msgstr "Atalho para a janela 9"
 
 #: ../src/keybind_descriptions.h:135
 msgid "WindowShortcut9Key"
@@ -1715,7 +1663,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
-msgstr ""
+msgstr "Atalho para a janela 10"
 
 #: ../src/keybind_descriptions.h:136
 msgid "WindowShortcut10Key"
@@ -1729,11 +1677,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:148 ../src/keybind_descriptions.h:149
 #: ../src/keybind_descriptions.h:150 ../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "Foco e grupos"
 
 #: ../src/keybind_descriptions.h:138
 msgid "Focus next window"
-msgstr ""
+msgstr "Focar a janela seguinte"
 
 #: ../src/keybind_descriptions.h:138
 msgid "FocusNextKey"
@@ -1741,7 +1689,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:139
 msgid "Focus previous window"
-msgstr ""
+msgstr "Focar a janela anterior"
 
 #: ../src/keybind_descriptions.h:139
 msgid "FocusPrevKey"
@@ -1749,7 +1697,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:140
 msgid "Focus the window to the left"
-msgstr ""
+msgstr "Focar a janela à esquerda"
 
 #: ../src/keybind_descriptions.h:140
 msgid "FocusWindowLeftKey"
@@ -1757,7 +1705,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:141
 msgid "Focus the window to the right"
-msgstr ""
+msgstr "Focar a janela à direita"
 
 #: ../src/keybind_descriptions.h:141
 msgid "FocusWindowRightKey"
@@ -1765,7 +1713,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:142
 msgid "Focus the window above"
-msgstr ""
+msgstr "Focar a janela acima"
 
 #: ../src/keybind_descriptions.h:142
 msgid "FocusWindowUpKey"
@@ -1773,7 +1721,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:143
 msgid "Focus the window below"
-msgstr ""
+msgstr "Focar a janela abaixo"
 
 #: ../src/keybind_descriptions.h:143
 msgid "FocusWindowDownKey"
@@ -1781,7 +1729,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:144
 msgid "Focus next window in group"
-msgstr ""
+msgstr "Focar a janela seguinte do grupo"
 
 #: ../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
@@ -1789,7 +1737,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:145
 msgid "Focus previous window in group"
-msgstr ""
+msgstr "Focar a janela anterior do grupo"
 
 #: ../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
@@ -1797,7 +1745,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:146
 msgid "Switch to next application group"
-msgstr ""
+msgstr "Mudar para o grupo de aplicações seguinte"
 
 #: ../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
@@ -1805,7 +1753,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:147
 msgid "Switch to previous application group"
-msgstr ""
+msgstr "Mudar para o grupo de aplicações anterior"
 
 #: ../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
@@ -1813,7 +1761,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:148
 msgid "Switch to next tab in group"
-msgstr ""
+msgstr "Mudar para o separador seguinte do grupo"
 
 #: ../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
@@ -1821,7 +1769,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:149
 msgid "Switch to previous tab in group"
-msgstr ""
+msgstr "Mudar para o separador anterior do grupo"
 
 #: ../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
@@ -1829,7 +1777,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:150
 msgid "Attach window as tab"
-msgstr ""
+msgstr "Anexar a janela como separador"
 
 #: ../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -1837,7 +1785,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Desanexar o separador do grupo"
 
 #: ../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -1873,45 +1821,40 @@ msgid "Workspaces"
 msgstr "Áreas de trabalho"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "Open workspace pager"
-msgstr "Renomear Área de trabalho"
+msgstr "Abrir a navegação das áreas de trabalho"
 
 #: ../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
-msgstr ""
+msgstr "Mudar para a área de trabalho seguinte"
 
 #: ../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
-msgstr ""
+msgstr "Mudar para a área de trabalho anterior"
 
 #: ../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
-msgstr ""
+msgstr "Mudar para a área de trabalho usada em último lugar"
 
 #: ../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
-msgstr ""
+msgstr "Mudar para as dez áreas de trabalho seguintes"
 
 #: ../src/keybind_descriptions.h:157
 msgid "NextWorkspaceLayerKey"
@@ -1919,7 +1862,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
-msgstr ""
+msgstr "Mudar para as dez áreas de trabalho anteriores"
 
 #: ../src/keybind_descriptions.h:158
 msgid "PrevWorkspaceLayerKey"
@@ -1927,179 +1870,159 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:159
 msgid "Switch to workspace on the left"
-msgstr ""
+msgstr "Mudar para a área de trabalho à esquerda"
 
 #: ../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:160
 msgid "Switch to workspace on the right"
-msgstr ""
+msgstr "Mudar para a área de trabalho à direita"
 
 #: ../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:161
 msgid "Switch to workspace above"
-msgstr ""
+msgstr "Mudar para a área de trabalho acima"
 
 #: ../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:162
 msgid "Switch to workspace below"
-msgstr ""
+msgstr "Mudar para a área de trabalho abaixo"
 
 #: ../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
-msgstr ""
+msgstr "Mudar para a área de trabalho 1"
 
 #: ../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
-msgstr ""
+msgstr "Mudar para a área de trabalho 2"
 
 #: ../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
-msgstr ""
+msgstr "Mudar para a área de trabalho 3"
 
 #: ../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
-msgstr ""
+msgstr "Mudar para a área de trabalho 4"
 
 #: ../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
-msgstr ""
+msgstr "Mudar para a área de trabalho 5"
 
 #: ../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
-msgstr ""
+msgstr "Mudar para a área de trabalho 6"
 
 #: ../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
-msgstr ""
+msgstr "Mudar para a área de trabalho 7"
 
 #: ../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
-msgstr ""
+msgstr "Mudar para a área de trabalho 8"
 
 #: ../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
-msgstr ""
+msgstr "Mudar para a área de trabalho 9"
 
 #: ../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
-msgstr ""
+msgstr "Mudar para a área de trabalho 10"
 
 #: ../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "Move window to next workspace"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho seguinte"
 
 #: ../src/keybind_descriptions.h:173
 msgid "MoveToNextWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "Move window to previous workspace"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho anterior"
 
 #: ../src/keybind_descriptions.h:174
 msgid "MoveToPrevWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "Move window to last used workspace"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho usada em último lugar"
 
 #: ../src/keybind_descriptions.h:175
 msgid "MoveToLastWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "Move window to next ten workspaces"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para as dez áreas de trabalho seguintes"
 
 #: ../src/keybind_descriptions.h:176
 msgid "MoveToNextWorkspaceLayerKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:177
-#, fuzzy
 msgid "Move window to previous ten workspaces"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para as dez áreas de trabalho anteriores"
 
 #: ../src/keybind_descriptions.h:177
 msgid "MoveToPrevWorkspaceLayerKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:178
-#, fuzzy
 msgid "Move window to workspace on the left"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho à esquerda"
 
 #: ../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
@@ -2107,230 +2030,187 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:179
 msgid "Move window to workspace on the right"
-msgstr ""
+msgstr "Mover a janela para a área de trabalho à direita"
 
 #: ../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho acima"
 
 #: ../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "MoveToUpWorkspaceKey"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho abaixo"
 
 #: ../src/keybind_descriptions.h:181
 msgid "MoveToDownWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "Move window to workspace 1"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 1"
 
 #: ../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "Move window to workspace 2"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 2"
 
 #: ../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "Move window to workspace 3"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 3"
 
 #: ../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "Move window to workspace 4"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 4"
 
 #: ../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "Move window to workspace 5"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 5"
 
 #: ../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "Move window to workspace 6"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 6"
 
 #: ../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "Move window to workspace 7"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 7"
 
 #: ../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "Move window to workspace 8"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 8"
 
 #: ../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "Move window to workspace 9"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 9"
 
 #: ../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "Move window to workspace 10"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Mover a janela para a área de trabalho 10"
 
 #: ../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 1"
 
 #: ../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 2"
 
 #: ../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 3"
 
 #: ../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 4"
 
 #: ../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 5"
 
 #: ../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 6"
 
 #: ../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 7"
 
 #: ../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 8"
 
 #: ../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 9"
 
 #: ../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "Toggle window on workspace 10"
-msgstr "Faz a janela ocupar todas as áreas de trabalho."
+msgstr "Alternar a janela na área de trabalho 10"
 
 #: ../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "ToggleWorkspace10Key"
-msgstr "Áreas de trabalho"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:203 ../src/keybind_descriptions.h:204
 #: ../src/keybind_descriptions.h:205 ../src/keybind_descriptions.h:206
@@ -2338,11 +2218,11 @@ msgstr "Áreas de trabalho"
 #: ../src/keybind_descriptions.h:209 ../src/keybind_descriptions.h:210
 #: ../src/keybind_descriptions.h:211 ../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Mosaico e disposição"
 
 #: ../src/keybind_descriptions.h:203
 msgid "Cycle workspace tiling layout"
-msgstr ""
+msgstr "Alternar a disposição em mosaico da área de trabalho"
 
 #: ../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -2350,7 +2230,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Alternar a disposição em mosaico da área de trabalho para trás"
 
 #: ../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -2358,7 +2238,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Trocar o eixo da disposição em mosaico"
 
 #: ../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
@@ -2366,7 +2246,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:206
 msgid "Set workspace layout to float"
-msgstr ""
+msgstr "Definir a disposição da área de trabalho como flutuante"
 
 #: ../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -2374,7 +2254,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Aumentar o número de mestres da disposição"
 
 #: ../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -2382,7 +2262,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Diminuir o número de mestres da disposição"
 
 #: ../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -2390,7 +2270,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Aumentar a proporção mestre da disposição"
 
 #: ../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -2398,7 +2278,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Diminuir a proporção mestre da disposição"
 
 #: ../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
@@ -2406,16 +2286,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:211
 msgid "Toggle tiling for active window"
-msgstr ""
+msgstr "Alternar mosaico para a janela ativa"
 
 #: ../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "Iniciar gestor de janelas alternativo"
+msgstr "Trocar a janela ativa com o mestre"
 
 #: ../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -2424,13 +2303,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:214 ../src/keybind_descriptions.h:215
 #: ../src/keybind_descriptions.h:216 ../src/keybind_descriptions.h:217
 #: ../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Janelas"
+msgstr "Marcas de janela"
 
 #: ../src/keybind_descriptions.h:214
 msgid "Mark window: set mark"
-msgstr ""
+msgstr "Marcar janela: colocar a marca"
 
 #: ../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -2438,7 +2316,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "Marcar janela: retirar a marca"
 
 #: ../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -2446,7 +2324,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Marcar janela: trazer para aqui a janela marcada"
 
 #: ../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -2454,7 +2332,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Marcar janela: ir para a janela marcada"
 
 #: ../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -2462,44 +2340,39 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Marcar janela: trocar com a janela marcada"
 
 #: ../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "Terminar Aplicação"
+msgstr "Encontrar aplicação"
 
 #: ../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "Não adicionar atalhos de teclado"
+msgstr "Mostrar os atalhos de teclado"
 
 #: ../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "Exit Window Maker"
-msgstr "Reiniciar o WindowMaker"
+msgstr "Sair do Window Maker"
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "ExitKey"
-msgstr "Sair"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:223
-#, fuzzy
 msgid "Lock screen"
-msgstr "Posicionar ícone"
+msgstr "Bloquear o ecrã"
 
 #: ../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -2507,7 +2380,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Abrir o histórico da área de transferência"
 
 #: ../src/keybind_descriptions.h:224
 msgid "ClipboardKey"
@@ -3428,7 +3301,7 @@ msgstr ""
 
 #: ../src/winmenu.c:90
 msgid "Restore geometry"
-msgstr ""
+msgstr "Restaurar geometria"
 
 #: ../src/winmenu.c:91
 msgid "Region snap"

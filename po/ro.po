@@ -571,15 +571,15 @@ msgstr ""
 
 #: ../src/dialog_icon.c:519
 msgid "List Mode"
-msgstr ""
+msgstr "Mod listă"
 
 #: ../src/dialog_icon.c:524
 msgid "Names"
-msgstr ""
+msgstr "Nume"
 
 #: ../src/dialog_icon.c:531
 msgid "Thumbs"
-msgstr ""
+msgstr "Miniaturi"
 
 #: ../src/dialog_icon.c:539
 msgid "Preview"
@@ -676,7 +676,7 @@ msgstr ""
 
 #: ../src/dock.c:1301
 msgid "Auto Compact"
-msgstr ""
+msgstr "Compactare automată"
 
 #: ../src/dock.c:1306 ../src/dock.c:1387
 msgid "Auto Raise"
@@ -696,18 +696,16 @@ msgid "could not create options submenu for Dock menu"
 msgstr " Meniul Workspace nu poate fi creat"
 
 #: ../src/dock.c:1382
-#, fuzzy
 msgid "Auto Hide"
-msgstr "Ascunde"
+msgstr "Ascundere automată"
 
 #: ../src/dock.c:1417
-#, fuzzy
 msgid "Dock Options"
-msgstr "optiuni:"
+msgstr "Opțiuni dock"
 
 #: ../src/dock.c:1423
 msgid "Add a Drawer"
-msgstr ""
+msgstr "Adaugă un sertar"
 
 #: ../src/dock.c:1427
 #, fuzzy
@@ -800,7 +798,7 @@ msgstr ""
 
 #: ../src/dock.c:5345
 msgid "Remove Drawer"
-msgstr ""
+msgstr "Elimină sertarul"
 
 #: ../src/dock.c:6430
 msgid "All icons in this drawer will be detached!"
@@ -933,11 +931,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:46 ../src/keybind_descriptions.h:47
 #: ../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Birou virtual"
 
 #: ../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Mută biroul virtual la marginea stângă următoare"
 
 #: ../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -945,7 +943,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Mută biroul virtual la marginea dreaptă următoare"
 
 #: ../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -953,7 +951,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Mută biroul virtual la marginea superioară următoare"
 
 #: ../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -961,7 +959,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Mută biroul virtual la marginea inferioară următoare"
 
 #: ../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -969,7 +967,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Mută biroul virtual la originea sa"
 
 #: ../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -977,7 +975,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Centrează fereastra focalizată în biroul virtual"
 
 #: ../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -985,7 +983,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Fixează fereastra focalizată în zona vizibilă a biroului virtual"
 
 #: ../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -996,11 +994,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:222 ../src/keybind_descriptions.h:223
 #: ../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Sesiune și diverse"
 
 #: ../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
-msgstr ""
+msgstr "Comută limba tastaturii"
 
 #: ../src/keybind_descriptions.h:55
 msgid "ToggleKbdModeKey"
@@ -1008,7 +1006,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Alege caractere accentuate și speciale"
 
 #: ../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -1017,11 +1015,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:62 ../src/keybind_descriptions.h:63
 #: ../src/keybind_descriptions.h:64
 msgid "Menus"
-msgstr ""
+msgstr "Meniuri"
 
 #: ../src/keybind_descriptions.h:62
 msgid "Open applications menu"
-msgstr ""
+msgstr "Deschide meniul de aplicații"
 
 #: ../src/keybind_descriptions.h:62
 msgid "RootMenuKey"
@@ -1029,32 +1027,30 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:63
 msgid "Open window list menu"
-msgstr ""
+msgstr "Deschide lista de ferestre"
 
 #: ../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Ferestre"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
-msgstr ""
+msgstr "Deschide meniul de comenzi al ferestrei"
 
 #: ../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Ferestre"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:66 ../src/keybind_descriptions.h:67
 #: ../src/keybind_descriptions.h:68 ../src/keybind_descriptions.h:69
 #: ../src/keybind_descriptions.h:70 ../src/keybind_descriptions.h:71
 #: ../src/keybind_descriptions.h:72
 msgid "Dock & Screen"
-msgstr ""
+msgstr "Dock și ecran"
 
 #: ../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
-msgstr ""
+msgstr "Ridică/coboară Dock"
 
 #: ../src/keybind_descriptions.h:66
 msgid "DockRaiseLowerKey"
@@ -1062,7 +1058,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
-msgstr ""
+msgstr "Ridică/coboară Clip"
 
 #: ../src/keybind_descriptions.h:67
 msgid "ClipRaiseLowerKey"
@@ -1070,7 +1066,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:68
 msgid "Switch to next screen/monitor"
-msgstr ""
+msgstr "Comută la ecranul/monitorul următor"
 
 #: ../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
@@ -1078,7 +1074,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:69
 msgid "Capture the entire screen"
-msgstr ""
+msgstr "Capturează tot ecranul"
 
 #: ../src/keybind_descriptions.h:69
 msgid "ScreenCaptureKey"
@@ -1086,7 +1082,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:70
 msgid "Capture a window"
-msgstr ""
+msgstr "Capturează o fereastră"
 
 #: ../src/keybind_descriptions.h:70
 msgid "WindowCaptureKey"
@@ -1094,7 +1090,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Capturează o porțiune din ecran"
 
 #: ../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
@@ -1102,7 +1098,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:72
 msgid "Find the mouse pointer"
-msgstr ""
+msgstr "Găsește cursorul mouse-ului"
 
 #: ../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -1139,56 +1135,48 @@ msgid "Windows"
 msgstr "Ferestre"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "Miniaturize active window"
-msgstr "Miniaturizeaza"
+msgstr "Miniaturizează fereastra activă"
 
 #: ../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Miniaturizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "Miniaturize all windows"
-msgstr "Miniaturizeaza"
+msgstr "Miniaturizează toate ferestrele"
 
 #: ../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "Miniaturizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Miniaturizeaza"
+msgstr "Miniaturizează celelalte ferestre"
 
 #: ../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "MiniaturizeOthersKey"
-msgstr "Miniaturizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:77
 msgid "Hide active application"
-msgstr ""
+msgstr "Ascunde aplicația activă"
 
 #: ../src/keybind_descriptions.h:77
-#, fuzzy
 msgid "HideKey"
-msgstr "Ascunde"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:78
 msgid "Hide other applications"
-msgstr ""
+msgstr "Ascunde celelalte aplicații"
 
 #: ../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "HideOthersKey"
-msgstr "Ascunde Celelalte"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Comută arătarea biroului (miniaturizează/restaurează tot)"
 
 #: ../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
@@ -1196,7 +1184,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:80
 msgid "Show all windows"
-msgstr ""
+msgstr "Arată toate ferestrele"
 
 #: ../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
@@ -1204,7 +1192,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:81
 msgid "Arrange icons"
-msgstr ""
+msgstr "Aranjează pictogramele"
 
 #: ../src/keybind_descriptions.h:81
 msgid "ArrangeIconsKey"
@@ -1212,7 +1200,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
-msgstr ""
+msgstr "Mută/redimensionează fereastra activă"
 
 #: ../src/keybind_descriptions.h:82
 msgid "MoveResizeKey"
@@ -1220,16 +1208,15 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:83
 msgid "Close active window"
-msgstr ""
+msgstr "Închide fereastra activă"
 
 #: ../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Inchide"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:84
 msgid "Restore active window geometry"
-msgstr ""
+msgstr "Restaurează geometria ferestrei active"
 
 #: ../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -1237,106 +1224,95 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:85
 msgid "Maximize active window"
-msgstr ""
+msgstr "Maximizează fereastra activă"
 
 #: ../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
-msgstr ""
+msgstr "Maximizează fereastra activă vertical"
 
 #: ../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
-msgstr ""
+msgstr "Maximizează fereastra activă orizontal"
 
 #: ../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
-msgstr ""
+msgstr "Maximizează fereastra activă pe jumătatea stângă"
 
 #: ../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
-msgstr ""
+msgstr "Maximizează fereastra activă pe jumătatea dreaptă"
 
 #: ../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
-msgstr ""
+msgstr "Maximizează fereastra activă pe jumătatea superioară"
 
 #: ../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
-msgstr ""
+msgstr "Maximizează fereastra activă pe jumătatea inferioară"
 
 #: ../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:92
 msgid "Maximize active window top left corner"
-msgstr ""
+msgstr "Maximizează fereastra activă pe colțul din stânga sus"
 
 #: ../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:93
 msgid "Maximize active window top right corner"
-msgstr ""
+msgstr "Maximizează fereastra activă pe colțul din dreapta sus"
 
 #: ../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:94
 msgid "Maximize active window bottom left corner"
-msgstr ""
+msgstr "Maximizează fereastra activă pe colțul din stânga jos"
 
 #: ../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:95
 msgid "Maximize active window bottom right corner"
-msgstr ""
+msgstr "Maximizează fereastra activă pe colțul din dreapta jos"
 
 #: ../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "(De)Maximizeaza"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:96
 msgid "Tile active window"
-msgstr ""
+msgstr "Aranjează fereastra activă în mozaic"
 
 #: ../src/keybind_descriptions.h:96
 msgid "MaximusKey"
@@ -1344,7 +1320,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:97
 msgid "Move active window to left edge"
-msgstr ""
+msgstr "Mută fereastra activă la marginea stângă"
 
 #: ../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
@@ -1352,7 +1328,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:98
 msgid "Move active window to right edge"
-msgstr ""
+msgstr "Mută fereastra activă la marginea dreaptă"
 
 #: ../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
@@ -1360,7 +1336,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:99
 msgid "Move active window to top edge"
-msgstr ""
+msgstr "Mută fereastra activă la marginea superioară"
 
 #: ../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
@@ -1368,7 +1344,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:100
 msgid "Move active window to bottom edge"
-msgstr ""
+msgstr "Mută fereastra activă la marginea inferioară"
 
 #: ../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
@@ -1376,7 +1352,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:101
 msgid "Move active window to left screen edge"
-msgstr ""
+msgstr "Mută fereastra activă la marginea stângă a ecranului"
 
 #: ../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
@@ -1384,7 +1360,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:102
 msgid "Move active window to right screen edge"
-msgstr ""
+msgstr "Mută fereastra activă la marginea dreaptă a ecranului"
 
 #: ../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
@@ -1392,7 +1368,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:103
 msgid "Move active window to top screen edge"
-msgstr ""
+msgstr "Mută fereastra activă la marginea superioară a ecranului"
 
 #: ../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
@@ -1400,7 +1376,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:104
 msgid "Move active window to bottom screen edge"
-msgstr ""
+msgstr "Mută fereastra activă la marginea inferioară a ecranului"
 
 #: ../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
@@ -1408,7 +1384,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:105
 msgid "Grow active window to left edge"
-msgstr ""
+msgstr "Mărește fereastra activă spre marginea stângă"
 
 #: ../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
@@ -1416,7 +1392,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:106
 msgid "Grow active window to right edge"
-msgstr ""
+msgstr "Mărește fereastra activă spre marginea dreaptă"
 
 #: ../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
@@ -1424,7 +1400,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:107
 msgid "Grow active window to top edge"
-msgstr ""
+msgstr "Mărește fereastra activă spre marginea superioară"
 
 #: ../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
@@ -1432,7 +1408,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:108
 msgid "Grow active window to bottom edge"
-msgstr ""
+msgstr "Mărește fereastra activă spre marginea inferioară"
 
 #: ../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
@@ -1440,7 +1416,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:109
 msgid "Shrink active window from left edge"
-msgstr ""
+msgstr "Micșorează fereastra activă dinspre marginea stângă"
 
 #: ../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
@@ -1448,7 +1424,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:110
 msgid "Shrink active window from right edge"
-msgstr ""
+msgstr "Micșorează fereastra activă dinspre marginea dreaptă"
 
 #: ../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
@@ -1456,7 +1432,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:111
 msgid "Shrink active window from top edge"
-msgstr ""
+msgstr "Micșorează fereastra activă dinspre marginea superioară"
 
 #: ../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
@@ -1464,7 +1440,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:112
 msgid "Shrink active window from bottom edge"
-msgstr ""
+msgstr "Micșorează fereastra activă dinspre marginea inferioară"
 
 #: ../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
@@ -1472,7 +1448,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:113
 msgid "Toggle fullscreen for active window"
-msgstr ""
+msgstr "Comută ecranul complet pentru fereastra activă"
 
 #: ../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
@@ -1480,7 +1456,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:114
 msgid "Center active window"
-msgstr ""
+msgstr "Centrează fereastra activă"
 
 #: ../src/keybind_descriptions.h:114
 msgid "CenterKey"
@@ -1488,7 +1464,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "Comută starea «mereu deasupra» a ferestrei"
 
 #: ../src/keybind_descriptions.h:115
 msgid "KeepOnTopKey"
@@ -1496,7 +1472,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "Comută starea «mereu dedesubt» a ferestrei"
 
 #: ../src/keybind_descriptions.h:116
 msgid "KeepAtBottomKey"
@@ -1504,7 +1480,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:117
 msgid "Toggle window omnipresent status"
-msgstr ""
+msgstr "Comută starea «omniprezentă» a ferestrei"
 
 #: ../src/keybind_descriptions.h:117
 msgid "OmnipresentKey"
@@ -1512,7 +1488,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:118
 msgid "Raise active window"
-msgstr ""
+msgstr "Ridică fereastra activă"
 
 #: ../src/keybind_descriptions.h:118
 msgid "RaiseKey"
@@ -1520,7 +1496,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:119
 msgid "Lower active window"
-msgstr ""
+msgstr "Coboară fereastra activă"
 
 #: ../src/keybind_descriptions.h:119
 msgid "LowerKey"
@@ -1528,7 +1504,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:120
 msgid "Raise/Lower window under mouse pointer"
-msgstr ""
+msgstr "Ridică/coboară fereastra de sub cursor"
 
 #: ../src/keybind_descriptions.h:120
 msgid "RaiseLowerKey"
@@ -1536,7 +1512,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:121
 msgid "Shade active window"
-msgstr ""
+msgstr "Acoperă fereastra activă"
 
 #: ../src/keybind_descriptions.h:121
 msgid "ShadeKey"
@@ -1544,7 +1520,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:122
 msgid "Select active window"
-msgstr ""
+msgstr "Selectează fereastra activă"
 
 #: ../src/keybind_descriptions.h:122
 msgid "SelectKey"
@@ -1552,7 +1528,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
-msgstr ""
+msgstr "Lansează o nouă instanță a aplicației"
 
 #: ../src/keybind_descriptions.h:123
 msgid "WindowRelaunchKey"
@@ -1560,7 +1536,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "Mută la ecranul din dreapta/jos/stânga/sus"
 
 #: ../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -1568,7 +1544,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "Mută la ecranul din stânga/sus/dreapta/jos"
 
 #: ../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -1579,13 +1555,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:131 ../src/keybind_descriptions.h:132
 #: ../src/keybind_descriptions.h:133 ../src/keybind_descriptions.h:134
 #: ../src/keybind_descriptions.h:135 ../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Ferestre"
+msgstr "Scurtături de fereastră"
 
 #: ../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 1"
 
 #: ../src/keybind_descriptions.h:127
 msgid "WindowShortcut1Key"
@@ -1593,7 +1568,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 2"
 
 #: ../src/keybind_descriptions.h:128
 msgid "WindowShortcut2Key"
@@ -1601,7 +1576,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 3"
 
 #: ../src/keybind_descriptions.h:129
 msgid "WindowShortcut3Key"
@@ -1609,7 +1584,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 4"
 
 #: ../src/keybind_descriptions.h:130
 msgid "WindowShortcut4Key"
@@ -1617,7 +1592,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 5"
 
 #: ../src/keybind_descriptions.h:131
 msgid "WindowShortcut5Key"
@@ -1625,7 +1600,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 6"
 
 #: ../src/keybind_descriptions.h:132
 msgid "WindowShortcut6Key"
@@ -1633,7 +1608,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 7"
 
 #: ../src/keybind_descriptions.h:133
 msgid "WindowShortcut7Key"
@@ -1641,7 +1616,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 8"
 
 #: ../src/keybind_descriptions.h:134
 msgid "WindowShortcut8Key"
@@ -1649,7 +1624,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 9"
 
 #: ../src/keybind_descriptions.h:135
 msgid "WindowShortcut9Key"
@@ -1657,7 +1632,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
-msgstr ""
+msgstr "Scurtătură pentru fereastra 10"
 
 #: ../src/keybind_descriptions.h:136
 msgid "WindowShortcut10Key"
@@ -1671,11 +1646,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:148 ../src/keybind_descriptions.h:149
 #: ../src/keybind_descriptions.h:150 ../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "Focus și grupuri"
 
 #: ../src/keybind_descriptions.h:138
 msgid "Focus next window"
-msgstr ""
+msgstr "Focalizează fereastra următoare"
 
 #: ../src/keybind_descriptions.h:138
 msgid "FocusNextKey"
@@ -1683,7 +1658,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:139
 msgid "Focus previous window"
-msgstr ""
+msgstr "Focalizează fereastra anterioară"
 
 #: ../src/keybind_descriptions.h:139
 msgid "FocusPrevKey"
@@ -1691,7 +1666,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:140
 msgid "Focus the window to the left"
-msgstr ""
+msgstr "Focalizează fereastra din stânga"
 
 #: ../src/keybind_descriptions.h:140
 msgid "FocusWindowLeftKey"
@@ -1699,7 +1674,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:141
 msgid "Focus the window to the right"
-msgstr ""
+msgstr "Focalizează fereastra din dreapta"
 
 #: ../src/keybind_descriptions.h:141
 msgid "FocusWindowRightKey"
@@ -1707,7 +1682,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:142
 msgid "Focus the window above"
-msgstr ""
+msgstr "Focalizează fereastra de deasupra"
 
 #: ../src/keybind_descriptions.h:142
 msgid "FocusWindowUpKey"
@@ -1715,7 +1690,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:143
 msgid "Focus the window below"
-msgstr ""
+msgstr "Focalizează fereastra de dedesubt"
 
 #: ../src/keybind_descriptions.h:143
 msgid "FocusWindowDownKey"
@@ -1723,7 +1698,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:144
 msgid "Focus next window in group"
-msgstr ""
+msgstr "Focalizează fereastra următoare din grup"
 
 #: ../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
@@ -1731,7 +1706,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:145
 msgid "Focus previous window in group"
-msgstr ""
+msgstr "Focalizează fereastra anterioară din grup"
 
 #: ../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
@@ -1739,7 +1714,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:146
 msgid "Switch to next application group"
-msgstr ""
+msgstr "Comută la grupul de aplicații următor"
 
 #: ../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
@@ -1747,7 +1722,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:147
 msgid "Switch to previous application group"
-msgstr ""
+msgstr "Comută la grupul de aplicații anterior"
 
 #: ../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
@@ -1755,7 +1730,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:148
 msgid "Switch to next tab in group"
-msgstr ""
+msgstr "Comută la fila următoare din grup"
 
 #: ../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
@@ -1763,7 +1738,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:149
 msgid "Switch to previous tab in group"
-msgstr ""
+msgstr "Comută la fila anterioară din grup"
 
 #: ../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
@@ -1771,7 +1746,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:150
 msgid "Attach window as tab"
-msgstr ""
+msgstr "Atașează fereastra ca filă"
 
 #: ../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -1779,7 +1754,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Detașează fila din grup"
 
 #: ../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -1812,11 +1787,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:201 ../src/winmenu.c:98
 #: ../src/workspace.c:1809
 msgid "Workspaces"
-msgstr ""
+msgstr "Spații de lucru"
 
 #: ../src/keybind_descriptions.h:153
 msgid "Open workspace pager"
-msgstr ""
+msgstr "Deschide navigatorul spațiilor de lucru"
 
 #: ../src/keybind_descriptions.h:153
 msgid "WorkspaceMapKey"
@@ -1824,7 +1799,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
-msgstr ""
+msgstr "Comută la spațiul de lucru următor"
 
 #: ../src/keybind_descriptions.h:154
 msgid "NextWorkspaceKey"
@@ -1832,7 +1807,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
-msgstr ""
+msgstr "Comută la spațiul de lucru anterior"
 
 #: ../src/keybind_descriptions.h:155
 msgid "PrevWorkspaceKey"
@@ -1840,7 +1815,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
-msgstr ""
+msgstr "Comută la ultimul spațiu de lucru folosit"
 
 #: ../src/keybind_descriptions.h:156
 msgid "LastWorkspaceKey"
@@ -1848,7 +1823,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
-msgstr ""
+msgstr "Comută la cele zece spații de lucru următoare"
 
 #: ../src/keybind_descriptions.h:157
 msgid "NextWorkspaceLayerKey"
@@ -1856,7 +1831,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
-msgstr ""
+msgstr "Comută la cele zece spații de lucru anterioare"
 
 #: ../src/keybind_descriptions.h:158
 msgid "PrevWorkspaceLayerKey"
@@ -1864,7 +1839,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:159
 msgid "Switch to workspace on the left"
-msgstr ""
+msgstr "Comută la spațiul de lucru din stânga"
 
 #: ../src/keybind_descriptions.h:159
 msgid "LeftWorkspaceKey"
@@ -1872,7 +1847,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:160
 msgid "Switch to workspace on the right"
-msgstr ""
+msgstr "Comută la spațiul de lucru din dreapta"
 
 #: ../src/keybind_descriptions.h:160
 msgid "RightWorkspaceKey"
@@ -1880,7 +1855,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:161
 msgid "Switch to workspace above"
-msgstr ""
+msgstr "Comută la spațiul de lucru de deasupra"
 
 #: ../src/keybind_descriptions.h:161
 msgid "UpWorkspaceKey"
@@ -1888,88 +1863,79 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:162
 msgid "Switch to workspace below"
-msgstr ""
+msgstr "Comută la spațiul de lucru de dedesubt"
 
 #: ../src/keybind_descriptions.h:162
 msgid "DownWorkspaceKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Switch to workspace 1"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 1"
 
 #: ../src/keybind_descriptions.h:163
 msgid "Workspace1Key"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Switch to workspace 2"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 2"
 
 #: ../src/keybind_descriptions.h:164
 msgid "Workspace2Key"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Switch to workspace 3"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 3"
 
 #: ../src/keybind_descriptions.h:165
 msgid "Workspace3Key"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Switch to workspace 4"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 4"
 
 #: ../src/keybind_descriptions.h:166
 msgid "Workspace4Key"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Switch to workspace 5"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 5"
 
 #: ../src/keybind_descriptions.h:167
 msgid "Workspace5Key"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Switch to workspace 6"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 6"
 
 #: ../src/keybind_descriptions.h:168
 msgid "Workspace6Key"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Switch to workspace 7"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 7"
 
 #: ../src/keybind_descriptions.h:169
 msgid "Workspace7Key"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Switch to workspace 8"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 8"
 
 #: ../src/keybind_descriptions.h:170
 msgid "Workspace8Key"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Switch to workspace 9"
-msgstr "Mutare catre a %i"
+msgstr "Comută la spațiul de lucru 9"
 
 #: ../src/keybind_descriptions.h:171
 msgid "Workspace9Key"
@@ -1977,7 +1943,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
-msgstr ""
+msgstr "Comută la spațiul de lucru 10"
 
 #: ../src/keybind_descriptions.h:172
 msgid "Workspace10Key"
@@ -1985,7 +1951,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:173
 msgid "Move window to next workspace"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru următor"
 
 #: ../src/keybind_descriptions.h:173
 msgid "MoveToNextWorkspaceKey"
@@ -1993,7 +1959,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:174
 msgid "Move window to previous workspace"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru anterior"
 
 #: ../src/keybind_descriptions.h:174
 msgid "MoveToPrevWorkspaceKey"
@@ -2001,7 +1967,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:175
 msgid "Move window to last used workspace"
-msgstr ""
+msgstr "Mută fereastra în ultimul spațiu de lucru folosit"
 
 #: ../src/keybind_descriptions.h:175
 msgid "MoveToLastWorkspaceKey"
@@ -2009,7 +1975,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:176
 msgid "Move window to next ten workspaces"
-msgstr ""
+msgstr "Mută fereastra în cele zece spații de lucru următoare"
 
 #: ../src/keybind_descriptions.h:176
 msgid "MoveToNextWorkspaceLayerKey"
@@ -2017,7 +1983,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:177
 msgid "Move window to previous ten workspaces"
-msgstr ""
+msgstr "Mută fereastra în cele zece spații de lucru anterioare"
 
 #: ../src/keybind_descriptions.h:177
 msgid "MoveToPrevWorkspaceLayerKey"
@@ -2025,7 +1991,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:178
 msgid "Move window to workspace on the left"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru din stânga"
 
 #: ../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
@@ -2033,7 +1999,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:179
 msgid "Move window to workspace on the right"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru din dreapta"
 
 #: ../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
@@ -2041,7 +2007,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:180
 msgid "Move window to workspace above"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru de deasupra"
 
 #: ../src/keybind_descriptions.h:180
 msgid "MoveToUpWorkspaceKey"
@@ -2049,7 +2015,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:181
 msgid "Move window to workspace below"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru de dedesubt"
 
 #: ../src/keybind_descriptions.h:181
 msgid "MoveToDownWorkspaceKey"
@@ -2057,7 +2023,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:182
 msgid "Move window to workspace 1"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 1"
 
 #: ../src/keybind_descriptions.h:182
 msgid "MoveToWorkspace1Key"
@@ -2065,7 +2031,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:183
 msgid "Move window to workspace 2"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 2"
 
 #: ../src/keybind_descriptions.h:183
 msgid "MoveToWorkspace2Key"
@@ -2073,7 +2039,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:184
 msgid "Move window to workspace 3"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 3"
 
 #: ../src/keybind_descriptions.h:184
 msgid "MoveToWorkspace3Key"
@@ -2081,7 +2047,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:185
 msgid "Move window to workspace 4"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 4"
 
 #: ../src/keybind_descriptions.h:185
 msgid "MoveToWorkspace4Key"
@@ -2089,7 +2055,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:186
 msgid "Move window to workspace 5"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 5"
 
 #: ../src/keybind_descriptions.h:186
 msgid "MoveToWorkspace5Key"
@@ -2097,7 +2063,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:187
 msgid "Move window to workspace 6"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 6"
 
 #: ../src/keybind_descriptions.h:187
 msgid "MoveToWorkspace6Key"
@@ -2105,7 +2071,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:188
 msgid "Move window to workspace 7"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 7"
 
 #: ../src/keybind_descriptions.h:188
 msgid "MoveToWorkspace7Key"
@@ -2113,7 +2079,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:189
 msgid "Move window to workspace 8"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 8"
 
 #: ../src/keybind_descriptions.h:189
 msgid "MoveToWorkspace8Key"
@@ -2121,7 +2087,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:190
 msgid "Move window to workspace 9"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 9"
 
 #: ../src/keybind_descriptions.h:190
 msgid "MoveToWorkspace9Key"
@@ -2129,7 +2095,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:191
 msgid "Move window to workspace 10"
-msgstr ""
+msgstr "Mută fereastra în spațiul de lucru 10"
 
 #: ../src/keybind_descriptions.h:191
 msgid "MoveToWorkspace10Key"
@@ -2137,7 +2103,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:192
 msgid "Toggle window on workspace 1"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 1"
 
 #: ../src/keybind_descriptions.h:192
 msgid "ToggleWorkspace1Key"
@@ -2145,7 +2111,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:193
 msgid "Toggle window on workspace 2"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 2"
 
 #: ../src/keybind_descriptions.h:193
 msgid "ToggleWorkspace2Key"
@@ -2153,7 +2119,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:194
 msgid "Toggle window on workspace 3"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 3"
 
 #: ../src/keybind_descriptions.h:194
 msgid "ToggleWorkspace3Key"
@@ -2161,7 +2127,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:195
 msgid "Toggle window on workspace 4"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 4"
 
 #: ../src/keybind_descriptions.h:195
 msgid "ToggleWorkspace4Key"
@@ -2169,7 +2135,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:196
 msgid "Toggle window on workspace 5"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 5"
 
 #: ../src/keybind_descriptions.h:196
 msgid "ToggleWorkspace5Key"
@@ -2177,7 +2143,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:197
 msgid "Toggle window on workspace 6"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 6"
 
 #: ../src/keybind_descriptions.h:197
 msgid "ToggleWorkspace6Key"
@@ -2185,7 +2151,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:198
 msgid "Toggle window on workspace 7"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 7"
 
 #: ../src/keybind_descriptions.h:198
 msgid "ToggleWorkspace7Key"
@@ -2193,7 +2159,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:199
 msgid "Toggle window on workspace 8"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 8"
 
 #: ../src/keybind_descriptions.h:199
 msgid "ToggleWorkspace8Key"
@@ -2201,7 +2167,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:200
 msgid "Toggle window on workspace 9"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 9"
 
 #: ../src/keybind_descriptions.h:200
 msgid "ToggleWorkspace9Key"
@@ -2209,7 +2175,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:201
 msgid "Toggle window on workspace 10"
-msgstr ""
+msgstr "Comută fereastra în spațiul de lucru 10"
 
 #: ../src/keybind_descriptions.h:201
 msgid "ToggleWorkspace10Key"
@@ -2221,11 +2187,11 @@ msgstr ""
 #: ../src/keybind_descriptions.h:209 ../src/keybind_descriptions.h:210
 #: ../src/keybind_descriptions.h:211 ../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Mozaic și aranjare"
 
 #: ../src/keybind_descriptions.h:203
 msgid "Cycle workspace tiling layout"
-msgstr ""
+msgstr "Schimbă aranjarea în mozaic a spațiului de lucru"
 
 #: ../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -2233,7 +2199,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Schimbă aranjarea în mozaic a spațiului de lucru înapoi"
 
 #: ../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -2241,7 +2207,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Schimbă axa aranjării în mozaic"
 
 #: ../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
@@ -2249,7 +2215,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:206
 msgid "Set workspace layout to float"
-msgstr ""
+msgstr "Setează aranjarea spațiului de lucru pe plutitor"
 
 #: ../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -2257,7 +2223,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Mărește numărul de master al aranjării"
 
 #: ../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -2265,7 +2231,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Micșorează numărul de master al aranjării"
 
 #: ../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -2273,7 +2239,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Mărește raportul de master al aranjării"
 
 #: ../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -2281,7 +2247,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Micșorează raportul de master al aranjării"
 
 #: ../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
@@ -2289,7 +2255,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:211
 msgid "Toggle tiling for active window"
-msgstr ""
+msgstr "Comută mozaicul pentru fereastra activă"
 
 #: ../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
@@ -2297,7 +2263,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:212
 msgid "Swap active window into master"
-msgstr ""
+msgstr "Schimbă fereastra activă cu master"
 
 #: ../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -2306,13 +2272,12 @@ msgstr ""
 #: ../src/keybind_descriptions.h:214 ../src/keybind_descriptions.h:215
 #: ../src/keybind_descriptions.h:216 ../src/keybind_descriptions.h:217
 #: ../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Ferestre"
+msgstr "Marcaje de fereastră"
 
 #: ../src/keybind_descriptions.h:214
 msgid "Mark window: set mark"
-msgstr ""
+msgstr "Marchează fereastra: setează marcajul"
 
 #: ../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -2320,7 +2285,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "Marchează fereastra: elimină marcajul"
 
 #: ../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -2328,7 +2293,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Marchează fereastra: adu aici fereastra marcată"
 
 #: ../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -2336,7 +2301,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Marchează fereastra: sari la fereastra marcată"
 
 #: ../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -2344,7 +2309,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Marchează fereastra: schimbă cu fereastra marcată"
 
 #: ../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
@@ -2352,7 +2317,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:220
 msgid "Find application"
-msgstr ""
+msgstr "Găsește aplicația"
 
 #: ../src/keybind_descriptions.h:220
 msgid "RunKey"
@@ -2360,25 +2325,23 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:221
 msgid "Show keyboard shortcuts"
-msgstr ""
+msgstr "Arată scurtăturile de tastatură"
 
 #: ../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
 msgstr ""
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "Exit Window Maker"
-msgstr "Iesire WindowManager?"
+msgstr "Ieși din Window Maker"
 
 #: ../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "ExitKey"
-msgstr "Iesire"
+msgstr ""
 
 #: ../src/keybind_descriptions.h:223
 msgid "Lock screen"
-msgstr ""
+msgstr "Blochează ecranul"
 
 #: ../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -2386,7 +2349,7 @@ msgstr ""
 
 #: ../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Deschide istoricul clipboard-ului"
 
 #: ../src/keybind_descriptions.h:224
 msgid "ClipboardKey"
@@ -3289,7 +3252,7 @@ msgstr ""
 
 #: ../src/winmenu.c:90
 msgid "Restore geometry"
-msgstr ""
+msgstr "Restaurează geometria"
 
 #: ../src/winmenu.c:91
 msgid "Region snap"

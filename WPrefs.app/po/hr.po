@@ -1086,7 +1086,7 @@ msgstr "Akcije"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:573
 msgid "List Mode"
-msgstr ""
+msgstr "Način popisa"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:578
 #, fuzzy
@@ -1235,9 +1235,8 @@ msgstr ""
 
 #: ../../WPrefs.app/Menu.c:480 ../../WPrefs.app/Menu.c:748
 #: ../../src/keybind_descriptions.h:222
-#, fuzzy
 msgid "Exit Window Maker"
-msgstr "Izaći iz Window Maker-a"
+msgstr "Izađi iz Window Makera"
 
 #: ../../WPrefs.app/Menu.c:496
 msgid "Debian Menu"
@@ -2627,11 +2626,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:46 ../../src/keybind_descriptions.h:47
 #: ../../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Virtualna radna površina"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Premjesti virtualnu radnu površinu na sljedeći lijevi rub"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -2639,7 +2638,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Premjesti virtualnu radnu površinu na sljedeći desni rub"
 
 #: ../../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -2647,7 +2646,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Premjesti virtualnu radnu površinu na sljedeći gornji rub"
 
 #: ../../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -2655,7 +2654,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Premjesti virtualnu radnu površinu na sljedeći donji rub"
 
 #: ../../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -2663,7 +2662,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Premjesti virtualnu radnu površinu u njezin početak"
 
 #: ../../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -2671,7 +2670,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Centriraj fokusirani prozor na virtualnoj radnoj površini"
 
 #: ../../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -2679,7 +2678,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Pričvrsti fokusirani prozor na prikaz virtualne radne površine"
 
 #: ../../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -2690,7 +2689,7 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:222 ../../src/keybind_descriptions.h:223
 #: ../../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Sesija i razno"
 
 #: ../../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
@@ -2702,7 +2701,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Odaberi znakove s naglaskom i posebne znakove"
 
 #: ../../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -2710,9 +2709,8 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:62 ../../src/keybind_descriptions.h:63
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "Menus"
-msgstr "Stavke izbornika"
+msgstr "Izbornici"
 
 #: ../../src/keybind_descriptions.h:62
 msgid "Open applications menu"
@@ -2727,49 +2725,43 @@ msgid "Open window list menu"
 msgstr "Otvori izbornik liste prozora"
 
 #: ../../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Izbornik Liste prozora"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
 msgstr "Otvori izbornik prozorskih naredbi"
 
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Window Manager"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:66 ../../src/keybind_descriptions.h:67
 #: ../../src/keybind_descriptions.h:68 ../../src/keybind_descriptions.h:69
 #: ../../src/keybind_descriptions.h:70 ../../src/keybind_descriptions.h:71
 #: ../../src/keybind_descriptions.h:72
 msgid "Dock & Screen"
-msgstr ""
+msgstr "Dock i zaslon"
 
 #: ../../src/keybind_descriptions.h:66
-#, fuzzy
 msgid "Raise/Lower Dock"
-msgstr "Podigni/Spusti Clip"
+msgstr "Podigni/spusti Dock"
 
 #: ../../src/keybind_descriptions.h:66
-#, fuzzy
 msgid "DockRaiseLowerKey"
-msgstr "Podigni/Spusti Clip"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
 msgstr "Podigni/Spusti Clip"
 
 #: ../../src/keybind_descriptions.h:67
-#, fuzzy
 msgid "ClipRaiseLowerKey"
-msgstr "Podigni/Spusti Clip"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:68
-#, fuzzy
 msgid "Switch to next screen/monitor"
-msgstr "Prebacivanje na sljedeći radni prostor"
+msgstr "Prebaci na sljedeći zaslon/monitor"
 
 #: ../../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
@@ -2777,35 +2769,31 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:69
 msgid "Capture the entire screen"
-msgstr ""
+msgstr "Snimi cijeli zaslon"
 
 #: ../../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "ScreenCaptureKey"
-msgstr "Uhvati"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "Minimiziraj aktivni prozor"
+msgstr "Snimi prozor"
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "WindowCaptureKey"
-msgstr "Uhvati"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Snimi dio zaslona"
 
 #: ../../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Find the mouse pointer"
-msgstr "što je ispod kursora"
+msgstr "Pronađi pokazivač miša"
 
 #: ../../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -2837,32 +2825,28 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:120 ../../src/keybind_descriptions.h:121
 #: ../../src/keybind_descriptions.h:122 ../../src/keybind_descriptions.h:123
 #: ../../src/keybind_descriptions.h:124 ../../src/keybind_descriptions.h:125
-#, fuzzy
 msgid "Windows"
-msgstr "Pokaži sve prozore"
+msgstr "Prozori"
 
 #: ../../src/keybind_descriptions.h:74
 msgid "Miniaturize active window"
 msgstr "Minimiziraj aktivni prozor"
 
 #: ../../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Minimiziraj aktivni prozor"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "Miniaturize all windows"
-msgstr "Minimiziraj aktivni prozor"
+msgstr "Minimiziraj sve prozore"
 
 #: ../../src/keybind_descriptions.h:75
 msgid "MiniaturizeAllKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Minimiziraj aktivni prozor"
+msgstr "Minimiziraj ostale prozore"
 
 #: ../../src/keybind_descriptions.h:76
 msgid "MiniaturizeOthersKey"
@@ -2877,46 +2861,40 @@ msgid "HideKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "Hide other applications"
-msgstr "Sakrij aktivnu aplikaciju"
+msgstr "Sakrij ostale aplikacije"
 
 #: ../../src/keybind_descriptions.h:78
-#, fuzzy
 msgid "HideOthersKey"
-msgstr "Sakriti ostale"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Prebaci prikaz radne površine (minimiziraj/vrati sve)"
 
 #: ../../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "Pokaži sve prozore"
+msgstr "Prikaži sve prozore"
 
 #: ../../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "Pospremiti ikone"
+msgstr "Rasporedi ikone"
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "ArrangeIconsKey"
-msgstr "Pospremiti ikone"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:82
-#, fuzzy
 msgid "Move/Resize active window"
-msgstr "Zatvori aktivni prozor"
+msgstr "Premjesti/promijeni veličinu aktivnog prozora"
 
 #: ../../src/keybind_descriptions.h:82
 msgid "MoveResizeKey"
@@ -2927,14 +2905,12 @@ msgid "Close active window"
 msgstr "Zatvori aktivni prozor"
 
 #: ../../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Zatvori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Podigni aktivni prozor"
+msgstr "Vrati geometriju aktivnog prozora"
 
 #: ../../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -2957,126 +2933,112 @@ msgid "VMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "Maximize active window horizontally"
-msgstr "Maksimiziraj aktivni prozor vertikalno"
+msgstr "Maksimiziraj aktivni prozor vodoravno"
 
 #: ../../src/keybind_descriptions.h:87
 msgid "HMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "Maximize active window left half"
-msgstr "Maksimiziraj aktivni prozor vertikalno"
+msgstr "Maksimiziraj aktivni prozor na lijevu polovicu"
 
 #: ../../src/keybind_descriptions.h:88
 msgid "LHMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "Maximize active window right half"
-msgstr "Maksimiziraj aktivni prozor vertikalno"
+msgstr "Maksimiziraj aktivni prozor na desnu polovicu"
 
 #: ../../src/keybind_descriptions.h:89
 msgid "RHMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "Maximize active window top half"
-msgstr "Maksimiziraj aktivni prozor"
+msgstr "Maksimiziraj aktivni prozor na gornju polovicu"
 
 #: ../../src/keybind_descriptions.h:90
 msgid "THMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "Maximize active window bottom half"
-msgstr "Maksimiziraj aktivni prozor"
+msgstr "Maksimiziraj aktivni prozor na donju polovicu"
 
 #: ../../src/keybind_descriptions.h:91
 msgid "BHMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "Maximize active window top left corner"
-msgstr "Maksimiziraj aktivni prozor"
+msgstr "Maksimiziraj aktivni prozor u gornji lijevi kut"
 
 #: ../../src/keybind_descriptions.h:92
 msgid "TLCMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "Maximize active window top right corner"
-msgstr "Maksimiziraj aktivni prozor vertikalno"
+msgstr "Maksimiziraj aktivni prozor u gornji desni kut"
 
 #: ../../src/keybind_descriptions.h:93
 msgid "TRCMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "Maximize active window bottom left corner"
-msgstr "Maksimiziraj aktivni prozor vertikalno"
+msgstr "Maksimiziraj aktivni prozor u donji lijevi kut"
 
 #: ../../src/keybind_descriptions.h:94
 msgid "BLCMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "Maximize active window bottom right corner"
-msgstr "Maksimiziraj aktivni prozor vertikalno"
+msgstr "Maksimiziraj aktivni prozor u donji desni kut"
 
 #: ../../src/keybind_descriptions.h:95
 msgid "BRCMaximizeKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "Zatvori aktivni prozor"
+msgstr "Rasporedi aktivni prozor u pločice"
 
 #: ../../src/keybind_descriptions.h:96
 msgid "MaximusKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:97
-#, fuzzy
 msgid "Move active window to left edge"
-msgstr "Zatvori aktivni prozor"
+msgstr "Premjesti aktivni prozor na lijevi rub"
 
 #: ../../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:98
-#, fuzzy
 msgid "Move active window to right edge"
-msgstr "Zatvori aktivni prozor"
+msgstr "Premjesti aktivni prozor na desni rub"
 
 #: ../../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:99
-#, fuzzy
 msgid "Move active window to top edge"
-msgstr "Zatvori aktivni prozor"
+msgstr "Premjesti aktivni prozor na gornji rub"
 
 #: ../../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:100
-#, fuzzy
 msgid "Move active window to bottom edge"
-msgstr "Zatvori aktivni prozor"
+msgstr "Premjesti aktivni prozor na donji rub"
 
 #: ../../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
@@ -3084,7 +3046,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:101
 msgid "Move active window to left screen edge"
-msgstr ""
+msgstr "Premjesti aktivni prozor na lijevi rub zaslona"
 
 #: ../../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
@@ -3092,7 +3054,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:102
 msgid "Move active window to right screen edge"
-msgstr ""
+msgstr "Premjesti aktivni prozor na desni rub zaslona"
 
 #: ../../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
@@ -3100,7 +3062,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:103
 msgid "Move active window to top screen edge"
-msgstr ""
+msgstr "Premjesti aktivni prozor na gornji rub zaslona"
 
 #: ../../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
@@ -3108,43 +3070,39 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:104
 msgid "Move active window to bottom screen edge"
-msgstr ""
+msgstr "Premjesti aktivni prozor na donji rub zaslona"
 
 #: ../../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:105
-#, fuzzy
 msgid "Grow active window to left edge"
-msgstr "Spusti aktivni prozor"
+msgstr "Proširi aktivni prozor prema lijevom rubu"
 
 #: ../../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:106
-#, fuzzy
 msgid "Grow active window to right edge"
-msgstr "Spusti aktivni prozor"
+msgstr "Proširi aktivni prozor prema desnom rubu"
 
 #: ../../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:107
-#, fuzzy
 msgid "Grow active window to top edge"
-msgstr "Spusti aktivni prozor"
+msgstr "Proširi aktivni prozor prema gornjem rubu"
 
 #: ../../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:108
-#, fuzzy
 msgid "Grow active window to bottom edge"
-msgstr "Spusti aktivni prozor"
+msgstr "Proširi aktivni prozor prema donjem rubu"
 
 #: ../../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
@@ -3152,7 +3110,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:109
 msgid "Shrink active window from left edge"
-msgstr ""
+msgstr "Smanji aktivni prozor od lijevog ruba"
 
 #: ../../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
@@ -3160,16 +3118,15 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:110
 msgid "Shrink active window from right edge"
-msgstr ""
+msgstr "Smanji aktivni prozor od desnog ruba"
 
 #: ../../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:111
-#, fuzzy
 msgid "Shrink active window from top edge"
-msgstr "Shade-iraj aktivni prozor"
+msgstr "Smanji aktivni prozor od gornjeg ruba"
 
 #: ../../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
@@ -3177,34 +3134,31 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:112
 msgid "Shrink active window from bottom edge"
-msgstr ""
+msgstr "Smanji aktivni prozor od donjeg ruba"
 
 #: ../../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "Spusti aktivni prozor"
+msgstr "Prebaci cijeli zaslon za aktivni prozor"
 
 #: ../../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "Spusti aktivni prozor"
+msgstr "Centriraj aktivni prozor"
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "CenterKey"
-msgstr "Sredina"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
-msgstr ""
+msgstr "Prebaci status prozora «na vrhu»"
 
 #: ../../src/keybind_descriptions.h:115
 msgid "KeepOnTopKey"
@@ -3212,7 +3166,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:116
 msgid "Toggle window at bottom status"
-msgstr ""
+msgstr "Prebaci status prozora «na dnu»"
 
 #: ../../src/keybind_descriptions.h:116
 msgid "KeepAtBottomKey"
@@ -3220,7 +3174,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:117
 msgid "Toggle window omnipresent status"
-msgstr ""
+msgstr "Prebaci status prozora «svugdje prisutan»"
 
 #: ../../src/keybind_descriptions.h:117
 msgid "OmnipresentKey"
@@ -3247,9 +3201,8 @@ msgid "Raise/Lower window under mouse pointer"
 msgstr "Podigni/Spusti prozor ispod pokazivača miša"
 
 #: ../../src/keybind_descriptions.h:120
-#, fuzzy
 msgid "RaiseLowerKey"
-msgstr "Podigni/Spusti Clip"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:121
 msgid "Shade active window"
@@ -3264,23 +3217,20 @@ msgid "Select active window"
 msgstr "Selektiraj aktivni prozor"
 
 #: ../../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "Selektirani tekst"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:123
-#, fuzzy
 msgid "Launch new instance of application"
-msgstr "ne mogu inicijalizirati aplikaciju"
+msgstr "Pokreni novu instancu aplikacije"
 
 #: ../../src/keybind_descriptions.h:123
-#, fuzzy
 msgid "WindowRelaunchKey"
-msgstr "Položaj prozora"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "Premjesti na desni/donji/lijevi/gornji zaslon"
 
 #: ../../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -3288,7 +3238,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "Premjesti na lijevi/gornji/desni/donji zaslon"
 
 #: ../../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -3299,100 +3249,84 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:131 ../../src/keybind_descriptions.h:132
 #: ../../src/keybind_descriptions.h:133 ../../src/keybind_descriptions.h:134
 #: ../../src/keybind_descriptions.h:135 ../../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Kratica"
+msgstr "Prečaci prozora"
 
 #: ../../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
 msgstr "Kratica za prozor 1"
 
 #: ../../src/keybind_descriptions.h:127
-#, fuzzy
 msgid "WindowShortcut1Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
 msgstr "Kratica za prozor 2"
 
 #: ../../src/keybind_descriptions.h:128
-#, fuzzy
 msgid "WindowShortcut2Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
 msgstr "Kratica za prozor 3"
 
 #: ../../src/keybind_descriptions.h:129
-#, fuzzy
 msgid "WindowShortcut3Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
 msgstr "Kratica za prozor 4"
 
 #: ../../src/keybind_descriptions.h:130
-#, fuzzy
 msgid "WindowShortcut4Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:131
-#, fuzzy
 msgid "Shortcut for window 5"
-msgstr "Kratica za prozor 1"
+msgstr "Tipkovnički prečac za prozor 5"
 
 #: ../../src/keybind_descriptions.h:131
-#, fuzzy
 msgid "WindowShortcut5Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:132
-#, fuzzy
 msgid "Shortcut for window 6"
-msgstr "Kratica za prozor 1"
+msgstr "Tipkovnički prečac za prozor 6"
 
 #: ../../src/keybind_descriptions.h:132
-#, fuzzy
 msgid "WindowShortcut6Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:133
-#, fuzzy
 msgid "Shortcut for window 7"
-msgstr "Kratica za prozor 1"
+msgstr "Tipkovnički prečac za prozor 7"
 
 #: ../../src/keybind_descriptions.h:133
-#, fuzzy
 msgid "WindowShortcut7Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:134
-#, fuzzy
 msgid "Shortcut for window 8"
-msgstr "Kratica za prozor 1"
+msgstr "Tipkovnički prečac za prozor 8"
 
 #: ../../src/keybind_descriptions.h:134
-#, fuzzy
 msgid "WindowShortcut8Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:135
-#, fuzzy
 msgid "Shortcut for window 9"
-msgstr "Kratica za prozor 1"
+msgstr "Tipkovnički prečac za prozor 9"
 
 #: ../../src/keybind_descriptions.h:135
-#, fuzzy
 msgid "WindowShortcut9Key"
-msgstr "Kratica"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Shortcut for window 10"
-msgstr "Kratica za prozor 1"
+msgstr "Tipkovnički prečac za prozor 10"
 
 #: ../../src/keybind_descriptions.h:136
 msgid "WindowShortcut10Key"
@@ -3405,9 +3339,8 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:146 ../../src/keybind_descriptions.h:147
 #: ../../src/keybind_descriptions.h:148 ../../src/keybind_descriptions.h:149
 #: ../../src/keybind_descriptions.h:150 ../../src/keybind_descriptions.h:151
-#, fuzzy
 msgid "Focus & Groups"
-msgstr "Fokus prati miša"
+msgstr "Fokus i grupe"
 
 #: ../../src/keybind_descriptions.h:138
 msgid "Focus next window"
@@ -3426,103 +3359,88 @@ msgid "FocusPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:140
-#, fuzzy
 msgid "Focus the window to the left"
-msgstr "Fokusiraj sljedeći prozor"
+msgstr "Fokusiraj prozor lijevo"
 
 #: ../../src/keybind_descriptions.h:140
-#, fuzzy
 msgid "FocusWindowLeftKey"
-msgstr "Fokusirani prozor"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:141
-#, fuzzy
 msgid "Focus the window to the right"
-msgstr "Fokusiraj sljedeći prozor"
+msgstr "Fokusiraj prozor desno"
 
 #: ../../src/keybind_descriptions.h:141
-#, fuzzy
 msgid "FocusWindowRightKey"
-msgstr "Fokusirani prozor"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:142
-#, fuzzy
 msgid "Focus the window above"
-msgstr "Fokusiraj sljedeći prozor"
+msgstr "Fokusiraj prozor iznad"
 
 #: ../../src/keybind_descriptions.h:142
-#, fuzzy
 msgid "FocusWindowUpKey"
-msgstr "Fokusirani prozor"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:143
-#, fuzzy
 msgid "Focus the window below"
-msgstr "Fokusiraj sljedeći prozor"
+msgstr "Fokusiraj prozor ispod"
 
 #: ../../src/keybind_descriptions.h:143
-#, fuzzy
 msgid "FocusWindowDownKey"
-msgstr "Fokusirani prozor"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:144
-#, fuzzy
 msgid "Focus next window in group"
-msgstr "Fokusiraj sljedeći prozor"
+msgstr "Fokusiraj sljedeći prozor u grupi"
 
 #: ../../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:145
-#, fuzzy
 msgid "Focus previous window in group"
-msgstr "Fokusiraj prethodni prozor"
+msgstr "Fokusiraj prethodni prozor u grupi"
 
 #: ../../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:146
-#, fuzzy
 msgid "Switch to next application group"
-msgstr "Prebacivanje na sljedećih 10 radnih prostora"
+msgstr "Prebaci na sljedeću grupu aplikacija"
 
 #: ../../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:147
-#, fuzzy
 msgid "Switch to previous application group"
-msgstr "Prebacivanje na predhodnih 10 radnih prostora"
+msgstr "Prebaci na prethodnu grupu aplikacija"
 
 #: ../../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:148
-#, fuzzy
 msgid "Switch to next tab in group"
-msgstr "Prebacivanje na sljedećih 10 radnih prostora"
+msgstr "Prebaci na sljedeću karticu u grupi"
 
 #: ../../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:149
-#, fuzzy
 msgid "Switch to previous tab in group"
-msgstr "Prebacivanje na predhodnih 10 radnih prostora"
+msgstr "Prebaci na prethodnu karticu u grupi"
 
 #: ../../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:150
-#, fuzzy
 msgid "Attach window as tab"
-msgstr "Automatsko zadržavanje podizanja prozora"
+msgstr "Pričvrsti prozor kao karticu"
 
 #: ../../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -3530,7 +3448,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Odvoji karticu od grupe"
 
 #: ../../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -3565,42 +3483,36 @@ msgid "Workspaces"
 msgstr "Radni prostori"
 
 #: ../../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "Open workspace pager"
-msgstr "Otvoriti izbornik radnih prostora"
+msgstr "Otvori preglednik radnih prostora"
 
 #: ../../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
 msgstr "Prebacivanje na sljedeći radni prostor"
 
 #: ../../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
 msgstr "Prebacivanje na prethodni radni prostor"
 
 #: ../../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "Switch to last used workspace"
-msgstr "Prebacivanje na sljedećih 10 radnih prostora"
+msgstr "Prebaci na zadnji korišteni radni prostor"
 
 #: ../../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
@@ -3619,175 +3531,152 @@ msgid "PrevWorkspaceLayerKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "Switch to workspace on the left"
-msgstr "Prebacivanje na radni prostor 1"
+msgstr "Prebaci na radni prostor lijevo"
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "Switch to workspace on the right"
-msgstr "Prebacivanje na radni prostor 1"
+msgstr "Prebaci na radni prostor desno"
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "Switch to workspace above"
-msgstr "Prebacivanje na radni prostor 1"
+msgstr "Prebaci na radni prostor iznad"
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "Switch to workspace below"
-msgstr "Prebacivanje na radni prostor 1"
+msgstr "Prebaci na radni prostor ispod"
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
 msgstr "Prebacivanje na radni prostor 1"
 
 #: ../../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
 msgstr "Prebacivanje na radni prostor 2"
 
 #: ../../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
 msgstr "Prebacivanje na radni prostor 3"
 
 #: ../../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
 msgstr "Prebacivanje na radni prostor 4"
 
 #: ../../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
 msgstr "Prebacivanje na radni prostor 5"
 
 #: ../../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
 msgstr "Prebacivanje na radni prostor 6"
 
 #: ../../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
 msgstr "Prebacivanje na radni prostor 7"
 
 #: ../../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
 msgstr "Prebacivanje na radni prostor 8"
 
 #: ../../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
 msgstr "Prebacivanje na radni prostor 9"
 
 #: ../../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
 msgstr "Prebacivanje na radni prostor 10"
 
 #: ../../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "Move window to next workspace"
-msgstr "Prebacivanje na sljedeći radni prostor"
+msgstr "Premjesti prozor na sljedeći radni prostor"
 
 #: ../../src/keybind_descriptions.h:173
 msgid "MoveToNextWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "Move window to previous workspace"
-msgstr "Prebacivanje na prethodni radni prostor"
+msgstr "Premjesti prozor na prethodni radni prostor"
 
 #: ../../src/keybind_descriptions.h:174
 msgid "MoveToPrevWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "Move window to last used workspace"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Premjesti prozor na zadnji korišteni radni prostor"
 
 #: ../../src/keybind_descriptions.h:175
 msgid "MoveToLastWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "Move window to next ten workspaces"
-msgstr "Prebacivanje na sljedećih 10 radnih prostora"
+msgstr "Premjesti prozor na sljedećih deset radnih prostora"
 
 #: ../../src/keybind_descriptions.h:176
 msgid "MoveToNextWorkspaceLayerKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:177
-#, fuzzy
 msgid "Move window to previous ten workspaces"
-msgstr "Prebacivanje na predhodnih 10 radnih prostora"
+msgstr "Premjesti prozor na prethodnih deset radnih prostora"
 
 #: ../../src/keybind_descriptions.h:177
 msgid "MoveToPrevWorkspaceLayerKey"
@@ -3795,7 +3684,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:178
 msgid "Move window to workspace on the left"
-msgstr ""
+msgstr "Premjesti prozor na radni prostor lijevo"
 
 #: ../../src/keybind_descriptions.h:178
 msgid "MoveToLeftWorkspaceKey"
@@ -3803,230 +3692,187 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:179
 msgid "Move window to workspace on the right"
-msgstr ""
+msgstr "Premjesti prozor na radni prostor desno"
 
 #: ../../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "Prebacivanje na radni prostor 1"
+msgstr "Premjesti prozor na radni prostor iznad"
 
 #: ../../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "MoveToUpWorkspaceKey"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "Prebacivanje na radni prostor 1"
+msgstr "Premjesti prozor na radni prostor ispod"
 
 #: ../../src/keybind_descriptions.h:181
 msgid "MoveToDownWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "Move window to workspace 1"
-msgstr "Prebacivanje na radni prostor 1"
+msgstr "Premjesti prozor na radni prostor 1"
 
 #: ../../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "Move window to workspace 2"
-msgstr "Prebacivanje na radni prostor 2"
+msgstr "Premjesti prozor na radni prostor 2"
 
 #: ../../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "Move window to workspace 3"
-msgstr "Prebacivanje na radni prostor 3"
+msgstr "Premjesti prozor na radni prostor 3"
 
 #: ../../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "Move window to workspace 4"
-msgstr "Prebacivanje na radni prostor 4"
+msgstr "Premjesti prozor na radni prostor 4"
 
 #: ../../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "Move window to workspace 5"
-msgstr "Prebacivanje na radni prostor 5"
+msgstr "Premjesti prozor na radni prostor 5"
 
 #: ../../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "Move window to workspace 6"
-msgstr "Prebacivanje na radni prostor 6"
+msgstr "Premjesti prozor na radni prostor 6"
 
 #: ../../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "Move window to workspace 7"
-msgstr "Prebacivanje na radni prostor 7"
+msgstr "Premjesti prozor na radni prostor 7"
 
 #: ../../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "Move window to workspace 8"
-msgstr "Prebacivanje na radni prostor 8"
+msgstr "Premjesti prozor na radni prostor 8"
 
 #: ../../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "Move window to workspace 9"
-msgstr "Prebacivanje na radni prostor 9"
+msgstr "Premjesti prozor na radni prostor 9"
 
 #: ../../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "Move window to workspace 10"
-msgstr "Prebacivanje na radni prostor 10"
+msgstr "Premjesti prozor na radni prostor 10"
 
 #: ../../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 1"
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 2"
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 3"
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 4"
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 5"
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 6"
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 7"
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 8"
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "povlačenje prozora između radnih prostora."
+msgstr "Prebaci prozor na radnom prostoru 9"
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "Toggle window on workspace 10"
-msgstr "Prebacivanje na radni prostor 10"
+msgstr "Prebaci prozor na radnom prostoru 10"
 
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "ToggleWorkspace10Key"
-msgstr "Radni prostori"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:203 ../../src/keybind_descriptions.h:204
 #: ../../src/keybind_descriptions.h:205 ../../src/keybind_descriptions.h:206
@@ -4034,11 +3880,11 @@ msgstr "Radni prostori"
 #: ../../src/keybind_descriptions.h:209 ../../src/keybind_descriptions.h:210
 #: ../../src/keybind_descriptions.h:211 ../../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Pločice i raspored"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "Cycle workspace tiling layout"
-msgstr ""
+msgstr "Prebaci raspored pločica radnog prostora"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -4046,7 +3892,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Prebaci raspored pločica radnog prostora unatrag"
 
 #: ../../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -4054,7 +3900,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Zamijeni os rasporeda pločica"
 
 #: ../../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
@@ -4062,7 +3908,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:206
 msgid "Set workspace layout to float"
-msgstr ""
+msgstr "Postavi raspored radnog prostora na plutajući"
 
 #: ../../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -4070,7 +3916,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Povećaj broj mastera rasporeda"
 
 #: ../../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -4078,7 +3924,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Smanji broj mastera rasporeda"
 
 #: ../../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -4086,7 +3932,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Povećaj omjer mastera rasporeda"
 
 #: ../../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -4094,25 +3940,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Smanji omjer mastera rasporeda"
 
 #: ../../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:211
-#, fuzzy
 msgid "Toggle tiling for active window"
-msgstr "Spusti aktivni prozor"
+msgstr "Prebaci pločice za aktivni prozor"
 
 #: ../../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "Shade-iraj aktivni prozor"
+msgstr "Zamijeni aktivni prozor s masterom"
 
 #: ../../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -4121,23 +3965,20 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:214 ../../src/keybind_descriptions.h:215
 #: ../../src/keybind_descriptions.h:216 ../../src/keybind_descriptions.h:217
 #: ../../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Window Manager"
+msgstr "Oznake prozora"
 
 #: ../../src/keybind_descriptions.h:214
-#, fuzzy
 msgid "Mark window: set mark"
-msgstr "Pokrenuti window manager"
+msgstr "Označi prozor: postavi oznaku"
 
 #: ../../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:215
-#, fuzzy
 msgid "Mark window: unset mark"
-msgstr "Pokrenuti window manager"
+msgstr "Označi prozor: ukloni oznaku"
 
 #: ../../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -4145,7 +3986,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Označi prozor: dovedi označeni prozor ovdje"
 
 #: ../../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -4153,7 +3994,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Označi prozor: skoči na označeni prozor"
 
 #: ../../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -4161,25 +4002,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Označi prozor: zamijeni s označenim prozorom"
 
 #: ../../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "Sakrij aktivnu aplikaciju"
+msgstr "Pronađi aplikaciju"
 
 #: ../../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "Postavke tastaturnih kratica"
+msgstr "Prikaži tipkovničke prečace"
 
 #: ../../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
@@ -4191,7 +4030,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:223
 msgid "Lock screen"
-msgstr ""
+msgstr "Zaključaj zaslon"
 
 #: ../../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -4199,7 +4038,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Otvori povijest međuspremnika"
 
 #: ../../src/keybind_descriptions.h:224
 msgid "ClipboardKey"

@@ -1078,7 +1078,7 @@ msgstr "Eylemler"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:573
 msgid "List Mode"
-msgstr ""
+msgstr "Liste Modu"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:578
 #, fuzzy
@@ -2612,11 +2612,11 @@ msgstr "%s, hem %s hem de %s için kullanılıyor"
 #: ../../src/keybind_descriptions.h:46 ../../src/keybind_descriptions.h:47
 #: ../../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Sanal Masaüstü"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Sanal masaüstünü sonraki sol kenara taşı"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -2624,7 +2624,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Sanal masaüstünü sonraki sağ kenara taşı"
 
 #: ../../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -2632,7 +2632,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Sanal masaüstünü sonraki üst kenara taşı"
 
 #: ../../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -2640,7 +2640,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Sanal masaüstünü sonraki alt kenara taşı"
 
 #: ../../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -2648,7 +2648,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Sanal masaüstünü başlangıcına taşı"
 
 #: ../../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -2656,7 +2656,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Odaklanan pencereyi sanal masaüstünde ortala"
 
 #: ../../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -2664,7 +2664,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Odaklanan pencereyi sanal masaüstü görünümüne sabitle"
 
 #: ../../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -2675,7 +2675,7 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:222 ../../src/keybind_descriptions.h:223
 #: ../../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Oturum ve Çeşitli"
 
 #: ../../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
@@ -2687,7 +2687,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Aksanlı ve özel karakterleri seç"
 
 #: ../../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -2695,9 +2695,8 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:62 ../../src/keybind_descriptions.h:63
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "Menus"
-msgstr "Menü Öğeleri"
+msgstr "Menüler"
 
 #: ../../src/keybind_descriptions.h:62
 msgid "Open applications menu"
@@ -2712,49 +2711,43 @@ msgid "Open window list menu"
 msgstr "Pencere listesi menüsünü aç"
 
 #: ../../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Pencere Listesi Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
 msgstr "Pencere komutları menüsünü aç"
 
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Pencere Listesi Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:66 ../../src/keybind_descriptions.h:67
 #: ../../src/keybind_descriptions.h:68 ../../src/keybind_descriptions.h:69
 #: ../../src/keybind_descriptions.h:70 ../../src/keybind_descriptions.h:71
 #: ../../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "Dock Tercihleri"
+msgstr "Dock ve Ekran"
 
 #: ../../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
 msgstr "Yükseltme / indirme istasyonu"
 
 #: ../../src/keybind_descriptions.h:66
-#, fuzzy
 msgid "DockRaiseLowerKey"
-msgstr "Yükseltme / indirme istasyonu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
 msgstr "Yükselt / Alt Klip"
 
 #: ../../src/keybind_descriptions.h:67
-#, fuzzy
 msgid "ClipRaiseLowerKey"
-msgstr "Yükselt / Alt Klip"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:68
-#, fuzzy
 msgid "Switch to next screen/monitor"
-msgstr "Sonraki Ekrana / Monitöre Geç"
+msgstr "Sonraki ekrana/monitöre geç"
 
 #: ../../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
@@ -2762,35 +2755,31 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:69
 msgid "Capture the entire screen"
-msgstr ""
+msgstr "Tüm ekranı yakala"
 
 #: ../../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "ScreenCaptureKey"
-msgstr "Yakala"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "Tüm pencereleri küçült"
+msgstr "Bir pencereyi yakala"
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "WindowCaptureKey"
-msgstr "Yakala"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Ekranın bir bölümünü yakala"
 
 #: ../../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Find the mouse pointer"
-msgstr "... bu fare imlecinin altında"
+msgstr "Fare imlecini bul"
 
 #: ../../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -2822,32 +2811,28 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:120 ../../src/keybind_descriptions.h:121
 #: ../../src/keybind_descriptions.h:122 ../../src/keybind_descriptions.h:123
 #: ../../src/keybind_descriptions.h:124 ../../src/keybind_descriptions.h:125
-#, fuzzy
 msgid "Windows"
-msgstr "Windows'u seç"
+msgstr "Pencereler"
 
 #: ../../src/keybind_descriptions.h:74
 msgid "Miniaturize active window"
 msgstr "Aktif pencereyi küçült"
 
 #: ../../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Aktif pencereyi küçült"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:75
 msgid "Miniaturize all windows"
 msgstr "Tüm pencereleri küçült"
 
 #: ../../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "Tüm pencereleri küçült"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Aktif pencereyi küçült"
+msgstr "Diğer pencereleri küçült"
 
 #: ../../src/keybind_descriptions.h:76
 msgid "MiniaturizeOthersKey"
@@ -2871,53 +2856,47 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Masaüstünü göstermeyi değiştir (tümünü küçült/geri yükle)"
 
 #: ../../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
-msgstr "Tüm Pencereleri Göster"
+msgstr "Tüm pencereleri göster"
 
 #: ../../src/keybind_descriptions.h:80
 msgid "ShowAllKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "Simgeleri Yerleştir"
+msgstr "Simgeleri düzenle"
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "ArrangeIconsKey"
-msgstr "Simgeleri Yerleştir"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
 msgstr "Etkin pencereyi taşı / yeniden boyutlandır"
 
 #: ../../src/keybind_descriptions.h:82
-#, fuzzy
 msgid "MoveResizeKey"
-msgstr "Opak Taşı / Yeniden Boyutlandır"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:83
 msgid "Close active window"
 msgstr "Etkin pencereyi kapat"
 
 #: ../../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Kapat"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Aktif pencereyi kaldır"
+msgstr "Etkin pencerenin geometrisini geri yükle"
 
 #: ../../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -2928,276 +2907,240 @@ msgid "Maximize active window"
 msgstr "Etkin pencereyi büyüt"
 
 #: ../../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
 msgstr "Aktif pencereyi dikey olarak büyüt"
 
 #: ../../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
 msgstr "Aktif pencereyi yatay olarak büyüt"
 
 #: ../../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
 msgstr "Aktif pencerenin sol yarısını büyüt"
 
 #: ../../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
 msgstr "Aktif pencerenin sağ yarısını büyüt"
 
 #: ../../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
 msgstr "Aktif pencerenin üst yarısını büyüt"
 
 #: ../../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
 msgstr "Aktif pencerenin alt yarısını büyüt"
 
 #: ../../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "Maximize active window top left corner"
-msgstr "Aktif pencereyi sol üst köşeye büyüt"
+msgstr "Etkin pencereyi sol üst köşeye sığdır"
 
 #: ../../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "Maximize active window top right corner"
-msgstr "Aktif pencereyi sağ üst köşeye büyüt"
+msgstr "Etkin pencereyi sağ üst köşeye sığdır"
 
 #: ../../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "Maximize active window bottom left corner"
-msgstr "Aktif pencereyi sol alt köşeye büyüt"
+msgstr "Etkin pencereyi sol alt köşeye sığdır"
 
 #: ../../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "Maximize active window bottom right corner"
-msgstr "Aktif pencereyi sol alt köşeye büyüt"
+msgstr "Etkin pencereyi sağ alt köşeye sığdır"
 
 #: ../../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "Etkin pencereyi kapat"
+msgstr "Etkin pencereyi döşe"
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "Ekranı kapla"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:97
-#, fuzzy
 msgid "Move active window to left edge"
-msgstr "Aktif pencerenin üst yarısını büyüt"
+msgstr "Etkin pencereyi sol kenara taşı"
 
 #: ../../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:98
-#, fuzzy
 msgid "Move active window to right edge"
-msgstr "Aktif pencerenin sağ yarısını büyüt"
+msgstr "Etkin pencereyi sağ kenara taşı"
 
 #: ../../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:99
-#, fuzzy
 msgid "Move active window to top edge"
-msgstr "Aktif pencereyi sol üst köşeye büyüt"
+msgstr "Etkin pencereyi üst kenara taşı"
 
 #: ../../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:100
-#, fuzzy
 msgid "Move active window to bottom edge"
-msgstr "Aktif pencereyi sol alt köşeye büyüt"
+msgstr "Etkin pencereyi alt kenara taşı"
 
 #: ../../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:101
-#, fuzzy
 msgid "Move active window to left screen edge"
-msgstr "Aktif pencereyi sol üst köşeye büyüt"
+msgstr "Etkin pencereyi ekranın sol kenarına taşı"
 
 #: ../../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:102
-#, fuzzy
 msgid "Move active window to right screen edge"
-msgstr "Aktif pencereyi sağ üst köşeye büyüt"
+msgstr "Etkin pencereyi ekranın sağ kenarına taşı"
 
 #: ../../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:103
-#, fuzzy
 msgid "Move active window to top screen edge"
-msgstr "Aktif pencereyi sol üst köşeye büyüt"
+msgstr "Etkin pencereyi ekranın üst kenarına taşı"
 
 #: ../../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:104
-#, fuzzy
 msgid "Move active window to bottom screen edge"
-msgstr "Aktif pencereyi sol alt köşeye büyüt"
+msgstr "Etkin pencereyi ekranın alt kenarına taşı"
 
 #: ../../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:105
-#, fuzzy
 msgid "Grow active window to left edge"
-msgstr "Aktif pencerenin üst yarısını büyüt"
+msgstr "Etkin pencereyi sol kenara doğru genişlet"
 
 #: ../../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:106
-#, fuzzy
 msgid "Grow active window to right edge"
-msgstr "Aktif pencerenin sağ yarısını büyüt"
+msgstr "Etkin pencereyi sağ kenara doğru genişlet"
 
 #: ../../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:107
-#, fuzzy
 msgid "Grow active window to top edge"
-msgstr "Alt aktif pencere"
+msgstr "Etkin pencereyi üst kenara doğru genişlet"
 
 #: ../../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:108
-#, fuzzy
 msgid "Grow active window to bottom edge"
-msgstr "Aktif pencereyi sol alt köşeye büyüt"
+msgstr "Etkin pencereyi alt kenara doğru genişlet"
 
 #: ../../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:109
-#, fuzzy
 msgid "Shrink active window from left edge"
-msgstr "Aktif pencerenin sol yarısını büyüt"
+msgstr "Etkin pencereyi sol kenardan küçült"
 
 #: ../../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:110
-#, fuzzy
 msgid "Shrink active window from right edge"
-msgstr "Aktif pencerenin sağ yarısını büyüt"
+msgstr "Etkin pencereyi sağ kenardan küçült"
 
 #: ../../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:111
-#, fuzzy
 msgid "Shrink active window from top edge"
-msgstr "Aktif pencereyi sol üst köşeye büyüt"
+msgstr "Etkin pencereyi üst kenardan küçült"
 
 #: ../../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:112
-#, fuzzy
 msgid "Shrink active window from bottom edge"
-msgstr "Aktif pencereyi sol alt köşeye büyüt"
+msgstr "Etkin pencereyi alt kenardan küçült"
 
 #: ../../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "Alt aktif pencere"
+msgstr "Etkin pencere için tam ekranı değiştir"
 
 #: ../../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "Alt aktif pencere"
+msgstr "Etkin pencereyi ortala"
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "CenterKey"
-msgstr "Merkez"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
@@ -3244,9 +3187,8 @@ msgid "Raise/Lower window under mouse pointer"
 msgstr "Fare işaretçisinin altındaki pencereyi kaldır / indir"
 
 #: ../../src/keybind_descriptions.h:120
-#, fuzzy
 msgid "RaiseLowerKey"
-msgstr "Yükseltme / indirme istasyonu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:121
 msgid "Shade active window"
@@ -3261,18 +3203,16 @@ msgid "Select active window"
 msgstr "Aktif pencereyi seç"
 
 #: ../../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "Dosya Seç"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
 msgstr "Yeni uygulama örneği başlat"
 
 #: ../../src/keybind_descriptions.h:123
-#, fuzzy
 msgid "WindowRelaunchKey"
-msgstr "Pencere Yerleşimi"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
@@ -3295,90 +3235,80 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:131 ../../src/keybind_descriptions.h:132
 #: ../../src/keybind_descriptions.h:133 ../../src/keybind_descriptions.h:134
 #: ../../src/keybind_descriptions.h:135 ../../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Kısayol"
+msgstr "Pencere Kısayolları"
 
 #: ../../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
 msgstr "Pencere 1 için kısayol"
 
 #: ../../src/keybind_descriptions.h:127
-#, fuzzy
 msgid "WindowShortcut1Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
 msgstr "Pencere 2 için kısayol"
 
 #: ../../src/keybind_descriptions.h:128
-#, fuzzy
 msgid "WindowShortcut2Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
 msgstr "Pencere 3 için kısayol"
 
 #: ../../src/keybind_descriptions.h:129
-#, fuzzy
 msgid "WindowShortcut3Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
 msgstr "Pencere 4 için kısayol"
 
 #: ../../src/keybind_descriptions.h:130
-#, fuzzy
 msgid "WindowShortcut4Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
 msgstr "Pencere 5 için kısayol"
 
 #: ../../src/keybind_descriptions.h:131
-#, fuzzy
 msgid "WindowShortcut5Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
 msgstr "Pencere 6 için kısayol"
 
 #: ../../src/keybind_descriptions.h:132
-#, fuzzy
 msgid "WindowShortcut6Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
 msgstr "Pencere 7 için kısayol"
 
 #: ../../src/keybind_descriptions.h:133
-#, fuzzy
 msgid "WindowShortcut7Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
 msgstr "Pencere 8 için kısayol"
 
 #: ../../src/keybind_descriptions.h:134
-#, fuzzy
 msgid "WindowShortcut8Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
 msgstr "Pencere 9 için kısayol"
 
 #: ../../src/keybind_descriptions.h:135
-#, fuzzy
 msgid "WindowShortcut9Key"
-msgstr "Kısayol"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
@@ -3396,7 +3326,7 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:148 ../../src/keybind_descriptions.h:149
 #: ../../src/keybind_descriptions.h:150 ../../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "Odak ve Gruplar"
 
 #: ../../src/keybind_descriptions.h:138
 msgid "Focus next window"
@@ -3415,103 +3345,88 @@ msgid "FocusPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:140
-#, fuzzy
 msgid "Focus the window to the left"
-msgstr "Odaklanmış Pencere Başlığı"
+msgstr "Soldaki pencereye odaklan"
 
 #: ../../src/keybind_descriptions.h:140
-#, fuzzy
 msgid "FocusWindowLeftKey"
-msgstr "Odaklanmış Pencere"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:141
-#, fuzzy
 msgid "Focus the window to the right"
-msgstr "Odaklanmış Pencere Başlığı"
+msgstr "Sağdaki pencereye odaklan"
 
 #: ../../src/keybind_descriptions.h:141
-#, fuzzy
 msgid "FocusWindowRightKey"
-msgstr "Odaklanmış Pencere Başlığı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:142
-#, fuzzy
 msgid "Focus the window above"
-msgstr "Bir sonraki pencereye odaklan"
+msgstr "Yukarıdaki pencereye odaklan"
 
 #: ../../src/keybind_descriptions.h:142
-#, fuzzy
 msgid "FocusWindowUpKey"
-msgstr "Odaklanmış Pencere"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:143
-#, fuzzy
 msgid "Focus the window below"
-msgstr "Bir sonraki pencereye odaklan"
+msgstr "Aşağıdaki pencereye odaklan"
 
 #: ../../src/keybind_descriptions.h:143
-#, fuzzy
 msgid "FocusWindowDownKey"
-msgstr "Odaklanmış Pencere"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:144
-#, fuzzy
 msgid "Focus next window in group"
-msgstr "Bir sonraki pencereye odaklan"
+msgstr "Gruptaki sonraki pencereye odaklan"
 
 #: ../../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:145
-#, fuzzy
 msgid "Focus previous window in group"
-msgstr "Önceki pencereye odaklan"
+msgstr "Gruptaki önceki pencereye odaklan"
 
 #: ../../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:146
-#, fuzzy
 msgid "Switch to next application group"
-msgstr "Sonraki on çalışma alanına geç"
+msgstr "Sonraki uygulama grubuna geç"
 
 #: ../../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:147
-#, fuzzy
 msgid "Switch to previous application group"
-msgstr "Önceki on çalışma alanına geç"
+msgstr "Önceki uygulama grubuna geç"
 
 #: ../../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:148
-#, fuzzy
 msgid "Switch to next tab in group"
-msgstr "Sonraki on çalışma alanına geç"
+msgstr "Gruptaki sonraki sekmeye geç"
 
 #: ../../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:149
-#, fuzzy
 msgid "Switch to previous tab in group"
-msgstr "Önceki on çalışma alanına geç"
+msgstr "Gruptaki önceki sekmeye geç"
 
 #: ../../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:150
-#, fuzzy
 msgid "Attach window as tab"
-msgstr "Otomatik Pencere Yükseltme Gecikmesi"
+msgstr "Penceyi sekme olarak ekle"
 
 #: ../../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -3519,7 +3434,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Sekmeyi gruptan ayır"
 
 #: ../../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -3550,229 +3465,200 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:197 ../../src/keybind_descriptions.h:198
 #: ../../src/keybind_descriptions.h:199 ../../src/keybind_descriptions.h:200
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "Workspaces"
-msgstr "Çalışma Alanı Menüsü"
+msgstr "Çalışma Alanları"
 
 #: ../../src/keybind_descriptions.h:153
 msgid "Open workspace pager"
 msgstr "Çalışma alanı çağrı cihazını aç"
 
 #: ../../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
 msgstr "Sonraki çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "Sonraki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
 msgstr "Önceki çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "Önceki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
 msgstr "Son kullanılan çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
 msgstr "Sonraki on çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:157
-#, fuzzy
 msgid "NextWorkspaceLayerKey"
-msgstr "Sonraki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
 msgstr "Önceki on çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:158
-#, fuzzy
 msgid "PrevWorkspaceLayerKey"
-msgstr "Önceki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "Switch to workspace on the left"
-msgstr "Çalışma alanı 1'e geç"
+msgstr "Soldaki çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "Sonraki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "Switch to workspace on the right"
-msgstr "Çalışma alanı 1'e geç"
+msgstr "Sağdaki çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "Çalışma Alanlarını Değiştir"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "Switch to workspace above"
-msgstr "Çalışma alanı 1'e geç"
+msgstr "Yukarıdaki çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "Switch to workspace below"
-msgstr "Çalışma alanı 1'e geç"
+msgstr "Aşağıdaki çalışma alanına geç"
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
 msgstr "Çalışma alanı 1'e geç"
 
 #: ../../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
 msgstr "Çalışma alanı 2'ye geç"
 
 #: ../../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
 msgstr "Çalışma alanı 3'e geç"
 
 #: ../../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
 msgstr "Çalışma alanı 4'e geç"
 
 #: ../../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
 msgstr "Çalışma alanına 5 geç"
 
 #: ../../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
 msgstr "Çalışma alanına 6 geç"
 
 #: ../../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
 msgstr "Çalışma alanı 7'ye geç"
 
 #: ../../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
 msgstr "Çalışma alanına 8 geç"
 
 #: ../../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
 msgstr "Çalışma alanına 9 geç"
 
 #: ../../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
 msgstr "Çalışma alanı 10'a geç"
 
 #: ../../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:173
 msgid "Move window to next workspace"
 msgstr "Pencereyi bir sonraki çalışma alanına taşı"
 
 #: ../../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "MoveToNextWorkspaceKey"
-msgstr "Sonraki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:174
 msgid "Move window to previous workspace"
 msgstr "Pencereyi önceki çalışma alanına taşı"
 
 #: ../../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "MoveToPrevWorkspaceKey"
-msgstr "Önceki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:175
 msgid "Move window to last used workspace"
 msgstr "Pencereyi son kullanılan çalışma alanına taşı"
 
 #: ../../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "MoveToLastWorkspaceKey"
-msgstr "Sonraki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:176
 msgid "Move window to next ten workspaces"
 msgstr "Pencereyi sonraki on çalışma alanına taşı"
 
 #: ../../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "MoveToNextWorkspaceLayerKey"
-msgstr "Sonraki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:177
 msgid "Move window to previous ten workspaces"
@@ -3783,227 +3669,192 @@ msgid "MoveToPrevWorkspaceLayerKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:178
-#, fuzzy
 msgid "Move window to workspace on the left"
-msgstr "Pencereyi çalışma alanına taşıma 1"
+msgstr "Penceyi soldaki çalışma alanına taşı"
 
 #: ../../src/keybind_descriptions.h:178
-#, fuzzy
 msgid "MoveToLeftWorkspaceKey"
-msgstr "Sonraki Çalışma Alanı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:179
-#, fuzzy
 msgid "Move window to workspace on the right"
-msgstr "Pencereyi çalışma alanına taşıma 1"
+msgstr "Penceyi sağdaki çalışma alanına taşı"
 
 #: ../../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "Pencereyi çalışma alanına taşıma 1"
+msgstr "Penceyi yukarıdaki çalışma alanına taşı"
 
 #: ../../src/keybind_descriptions.h:180
 msgid "MoveToUpWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "Pencereyi çalışma alanına taşıma 1"
+msgstr "Penceyi aşağıdaki çalışma alanına taşı"
 
 #: ../../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "MoveToDownWorkspaceKey"
-msgstr "Pencereyi çalışma alanına taşıma 1"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:182
 msgid "Move window to workspace 1"
 msgstr "Pencereyi çalışma alanına taşıma 1"
 
 #: ../../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "Pencereyi çalışma alanına taşıma 1"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:183
 msgid "Move window to workspace 2"
 msgstr "Pencereyi çalışma alanına 2 taşı"
 
 #: ../../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "Pencereyi çalışma alanına 2 taşı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:184
 msgid "Move window to workspace 3"
 msgstr "Pencereyi çalışma alanına 3 taşı"
 
 #: ../../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "Pencereyi çalışma alanına 3 taşı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:185
 msgid "Move window to workspace 4"
 msgstr "Pencereyi çalışma alanına 4 taşı"
 
 #: ../../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "Pencereyi çalışma alanına 4 taşı"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:186
 msgid "Move window to workspace 5"
 msgstr "Pencereyi çalışma alanına taşıma 5"
 
 #: ../../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "Pencereyi çalışma alanına taşıma 5"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:187
 msgid "Move window to workspace 6"
 msgstr "Pencereyi çalışma alanına taşıma 6"
 
 #: ../../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "Pencereyi çalışma alanına taşıma 6"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:188
 msgid "Move window to workspace 7"
 msgstr "Pencereyi çalışma alanına taşıma 7"
 
 #: ../../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "Pencereyi çalışma alanına taşıma 7"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:189
 msgid "Move window to workspace 8"
 msgstr "Pencereyi çalışma alanına 8 taşıma"
 
 #: ../../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "Pencereyi çalışma alanına 8 taşıma"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:190
 msgid "Move window to workspace 9"
 msgstr "Pencereyi çalışma alanına 9 taşıma"
 
 #: ../../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "Pencereyi çalışma alanına 9 taşıma"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:191
 msgid "Move window to workspace 10"
 msgstr "Pencereyi çalışma alanına taşıma 10"
 
 #: ../../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "Pencereyi çalışma alanına taşıma 10"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "Pencereyi çalışma alanına taşıma 1"
+msgstr "Penceyi 1. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "Pencereyi çalışma alanına 2 taşı"
+msgstr "Penceyi 2. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "Pencereyi çalışma alanına 3 taşı"
+msgstr "Penceyi 3. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "Pencereyi çalışma alanına 4 taşı"
+msgstr "Penceyi 4. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "Pencereyi çalışma alanına taşıma 5"
+msgstr "Penceyi 5. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "Pencereyi çalışma alanına taşıma 6"
+msgstr "Penceyi 6. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "Pencereyi çalışma alanına taşıma 7"
+msgstr "Penceyi 7. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "Pencereyi çalışma alanına 8 taşıma"
+msgstr "Penceyi 8. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "Pencereyi çalışma alanına 9 taşıma"
+msgstr "Penceyi 9. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "Çalışma Alanı Menüsü"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "Toggle window on workspace 10"
-msgstr "Pencereyi çalışma alanına taşıma 10"
+msgstr "Penceyi 10. çalışma alanında değiştir"
 
 #: ../../src/keybind_descriptions.h:201
 msgid "ToggleWorkspace10Key"
@@ -4015,11 +3866,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:209 ../../src/keybind_descriptions.h:210
 #: ../../src/keybind_descriptions.h:211 ../../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Döşeme ve Yerleşim"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "Cycle workspace tiling layout"
-msgstr ""
+msgstr "Çalışma alanının döşeme yerleşimini değiştir"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -4027,7 +3878,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Çalışma alanının döşeme yerleşimini geri değiştir"
 
 #: ../../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -4035,7 +3886,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Döşeme yerleşimi eksenini değiştir"
 
 #: ../../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
@@ -4043,7 +3894,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:206
 msgid "Set workspace layout to float"
-msgstr ""
+msgstr "Çalışma alanı yerleşimini yüzen yap"
 
 #: ../../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -4051,7 +3902,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Yerleşim ana sayısını artır"
 
 #: ../../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -4059,7 +3910,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Yerleşim ana sayısını azalt"
 
 #: ../../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -4067,7 +3918,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Yerleşim ana oranını artır"
 
 #: ../../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -4075,25 +3926,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Yerleşim ana oranını azalt"
 
 #: ../../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:211
-#, fuzzy
 msgid "Toggle tiling for active window"
-msgstr "Alt aktif pencere"
+msgstr "Etkin pencere için döşemeyi değiştir"
 
 #: ../../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "Aktif pencerenin üst yarısını büyüt"
+msgstr "Etkin pencereyi ana ile değiştir"
 
 #: ../../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -4102,13 +3951,12 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:214 ../../src/keybind_descriptions.h:215
 #: ../../src/keybind_descriptions.h:216 ../../src/keybind_descriptions.h:217
 #: ../../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Pencere Oluşturucusundan Çık"
+msgstr "Pencere İşaretleri"
 
 #: ../../src/keybind_descriptions.h:214
 msgid "Mark window: set mark"
-msgstr ""
+msgstr "Pencereyi işaretle: işaret koy"
 
 #: ../../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -4116,7 +3964,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "Pencereyi işaretle: işareti kaldır"
 
 #: ../../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -4124,7 +3972,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Pencereyi işaretle: işaretli pencereyi buraya getir"
 
 #: ../../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -4132,7 +3980,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Pencereyi işaretle: işaretli pencereye atla"
 
 #: ../../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -4140,25 +3988,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Pencereyi işaretle: işaretli pencereyle değiştir"
 
 #: ../../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "Uygulamayı çalıştır"
+msgstr "Uygulama bul"
 
 #: ../../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "Klavye Kısayolu"
+msgstr "Klavye kısayollarını göster"
 
 #: ../../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
@@ -4170,7 +4016,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:223
 msgid "Lock screen"
-msgstr ""
+msgstr "Ekranı kilitle"
 
 #: ../../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -4178,7 +4024,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Pano geçmişini aç"
 
 #: ../../src/keybind_descriptions.h:224
 msgid "ClipboardKey"

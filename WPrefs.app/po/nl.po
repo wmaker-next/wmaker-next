@@ -1091,7 +1091,7 @@ msgstr "Acties"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:573
 msgid "List Mode"
-msgstr ""
+msgstr "Lijstmodus"
 
 #: ../../WPrefs.app/KeyboardShortcuts.c:578
 #, fuzzy
@@ -2648,11 +2648,11 @@ msgstr "%s wordt voor zowel %s als %s gebruikt"
 #: ../../src/keybind_descriptions.h:46 ../../src/keybind_descriptions.h:47
 #: ../../src/keybind_descriptions.h:48
 msgid "Virtual Desktop"
-msgstr ""
+msgstr "Virtueel bureaublad"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "Move VirtualDesktop to next left edge"
-msgstr ""
+msgstr "Virtueel bureaublad naar volgende linkerrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:42
 msgid "VirtualEdgeLeftKey"
@@ -2660,7 +2660,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:43
 msgid "Move VirtualDesktop to next right edge"
-msgstr ""
+msgstr "Virtueel bureaublad naar volgende rechterrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:43
 msgid "VirtualEdgeRightKey"
@@ -2668,7 +2668,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:44
 msgid "Move VirtualDesktop to next top edge"
-msgstr ""
+msgstr "Virtueel bureaublad naar volgende bovenrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:44
 msgid "VirtualEdgeUpKey"
@@ -2676,7 +2676,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:45
 msgid "Move VirtualDesktop to next bottom edge"
-msgstr ""
+msgstr "Virtueel bureaublad naar volgende onderrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:45
 msgid "VirtualEdgeDownKey"
@@ -2684,7 +2684,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:46
 msgid "Move VirtualDesktop to its origin"
-msgstr ""
+msgstr "Virtueel bureaublad naar oorsprong verplaatsen"
 
 #: ../../src/keybind_descriptions.h:46
 msgid "VirtualDesktopHomeKey"
@@ -2692,7 +2692,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:47
 msgid "Center the focused window in the VirtualDesktop"
-msgstr ""
+msgstr "Gefocust venster in virtueel bureaublad centreren"
 
 #: ../../src/keybind_descriptions.h:47
 msgid "VirtualDesktopCenterKey"
@@ -2700,7 +2700,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:48
 msgid "Pin the focused window to the VirtualDesktop viewport"
-msgstr ""
+msgstr "Gefocust venster aan weergavegebied van virtueel bureaublad vastzetten"
 
 #: ../../src/keybind_descriptions.h:48
 msgid "VirtualDesktopPinKey"
@@ -2711,7 +2711,7 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:222 ../../src/keybind_descriptions.h:223
 #: ../../src/keybind_descriptions.h:224
 msgid "Session & Misc"
-msgstr ""
+msgstr "Sessie & Diversen"
 
 #: ../../src/keybind_descriptions.h:55
 msgid "Toggle keyboard language"
@@ -2723,7 +2723,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:56
 msgid "Pick accented and special characters"
-msgstr ""
+msgstr "Geaccentueerde en speciale tekens kiezen"
 
 #: ../../src/keybind_descriptions.h:56
 msgid "AccentPickerKey"
@@ -2731,9 +2731,8 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:62 ../../src/keybind_descriptions.h:63
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "Menus"
-msgstr "Menu-ingangen"
+msgstr "Menu's"
 
 #: ../../src/keybind_descriptions.h:62
 msgid "Open applications menu"
@@ -2748,49 +2747,43 @@ msgid "Open window list menu"
 msgstr "Open vensterlijstmenu"
 
 #: ../../src/keybind_descriptions.h:63
-#, fuzzy
 msgid "WindowListKey"
-msgstr "Vensterlijstmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:64
 msgid "Open window commands menu"
 msgstr "Open venstercommandomenu"
 
 #: ../../src/keybind_descriptions.h:64
-#, fuzzy
 msgid "WindowMenuKey"
-msgstr "Vensterlijstmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:66 ../../src/keybind_descriptions.h:67
 #: ../../src/keybind_descriptions.h:68 ../../src/keybind_descriptions.h:69
 #: ../../src/keybind_descriptions.h:70 ../../src/keybind_descriptions.h:71
 #: ../../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Dock & Screen"
-msgstr "Dokvoorkeuren"
+msgstr "Dock & Scherm"
 
 #: ../../src/keybind_descriptions.h:66
 msgid "Raise/Lower Dock"
 msgstr "Verhoog/verlaag Dok"
 
 #: ../../src/keybind_descriptions.h:66
-#, fuzzy
 msgid "DockRaiseLowerKey"
-msgstr "Verhoog/verlaag Dok"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:67
 msgid "Raise/Lower Clip"
 msgstr "Verhoog/verlaag Clip"
 
 #: ../../src/keybind_descriptions.h:67
-#, fuzzy
 msgid "ClipRaiseLowerKey"
-msgstr "Verhoog/verlaag Clip"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:68
-#, fuzzy
 msgid "Switch to next screen/monitor"
-msgstr "Schakel naar volgend scherm/monitor"
+msgstr "Overschakelen naar volgende scherm/monitor"
 
 #: ../../src/keybind_descriptions.h:68
 msgid "ScreenSwitchKey"
@@ -2798,35 +2791,31 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:69
 msgid "Capture the entire screen"
-msgstr ""
+msgstr "Hele scherm vastleggen"
 
 #: ../../src/keybind_descriptions.h:69
-#, fuzzy
 msgid "ScreenCaptureKey"
-msgstr "Opnemen"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "Capture a window"
-msgstr "Miniaturiseer alle vensters"
+msgstr "Venster vastleggen"
 
 #: ../../src/keybind_descriptions.h:70
-#, fuzzy
 msgid "WindowCaptureKey"
-msgstr "Opnemen"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:71
 msgid "Capture a portion of the screen"
-msgstr ""
+msgstr "Deel van het scherm vastleggen"
 
 #: ../../src/keybind_descriptions.h:71
 msgid "PartialCaptureKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:72
-#, fuzzy
 msgid "Find the mouse pointer"
-msgstr "...dat onder de muispijl zit"
+msgstr "Muisaanwijzer vinden"
 
 #: ../../src/keybind_descriptions.h:72
 msgid "FindMouseKey"
@@ -2858,32 +2847,28 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:120 ../../src/keybind_descriptions.h:121
 #: ../../src/keybind_descriptions.h:122 ../../src/keybind_descriptions.h:123
 #: ../../src/keybind_descriptions.h:124 ../../src/keybind_descriptions.h:125
-#, fuzzy
 msgid "Windows"
-msgstr "Vensters selecteren"
+msgstr "Vensters"
 
 #: ../../src/keybind_descriptions.h:74
 msgid "Miniaturize active window"
 msgstr "Miniaturiseer actief venster"
 
 #: ../../src/keybind_descriptions.h:74
-#, fuzzy
 msgid "MiniaturizeKey"
-msgstr "Miniaturiseer actief venster"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:75
 msgid "Miniaturize all windows"
 msgstr "Miniaturiseer alle vensters"
 
 #: ../../src/keybind_descriptions.h:75
-#, fuzzy
 msgid "MiniaturizeAllKey"
-msgstr "Miniaturiseer alle vensters"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:76
-#, fuzzy
 msgid "Miniaturize other windows"
-msgstr "Miniaturiseer actief venster"
+msgstr "Andere vensters miniaturiseren"
 
 #: ../../src/keybind_descriptions.h:76
 msgid "MiniaturizeOthersKey"
@@ -2907,14 +2892,13 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:79
 msgid "Toggle show desktop (minimize/restore all)"
-msgstr ""
+msgstr "Bureaublad tonen omschakelen (alles miniaturiseren/herstellen)"
 
 #: ../../src/keybind_descriptions.h:79
 msgid "ShowDesktopKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:80
-#, fuzzy
 msgid "Show all windows"
 msgstr "Alle vensters tonen"
 
@@ -2923,37 +2907,32 @@ msgid "ShowAllKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "Arrange icons"
-msgstr "Iconen schikken"
+msgstr "Iconen rangschikken"
 
 #: ../../src/keybind_descriptions.h:81
-#, fuzzy
 msgid "ArrangeIconsKey"
-msgstr "Iconen schikken"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:82
 msgid "Move/Resize active window"
 msgstr "Verplaats/vergroot actief venster"
 
 #: ../../src/keybind_descriptions.h:82
-#, fuzzy
 msgid "MoveResizeKey"
-msgstr "Ondoorzichtig verpl./gr."
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:83
 msgid "Close active window"
 msgstr "Sluit actief venster"
 
 #: ../../src/keybind_descriptions.h:83
-#, fuzzy
 msgid "CloseKey"
-msgstr "Sluiten"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:84
-#, fuzzy
 msgid "Restore active window geometry"
-msgstr "Verhoog actief venster"
+msgstr "Geometrie van actief venster herstellen"
 
 #: ../../src/keybind_descriptions.h:84
 msgid "RestoreGeometryKey"
@@ -2964,276 +2943,240 @@ msgid "Maximize active window"
 msgstr "Maximaliseer actief venster"
 
 #: ../../src/keybind_descriptions.h:85
-#, fuzzy
 msgid "MaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:86
 msgid "Maximize active window vertically"
 msgstr "Maximaliseer act. venster verticaal"
 
 #: ../../src/keybind_descriptions.h:86
-#, fuzzy
 msgid "VMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:87
 msgid "Maximize active window horizontally"
 msgstr "Maximaliseer act. venster horizontaal"
 
 #: ../../src/keybind_descriptions.h:87
-#, fuzzy
 msgid "HMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:88
 msgid "Maximize active window left half"
 msgstr "Maximaliseer act. venster linkerhelft"
 
 #: ../../src/keybind_descriptions.h:88
-#, fuzzy
 msgid "LHMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:89
 msgid "Maximize active window right half"
 msgstr "Maximaliseer act. venster rechterhelft"
 
 #: ../../src/keybind_descriptions.h:89
-#, fuzzy
 msgid "RHMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:90
 msgid "Maximize active window top half"
 msgstr "Maximaliseer act. venster bovenhelft"
 
 #: ../../src/keybind_descriptions.h:90
-#, fuzzy
 msgid "THMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:91
 msgid "Maximize active window bottom half"
 msgstr "Maximaliseer act. venster onderhelft"
 
 #: ../../src/keybind_descriptions.h:91
-#, fuzzy
 msgid "BHMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "Maximize active window top left corner"
-msgstr "Maximal. act. venster linkerbovenhoek"
+msgstr "Actief venster op linkerbovenhoek maximaliseren"
 
 #: ../../src/keybind_descriptions.h:92
-#, fuzzy
 msgid "TLCMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "Maximize active window top right corner"
-msgstr "Maximal. act. venster rechterbovenhoek"
+msgstr "Actief venster op rechterbovenhoek maximaliseren"
 
 #: ../../src/keybind_descriptions.h:93
-#, fuzzy
 msgid "TRCMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "Maximize active window bottom left corner"
-msgstr "Maximal. act. venster linkeronderhoek"
+msgstr "Actief venster op linkeronderhoek maximaliseren"
 
 #: ../../src/keybind_descriptions.h:94
-#, fuzzy
 msgid "BLCMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "Maximize active window bottom right corner"
-msgstr "Maximal. act. venster linkeronderhoek"
+msgstr "Actief venster op rechteronderhoek maximaliseren"
 
 #: ../../src/keybind_descriptions.h:95
-#, fuzzy
 msgid "BRCMaximizeKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "Tile active window"
-msgstr "Sluit actief venster"
+msgstr "Actief venster tegelen"
 
 #: ../../src/keybind_descriptions.h:96
-#, fuzzy
 msgid "MaximusKey"
-msgstr "Maximaliseren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:97
-#, fuzzy
 msgid "Move active window to left edge"
-msgstr "Maximaliseer act. venster bovenhelft"
+msgstr "Actief venster naar linkerrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:97
 msgid "MoveToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:98
-#, fuzzy
 msgid "Move active window to right edge"
-msgstr "Maximaliseer act. venster rechterhelft"
+msgstr "Actief venster naar rechterrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:98
 msgid "MoveToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:99
-#, fuzzy
 msgid "Move active window to top edge"
-msgstr "Maximal. act. venster linkerbovenhoek"
+msgstr "Actief venster naar bovenrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:99
 msgid "MoveToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:100
-#, fuzzy
 msgid "Move active window to bottom edge"
-msgstr "Maximal. act. venster linkeronderhoek"
+msgstr "Actief venster naar onderrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:100
 msgid "MoveToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:101
-#, fuzzy
 msgid "Move active window to left screen edge"
-msgstr "Maximal. act. venster linkerbovenhoek"
+msgstr "Actief venster naar linkerschermrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:101
 msgid "MoveToEdgeLeftNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:102
-#, fuzzy
 msgid "Move active window to right screen edge"
-msgstr "Maximal. act. venster rechterbovenhoek"
+msgstr "Actief venster naar rechterschermrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:102
 msgid "MoveToEdgeRightNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:103
-#, fuzzy
 msgid "Move active window to top screen edge"
-msgstr "Maximal. act. venster linkerbovenhoek"
+msgstr "Actief venster naar bovenschermrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:103
 msgid "MoveToEdgeUpNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:104
-#, fuzzy
 msgid "Move active window to bottom screen edge"
-msgstr "Maximal. act. venster linkeronderhoek"
+msgstr "Actief venster naar onderschermrand verplaatsen"
 
 #: ../../src/keybind_descriptions.h:104
 msgid "MoveToEdgeDownNoSnapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:105
-#, fuzzy
 msgid "Grow active window to left edge"
-msgstr "Maximaliseer act. venster bovenhelft"
+msgstr "Actief venster naar links vergroten"
 
 #: ../../src/keybind_descriptions.h:105
 msgid "GrowToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:106
-#, fuzzy
 msgid "Grow active window to right edge"
-msgstr "Maximaliseer act. venster rechterhelft"
+msgstr "Actief venster naar rechts vergroten"
 
 #: ../../src/keybind_descriptions.h:106
 msgid "GrowToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:107
-#, fuzzy
 msgid "Grow active window to top edge"
-msgstr "Verlaag actief venster"
+msgstr "Actief venster naar boven vergroten"
 
 #: ../../src/keybind_descriptions.h:107
 msgid "GrowToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:108
-#, fuzzy
 msgid "Grow active window to bottom edge"
-msgstr "Maximal. act. venster linkeronderhoek"
+msgstr "Actief venster naar onder vergroten"
 
 #: ../../src/keybind_descriptions.h:108
 msgid "GrowToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:109
-#, fuzzy
 msgid "Shrink active window from left edge"
-msgstr "Maximaliseer act. venster linkerhelft"
+msgstr "Actief venster vanaf links verkleinen"
 
 #: ../../src/keybind_descriptions.h:109
 msgid "ShrinkToEdgeLeftKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:110
-#, fuzzy
 msgid "Shrink active window from right edge"
-msgstr "Maximaliseer act. venster rechterhelft"
+msgstr "Actief venster vanaf rechts verkleinen"
 
 #: ../../src/keybind_descriptions.h:110
 msgid "ShrinkToEdgeRightKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:111
-#, fuzzy
 msgid "Shrink active window from top edge"
-msgstr "Maximal. act. venster linkerbovenhoek"
+msgstr "Actief venster vanaf boven verkleinen"
 
 #: ../../src/keybind_descriptions.h:111
 msgid "ShrinkToEdgeUpKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:112
-#, fuzzy
 msgid "Shrink active window from bottom edge"
-msgstr "Maximal. act. venster linkeronderhoek"
+msgstr "Actief venster vanaf onder verkleinen"
 
 #: ../../src/keybind_descriptions.h:112
 msgid "ShrinkToEdgeDownKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:113
-#, fuzzy
 msgid "Toggle fullscreen for active window"
-msgstr "Verlaag actief venster"
+msgstr "Volledig scherm voor actief venster omschakelen"
 
 #: ../../src/keybind_descriptions.h:113
 msgid "ToggleFullscreenKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "Center active window"
-msgstr "Verlaag actief venster"
+msgstr "Actief venster centreren"
 
 #: ../../src/keybind_descriptions.h:114
-#, fuzzy
 msgid "CenterKey"
-msgstr "Centreren"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:115
 msgid "Toggle window on top status"
@@ -3280,9 +3223,8 @@ msgid "Raise/Lower window under mouse pointer"
 msgstr "Verhoog/verlaag venster onder muispijl"
 
 #: ../../src/keybind_descriptions.h:120
-#, fuzzy
 msgid "RaiseLowerKey"
-msgstr "Verhoog/verlaag Dok"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:121
 msgid "Shade active window"
@@ -3297,22 +3239,20 @@ msgid "Select active window"
 msgstr "Selecteer actief venster"
 
 #: ../../src/keybind_descriptions.h:122
-#, fuzzy
 msgid "SelectKey"
-msgstr "Kies bestand"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:123
 msgid "Launch new instance of application"
 msgstr "Start nieuw exemplaar van programma op"
 
 #: ../../src/keybind_descriptions.h:123
-#, fuzzy
 msgid "WindowRelaunchKey"
-msgstr "Vensterplaatsing"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:124
 msgid "Move to right/bottom/left/top head"
-msgstr ""
+msgstr "Verplaatsen naar rechter/onderste/linker/bovenste scherm"
 
 #: ../../src/keybind_descriptions.h:124
 msgid "MoveTo12to6Head"
@@ -3320,7 +3260,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:125
 msgid "Move to left/top/right/bottom head"
-msgstr ""
+msgstr "Verplaatsen naar linker/bovenste/rechter/onderste scherm"
 
 #: ../../src/keybind_descriptions.h:125
 msgid "MoveTo6to12Head"
@@ -3331,90 +3271,80 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:131 ../../src/keybind_descriptions.h:132
 #: ../../src/keybind_descriptions.h:133 ../../src/keybind_descriptions.h:134
 #: ../../src/keybind_descriptions.h:135 ../../src/keybind_descriptions.h:136
-#, fuzzy
 msgid "Window Shortcuts"
-msgstr "Sneltoets"
+msgstr "Venstersneltoetsen"
 
 #: ../../src/keybind_descriptions.h:127
 msgid "Shortcut for window 1"
 msgstr "Sneltoets voor venster 1"
 
 #: ../../src/keybind_descriptions.h:127
-#, fuzzy
 msgid "WindowShortcut1Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:128
 msgid "Shortcut for window 2"
 msgstr "Sneltoets voor venster 2"
 
 #: ../../src/keybind_descriptions.h:128
-#, fuzzy
 msgid "WindowShortcut2Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:129
 msgid "Shortcut for window 3"
 msgstr "Sneltoets voor venster 3"
 
 #: ../../src/keybind_descriptions.h:129
-#, fuzzy
 msgid "WindowShortcut3Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:130
 msgid "Shortcut for window 4"
 msgstr "Sneltoets voor venster 4"
 
 #: ../../src/keybind_descriptions.h:130
-#, fuzzy
 msgid "WindowShortcut4Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:131
 msgid "Shortcut for window 5"
 msgstr "Sneltoets voor venster 5"
 
 #: ../../src/keybind_descriptions.h:131
-#, fuzzy
 msgid "WindowShortcut5Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:132
 msgid "Shortcut for window 6"
 msgstr "Sneltoets voor venster 6"
 
 #: ../../src/keybind_descriptions.h:132
-#, fuzzy
 msgid "WindowShortcut6Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:133
 msgid "Shortcut for window 7"
 msgstr "Sneltoets voor venster 7"
 
 #: ../../src/keybind_descriptions.h:133
-#, fuzzy
 msgid "WindowShortcut7Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:134
 msgid "Shortcut for window 8"
 msgstr "Sneltoets voor venster 8"
 
 #: ../../src/keybind_descriptions.h:134
-#, fuzzy
 msgid "WindowShortcut8Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:135
 msgid "Shortcut for window 9"
 msgstr "Sneltoets voor venster 9"
 
 #: ../../src/keybind_descriptions.h:135
-#, fuzzy
 msgid "WindowShortcut9Key"
-msgstr "Sneltoets"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:136
 msgid "Shortcut for window 10"
@@ -3432,7 +3362,7 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:148 ../../src/keybind_descriptions.h:149
 #: ../../src/keybind_descriptions.h:150 ../../src/keybind_descriptions.h:151
 msgid "Focus & Groups"
-msgstr ""
+msgstr "Focus & Groepen"
 
 #: ../../src/keybind_descriptions.h:138
 msgid "Focus next window"
@@ -3451,103 +3381,88 @@ msgid "FocusPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:140
-#, fuzzy
 msgid "Focus the window to the left"
-msgstr "Titel van gefocust venster"
+msgstr "Venster links focusen"
 
 #: ../../src/keybind_descriptions.h:140
-#, fuzzy
 msgid "FocusWindowLeftKey"
-msgstr "Gefocust venster"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:141
-#, fuzzy
 msgid "Focus the window to the right"
-msgstr "Titel van gefocust venster"
+msgstr "Venster rechts focusen"
 
 #: ../../src/keybind_descriptions.h:141
-#, fuzzy
 msgid "FocusWindowRightKey"
-msgstr "Titel van gefocust venster"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:142
-#, fuzzy
 msgid "Focus the window above"
-msgstr "Focus volgend venster"
+msgstr "Venster erboven focusen"
 
 #: ../../src/keybind_descriptions.h:142
-#, fuzzy
 msgid "FocusWindowUpKey"
-msgstr "Gefocust venster"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:143
-#, fuzzy
 msgid "Focus the window below"
-msgstr "Focus volgend venster"
+msgstr "Venster eronder focusen"
 
 #: ../../src/keybind_descriptions.h:143
-#, fuzzy
 msgid "FocusWindowDownKey"
-msgstr "Gefocust venster"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:144
-#, fuzzy
 msgid "Focus next window in group"
-msgstr "Focus volgend venster"
+msgstr "Volgend venster in groep focusen"
 
 #: ../../src/keybind_descriptions.h:144
 msgid "GroupWindowNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:145
-#, fuzzy
 msgid "Focus previous window in group"
-msgstr "Focus vorig venster"
+msgstr "Vorig venster in groep focusen"
 
 #: ../../src/keybind_descriptions.h:145
 msgid "GroupWindowPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:146
-#, fuzzy
 msgid "Switch to next application group"
-msgstr "Schakel 10 werkruimten verder"
+msgstr "Overschakelen naar volgende programmagroep"
 
 #: ../../src/keybind_descriptions.h:146
 msgid "GroupNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:147
-#, fuzzy
 msgid "Switch to previous application group"
-msgstr "Schakel 10 werkruimten terug"
+msgstr "Overschakelen naar vorige programmagroep"
 
 #: ../../src/keybind_descriptions.h:147
 msgid "GroupPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:148
-#, fuzzy
 msgid "Switch to next tab in group"
-msgstr "Schakel 10 werkruimten verder"
+msgstr "Overschakelen naar volgend tabblad in groep"
 
 #: ../../src/keybind_descriptions.h:148
 msgid "GroupTabNextKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:149
-#, fuzzy
 msgid "Switch to previous tab in group"
-msgstr "Schakel 10 werkruimten terug"
+msgstr "Overschakelen naar vorig tabblad in groep"
 
 #: ../../src/keybind_descriptions.h:149
 msgid "GroupTabPrevKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:150
-#, fuzzy
 msgid "Attach window as tab"
-msgstr "Vertraging vanzelf vensters verhogen"
+msgstr "Venster als tabblad koppelen"
 
 #: ../../src/keybind_descriptions.h:150
 msgid "GroupTabAttachKey"
@@ -3555,7 +3470,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:151
 msgid "Detach tab from group"
-msgstr ""
+msgstr "Tabblad uit groep losmaken"
 
 #: ../../src/keybind_descriptions.h:151
 msgid "GroupTabDetachKey"
@@ -3586,229 +3501,200 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:197 ../../src/keybind_descriptions.h:198
 #: ../../src/keybind_descriptions.h:199 ../../src/keybind_descriptions.h:200
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "Workspaces"
-msgstr "Werkruimtenmenu"
+msgstr "Werkruimten"
 
 #: ../../src/keybind_descriptions.h:153
 msgid "Open workspace pager"
 msgstr "Open werkruimtevolger"
 
 #: ../../src/keybind_descriptions.h:153
-#, fuzzy
 msgid "WorkspaceMapKey"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:154
 msgid "Switch to next workspace"
 msgstr "Schakel naar volgende werkruimte"
 
 #: ../../src/keybind_descriptions.h:154
-#, fuzzy
 msgid "NextWorkspaceKey"
-msgstr "Volgende werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:155
 msgid "Switch to previous workspace"
 msgstr "Schakel naar vorige werkruimte"
 
 #: ../../src/keybind_descriptions.h:155
-#, fuzzy
 msgid "PrevWorkspaceKey"
-msgstr "Vorige werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:156
 msgid "Switch to last used workspace"
 msgstr "Schakel n. laatst gebruikte werkruimte"
 
 #: ../../src/keybind_descriptions.h:156
-#, fuzzy
 msgid "LastWorkspaceKey"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:157
 msgid "Switch to next ten workspaces"
 msgstr "Schakel 10 werkruimten verder"
 
 #: ../../src/keybind_descriptions.h:157
-#, fuzzy
 msgid "NextWorkspaceLayerKey"
-msgstr "Volgende werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:158
 msgid "Switch to previous ten workspaces"
 msgstr "Schakel 10 werkruimten terug"
 
 #: ../../src/keybind_descriptions.h:158
-#, fuzzy
 msgid "PrevWorkspaceLayerKey"
-msgstr "Vorige werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "Switch to workspace on the left"
-msgstr "Schakel naar werkruimte 1"
+msgstr "Overschakelen naar werkruimte links"
 
 #: ../../src/keybind_descriptions.h:159
-#, fuzzy
 msgid "LeftWorkspaceKey"
-msgstr "Volgende werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "Switch to workspace on the right"
-msgstr "Schakel naar werkruimte 1"
+msgstr "Overschakelen naar werkruimte rechts"
 
 #: ../../src/keybind_descriptions.h:160
-#, fuzzy
 msgid "RightWorkspaceKey"
-msgstr "Werkruimte wisselen"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "Switch to workspace above"
-msgstr "Schakel naar werkruimte 1"
+msgstr "Overschakelen naar werkruimte erboven"
 
 #: ../../src/keybind_descriptions.h:161
-#, fuzzy
 msgid "UpWorkspaceKey"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "Switch to workspace below"
-msgstr "Schakel naar werkruimte 1"
+msgstr "Overschakelen naar werkruimte eronder"
 
 #: ../../src/keybind_descriptions.h:162
-#, fuzzy
 msgid "DownWorkspaceKey"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:163
 msgid "Switch to workspace 1"
 msgstr "Schakel naar werkruimte 1"
 
 #: ../../src/keybind_descriptions.h:163
-#, fuzzy
 msgid "Workspace1Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:164
 msgid "Switch to workspace 2"
 msgstr "Schakel naar werkruimte 2"
 
 #: ../../src/keybind_descriptions.h:164
-#, fuzzy
 msgid "Workspace2Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:165
 msgid "Switch to workspace 3"
 msgstr "Schakel naar werkruimte 3"
 
 #: ../../src/keybind_descriptions.h:165
-#, fuzzy
 msgid "Workspace3Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:166
 msgid "Switch to workspace 4"
 msgstr "Schakel naar werkruimte 4"
 
 #: ../../src/keybind_descriptions.h:166
-#, fuzzy
 msgid "Workspace4Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:167
 msgid "Switch to workspace 5"
 msgstr "Schakel naar werkruimte 5"
 
 #: ../../src/keybind_descriptions.h:167
-#, fuzzy
 msgid "Workspace5Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:168
 msgid "Switch to workspace 6"
 msgstr "Schakel naar werkruimte 6"
 
 #: ../../src/keybind_descriptions.h:168
-#, fuzzy
 msgid "Workspace6Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:169
 msgid "Switch to workspace 7"
 msgstr "Schakel naar werkruimte 7"
 
 #: ../../src/keybind_descriptions.h:169
-#, fuzzy
 msgid "Workspace7Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:170
 msgid "Switch to workspace 8"
 msgstr "Schakel naar werkruimte 8"
 
 #: ../../src/keybind_descriptions.h:170
-#, fuzzy
 msgid "Workspace8Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:171
 msgid "Switch to workspace 9"
 msgstr "Schakel naar werkruimte 9"
 
 #: ../../src/keybind_descriptions.h:171
-#, fuzzy
 msgid "Workspace9Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:172
 msgid "Switch to workspace 10"
 msgstr "Schakel naar werkruimte 10"
 
 #: ../../src/keybind_descriptions.h:172
-#, fuzzy
 msgid "Workspace10Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:173
 msgid "Move window to next workspace"
 msgstr "Verpl. venster n. volgende werkruimte"
 
 #: ../../src/keybind_descriptions.h:173
-#, fuzzy
 msgid "MoveToNextWorkspaceKey"
-msgstr "Volgende werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:174
 msgid "Move window to previous workspace"
 msgstr "Verpl. venster n. vorige werkruimte"
 
 #: ../../src/keybind_descriptions.h:174
-#, fuzzy
 msgid "MoveToPrevWorkspaceKey"
-msgstr "Vorige werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:175
 msgid "Move window to last used workspace"
 msgstr "Verpl. venster n. laatst gebruikte werkr."
 
 #: ../../src/keybind_descriptions.h:175
-#, fuzzy
 msgid "MoveToLastWorkspaceKey"
-msgstr "Volgende werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:176
 msgid "Move window to next ten workspaces"
 msgstr "Verpl. venster 10 werkruimten verder"
 
 #: ../../src/keybind_descriptions.h:176
-#, fuzzy
 msgid "MoveToNextWorkspaceLayerKey"
-msgstr "Volgende werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:177
 msgid "Move window to previous ten workspaces"
@@ -3819,227 +3705,192 @@ msgid "MoveToPrevWorkspaceLayerKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:178
-#, fuzzy
 msgid "Move window to workspace on the left"
-msgstr "Verplaats venster naar werkruimte 1"
+msgstr "Venster naar werkruimte links verplaatsen"
 
 #: ../../src/keybind_descriptions.h:178
-#, fuzzy
 msgid "MoveToLeftWorkspaceKey"
-msgstr "Volgende werkruimte"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:179
-#, fuzzy
 msgid "Move window to workspace on the right"
-msgstr "Verplaats venster naar werkruimte 1"
+msgstr "Venster naar werkruimte rechts verplaatsen"
 
 #: ../../src/keybind_descriptions.h:179
 msgid "MoveToRightWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:180
-#, fuzzy
 msgid "Move window to workspace above"
-msgstr "Verplaats venster naar werkruimte 1"
+msgstr "Venster naar werkruimte erboven verplaatsen"
 
 #: ../../src/keybind_descriptions.h:180
 msgid "MoveToUpWorkspaceKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "Move window to workspace below"
-msgstr "Verplaats venster naar werkruimte 1"
+msgstr "Venster naar werkruimte eronder verplaatsen"
 
 #: ../../src/keybind_descriptions.h:181
-#, fuzzy
 msgid "MoveToDownWorkspaceKey"
-msgstr "Verplaats venster naar werkruimte 1"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:182
 msgid "Move window to workspace 1"
 msgstr "Verplaats venster naar werkruimte 1"
 
 #: ../../src/keybind_descriptions.h:182
-#, fuzzy
 msgid "MoveToWorkspace1Key"
-msgstr "Verplaats venster naar werkruimte 1"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:183
 msgid "Move window to workspace 2"
 msgstr "Verplaats venster naar werkruimte 2"
 
 #: ../../src/keybind_descriptions.h:183
-#, fuzzy
 msgid "MoveToWorkspace2Key"
-msgstr "Verplaats venster naar werkruimte 2"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:184
 msgid "Move window to workspace 3"
 msgstr "Verplaats venster naar werkruimte 3"
 
 #: ../../src/keybind_descriptions.h:184
-#, fuzzy
 msgid "MoveToWorkspace3Key"
-msgstr "Verplaats venster naar werkruimte 3"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:185
 msgid "Move window to workspace 4"
 msgstr "Verplaats venster naar werkruimte 4"
 
 #: ../../src/keybind_descriptions.h:185
-#, fuzzy
 msgid "MoveToWorkspace4Key"
-msgstr "Verplaats venster naar werkruimte 4"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:186
 msgid "Move window to workspace 5"
 msgstr "Verplaats venster naar werkruimte 5"
 
 #: ../../src/keybind_descriptions.h:186
-#, fuzzy
 msgid "MoveToWorkspace5Key"
-msgstr "Verplaats venster naar werkruimte 5"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:187
 msgid "Move window to workspace 6"
 msgstr "Verplaats venster naar werkruimte 6"
 
 #: ../../src/keybind_descriptions.h:187
-#, fuzzy
 msgid "MoveToWorkspace6Key"
-msgstr "Verplaats venster naar werkruimte 6"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:188
 msgid "Move window to workspace 7"
 msgstr "Verplaats venster naar werkruimte 7"
 
 #: ../../src/keybind_descriptions.h:188
-#, fuzzy
 msgid "MoveToWorkspace7Key"
-msgstr "Verplaats venster naar werkruimte 7"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:189
 msgid "Move window to workspace 8"
 msgstr "Verplaats venster naar werkruimte 8"
 
 #: ../../src/keybind_descriptions.h:189
-#, fuzzy
 msgid "MoveToWorkspace8Key"
-msgstr "Verplaats venster naar werkruimte 8"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:190
 msgid "Move window to workspace 9"
 msgstr "Verplaats venster naar werkruimte 9"
 
 #: ../../src/keybind_descriptions.h:190
-#, fuzzy
 msgid "MoveToWorkspace9Key"
-msgstr "Verplaats venster naar werkruimte 9"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:191
 msgid "Move window to workspace 10"
 msgstr "Verplaats venster naar werkruimte 10"
 
 #: ../../src/keybind_descriptions.h:191
-#, fuzzy
 msgid "MoveToWorkspace10Key"
-msgstr "Verplaats venster naar werkruimte 10"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "Toggle window on workspace 1"
-msgstr "Verplaats venster naar werkruimte 1"
+msgstr "Venster op werkruimte 1 omschakelen"
 
 #: ../../src/keybind_descriptions.h:192
-#, fuzzy
 msgid "ToggleWorkspace1Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "Toggle window on workspace 2"
-msgstr "Verplaats venster naar werkruimte 2"
+msgstr "Venster op werkruimte 2 omschakelen"
 
 #: ../../src/keybind_descriptions.h:193
-#, fuzzy
 msgid "ToggleWorkspace2Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "Toggle window on workspace 3"
-msgstr "Verplaats venster naar werkruimte 3"
+msgstr "Venster op werkruimte 3 omschakelen"
 
 #: ../../src/keybind_descriptions.h:194
-#, fuzzy
 msgid "ToggleWorkspace3Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "Toggle window on workspace 4"
-msgstr "Verplaats venster naar werkruimte 4"
+msgstr "Venster op werkruimte 4 omschakelen"
 
 #: ../../src/keybind_descriptions.h:195
-#, fuzzy
 msgid "ToggleWorkspace4Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "Toggle window on workspace 5"
-msgstr "Verplaats venster naar werkruimte 5"
+msgstr "Venster op werkruimte 5 omschakelen"
 
 #: ../../src/keybind_descriptions.h:196
-#, fuzzy
 msgid "ToggleWorkspace5Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "Toggle window on workspace 6"
-msgstr "Verplaats venster naar werkruimte 6"
+msgstr "Venster op werkruimte 6 omschakelen"
 
 #: ../../src/keybind_descriptions.h:197
-#, fuzzy
 msgid "ToggleWorkspace6Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "Toggle window on workspace 7"
-msgstr "Verplaats venster naar werkruimte 7"
+msgstr "Venster op werkruimte 7 omschakelen"
 
 #: ../../src/keybind_descriptions.h:198
-#, fuzzy
 msgid "ToggleWorkspace7Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "Toggle window on workspace 8"
-msgstr "Verplaats venster naar werkruimte 8"
+msgstr "Venster op werkruimte 8 omschakelen"
 
 #: ../../src/keybind_descriptions.h:199
-#, fuzzy
 msgid "ToggleWorkspace8Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "Toggle window on workspace 9"
-msgstr "Verplaats venster naar werkruimte 9"
+msgstr "Venster op werkruimte 9 omschakelen"
 
 #: ../../src/keybind_descriptions.h:200
-#, fuzzy
 msgid "ToggleWorkspace9Key"
-msgstr "Werkruimtenmenu"
+msgstr ""
 
 #: ../../src/keybind_descriptions.h:201
-#, fuzzy
 msgid "Toggle window on workspace 10"
-msgstr "Verplaats venster naar werkruimte 10"
+msgstr "Venster op werkruimte 10 omschakelen"
 
 #: ../../src/keybind_descriptions.h:201
 msgid "ToggleWorkspace10Key"
@@ -4051,11 +3902,11 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:209 ../../src/keybind_descriptions.h:210
 #: ../../src/keybind_descriptions.h:211 ../../src/keybind_descriptions.h:212
 msgid "Tiling & Layout"
-msgstr ""
+msgstr "Tegels & Lay-out"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "Cycle workspace tiling layout"
-msgstr ""
+msgstr "Tegellayout van werkruimte doorlopen"
 
 #: ../../src/keybind_descriptions.h:203
 msgid "LayoutCycleKey"
@@ -4063,7 +3914,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:204
 msgid "Cycle workspace tiling layout back"
-msgstr ""
+msgstr "Tegellayout van werkruimte teruglopen"
 
 #: ../../src/keybind_descriptions.h:204
 msgid "LayoutCycleBackKey"
@@ -4071,7 +3922,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:205
 msgid "Swap tiling layout axis"
-msgstr ""
+msgstr "Tegellayout-as wisselen"
 
 #: ../../src/keybind_descriptions.h:205
 msgid "LayoutAxisKey"
@@ -4079,7 +3930,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:206
 msgid "Set workspace layout to float"
-msgstr ""
+msgstr "Werkruimtelayout op zwevend zetten"
 
 #: ../../src/keybind_descriptions.h:206
 msgid "LayoutFloatKey"
@@ -4087,7 +3938,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:207
 msgid "Increase layout master count"
-msgstr ""
+msgstr "Masteraantal in layout verhogen"
 
 #: ../../src/keybind_descriptions.h:207
 msgid "MasterCountIncKey"
@@ -4095,7 +3946,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:208
 msgid "Decrease layout master count"
-msgstr ""
+msgstr "Masteraantal in layout verlagen"
 
 #: ../../src/keybind_descriptions.h:208
 msgid "MasterCountDecKey"
@@ -4103,7 +3954,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:209
 msgid "Increase layout master ratio"
-msgstr ""
+msgstr "Masterverhouding in layout verhogen"
 
 #: ../../src/keybind_descriptions.h:209
 msgid "MasterRatioIncKey"
@@ -4111,25 +3962,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:210
 msgid "Decrease layout master ratio"
-msgstr ""
+msgstr "Masterverhouding in layout verlagen"
 
 #: ../../src/keybind_descriptions.h:210
 msgid "MasterRatioDecKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:211
-#, fuzzy
 msgid "Toggle tiling for active window"
-msgstr "Verlaag actief venster"
+msgstr "Tegelen voor actief venster omschakelen"
 
 #: ../../src/keybind_descriptions.h:211
 msgid "TilingToggleKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:212
-#, fuzzy
 msgid "Swap active window into master"
-msgstr "Maximaliseer act. venster bovenhelft"
+msgstr "Actief venster met master wisselen"
 
 #: ../../src/keybind_descriptions.h:212
 msgid "TilingSwapMasterKey"
@@ -4138,13 +3987,12 @@ msgstr ""
 #: ../../src/keybind_descriptions.h:214 ../../src/keybind_descriptions.h:215
 #: ../../src/keybind_descriptions.h:216 ../../src/keybind_descriptions.h:217
 #: ../../src/keybind_descriptions.h:218
-#, fuzzy
 msgid "Window Marks"
-msgstr "Window Maker afsluiten"
+msgstr "Venstermarkeringen"
 
 #: ../../src/keybind_descriptions.h:214
 msgid "Mark window: set mark"
-msgstr ""
+msgstr "Venster markeren: markering zetten"
 
 #: ../../src/keybind_descriptions.h:214
 msgid "MarkSetKey"
@@ -4152,7 +4000,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:215
 msgid "Mark window: unset mark"
-msgstr ""
+msgstr "Venster markeren: markering verwijderen"
 
 #: ../../src/keybind_descriptions.h:215
 msgid "MarkUnsetKey"
@@ -4160,7 +4008,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:216
 msgid "Mark window: bring marked window here"
-msgstr ""
+msgstr "Venster markeren: gemarkeerd venster hierheen brengen"
 
 #: ../../src/keybind_descriptions.h:216
 msgid "MarkBringKey"
@@ -4168,7 +4016,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:217
 msgid "Mark window: jump to marked window"
-msgstr ""
+msgstr "Venster markeren: naar gemarkeerd venster springen"
 
 #: ../../src/keybind_descriptions.h:217
 msgid "MarkJumpKey"
@@ -4176,25 +4024,23 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:218
 msgid "Mark window: swap with marked window"
-msgstr ""
+msgstr "Venster markeren: met gemarkeerd venster wisselen"
 
 #: ../../src/keybind_descriptions.h:218
 msgid "MarkSwapKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:220
-#, fuzzy
 msgid "Find application"
-msgstr "Voer programma uit"
+msgstr "Programma vinden"
 
 #: ../../src/keybind_descriptions.h:220
 msgid "RunKey"
 msgstr ""
 
 #: ../../src/keybind_descriptions.h:221
-#, fuzzy
 msgid "Show keyboard shortcuts"
-msgstr "Sneltoets"
+msgstr "Sneltoetsen tonen"
 
 #: ../../src/keybind_descriptions.h:221
 msgid "ShowKeybindsKey"
@@ -4206,7 +4052,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:223
 msgid "Lock screen"
-msgstr ""
+msgstr "Scherm vergrendelen"
 
 #: ../../src/keybind_descriptions.h:223
 msgid "LockScreenKey"
@@ -4214,7 +4060,7 @@ msgstr ""
 
 #: ../../src/keybind_descriptions.h:224
 msgid "Open clipboard history"
-msgstr ""
+msgstr "Klembordgeschiedenis openen"
 
 #: ../../src/keybind_descriptions.h:224
 msgid "ClipboardKey"
