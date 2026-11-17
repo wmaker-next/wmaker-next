@@ -7,10 +7,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: WindowMaker 0.96.0\n"
+"Project-Id-Version: WindowMaker 0.96.0-next\n"
 "Report-Msgid-Bugs-To: wmaker-dev@googlegroups.com\n"
-"POT-Creation-Date: 2023-11-02 19:43+0100\n"
-"PO-Revision-Date: 2023-11-02 19:48+0100\n"
+"POT-Creation-Date: 2026-11-16 21:59-0500\n"
+"PO-Revision-Date: 2026-11-16 22:16-0500\n"
 "Last-Translator: Страхиња Радић <sr@strahinja.org>\n"
 "Language-Team: Serbian <sr@li.org>\n"
 "Language: sr\n"
@@ -22,269 +22,273 @@ msgstr ""
 "X-Generator: poe 1.6.0-1-g10e6dcc\n"
 
 #. Root -> Applications
-#: ../../util/wmgenmenu.c:117
+#: ../../util/wmgenmenu.c:136
 msgid "Applications"
 msgstr "Апликације"
 
 #. Root -> Applications -> <category>
-#: ../../util/wmgenmenu.c:120
+#: ../../util/wmgenmenu.c:139
 msgid "Terminals"
 msgstr "Терминали"
 
 #. always keep terminals the top item
-#: ../../util/wmgenmenu.c:121
+#: ../../util/wmgenmenu.c:140
 msgid "Internet"
 msgstr "Интернет"
 
-#: ../../util/wmgenmenu.c:122
+#: ../../util/wmgenmenu.c:141
 msgid "Email"
 msgstr "Мејл"
 
-#: ../../util/wmgenmenu.c:123
+#: ../../util/wmgenmenu.c:142
 msgid "Mathematics"
 msgstr "Математика"
 
-#: ../../util/wmgenmenu.c:124
+#: ../../util/wmgenmenu.c:143
 msgid "File Managers"
 msgstr "Менаџери датотека"
 
-#: ../../util/wmgenmenu.c:125
+#: ../../util/wmgenmenu.c:144
 msgid "Graphics"
 msgstr "Графика"
 
-#: ../../util/wmgenmenu.c:126
+#: ../../util/wmgenmenu.c:145
 msgid "Multimedia"
 msgstr "Мултимедија"
 
-#: ../../util/wmgenmenu.c:127
+#: ../../util/wmgenmenu.c:146
 msgid "Editors"
 msgstr "Уређивачи текста"
 
-#: ../../util/wmgenmenu.c:128
+#: ../../util/wmgenmenu.c:147
 msgid "Development"
 msgstr "Развојни алати"
 
-#: ../../util/wmgenmenu.c:130
+#: ../../util/wmgenmenu.c:149
 msgid "Office"
 msgstr "Канцеларијски програми"
 
-#: ../../util/wmgenmenu.c:131
+#: ../../util/wmgenmenu.c:150
 msgid "Astronomy"
 msgstr "Астрономија"
 
-#: ../../util/wmgenmenu.c:132
+#: ../../util/wmgenmenu.c:151
 msgid "Sound"
 msgstr "Звук"
 
-#: ../../util/wmgenmenu.c:133
+#: ../../util/wmgenmenu.c:152
 msgid "Comics"
 msgstr "Стрипови"
 
-#: ../../util/wmgenmenu.c:134
+#: ../../util/wmgenmenu.c:153
 msgid "Viewers"
 msgstr "Прегледачи"
 
-#: ../../util/wmgenmenu.c:135
+#: ../../util/wmgenmenu.c:154
 msgid "Utilities"
 msgstr "Помоћни програми"
 
-#: ../../util/wmgenmenu.c:136
+#: ../../util/wmgenmenu.c:155
 msgid "System"
 msgstr "Системски програми"
 
-#: ../../util/wmgenmenu.c:137
+#: ../../util/wmgenmenu.c:156
 msgid "Video"
 msgstr "Видео"
 
-#: ../../util/wmgenmenu.c:138
+#: ../../util/wmgenmenu.c:157
 msgid "Chat and Talk"
 msgstr "Чет и разговор"
 
-#: ../../util/wmgenmenu.c:139
+#: ../../util/wmgenmenu.c:158
 msgid "P2P Network"
 msgstr "P2P мрежа"
 
-#: ../../util/wmgenmenu.c:140
+#: ../../util/wmgenmenu.c:159
 msgid "Games"
 msgstr "Игре"
 
-#: ../../util/wmgenmenu.c:148
-msgid "Run..."
-msgstr "Покрени..."
+#: ../../util/wmgenmenu.c:167
+msgid "Find..."
+msgstr ""
 
-#: ../../util/wmgenmenu.c:150
+#: ../../util/wmgenmenu.c:169
 #, c-format
-msgid "%A(Run, Type command:)"
-msgstr "%A(Покрени, Унесите наредбу:)"
+msgid "%A(Find)"
+msgstr ""
 
 #. Root -> Appearance
-#: ../../util/wmgenmenu.c:156
+#: ../../util/wmgenmenu.c:175
 msgid "Appearance"
 msgstr "Изглед"
 
-#: ../../util/wmgenmenu.c:160
+#: ../../util/wmgenmenu.c:179
 msgid "Themes"
 msgstr "Теме"
 
-#: ../../util/wmgenmenu.c:169
+#: ../../util/wmgenmenu.c:188
 msgid "Styles"
 msgstr "Стилови"
 
-#: ../../util/wmgenmenu.c:178
+#: ../../util/wmgenmenu.c:197
 msgid "Icon Sets"
 msgstr "Сетови икона"
 
 #. Root -> Appearance -> Background
-#: ../../util/wmgenmenu.c:186
+#: ../../util/wmgenmenu.c:205
 msgid "Background"
 msgstr "Позадина"
 
 #. Root -> Appearance -> Background -> Solid
-#: ../../util/wmgenmenu.c:189
+#: ../../util/wmgenmenu.c:208
 msgid "Solid"
 msgstr "Једнобојна"
 
 #. Root -> Appearance -> Background -> Solid -> <color>
-#: ../../util/wmgenmenu.c:201
+#: ../../util/wmgenmenu.c:220
 msgid "Black"
 msgstr "Црна"
 
-#: ../../util/wmgenmenu.c:202
+#: ../../util/wmgenmenu.c:221
 msgid "Blue"
 msgstr "Плава"
 
-#: ../../util/wmgenmenu.c:203
+#: ../../util/wmgenmenu.c:222
 msgid "Indigo"
 msgstr "Индиго"
 
-#: ../../util/wmgenmenu.c:204
+#: ../../util/wmgenmenu.c:223
 msgid "Bluemarine"
 msgstr "Аквамарин"
 
-#: ../../util/wmgenmenu.c:205
+#: ../../util/wmgenmenu.c:224
 msgid "Purple"
 msgstr "Љубичаста"
 
-#: ../../util/wmgenmenu.c:206
+#: ../../util/wmgenmenu.c:225
 msgid "Wheat"
 msgstr "Боја жита"
 
-#: ../../util/wmgenmenu.c:207
+#: ../../util/wmgenmenu.c:226
 msgid "Dark Gray"
 msgstr "Тамно сива"
 
-#: ../../util/wmgenmenu.c:208
+#: ../../util/wmgenmenu.c:227
 msgid "Wine"
 msgstr "Боја вина"
 
 #. Root -> Appearance -> Background -> Gradient
-#: ../../util/wmgenmenu.c:213
+#: ../../util/wmgenmenu.c:232
 msgid "Gradient"
 msgstr "Претапање"
 
-#: ../../util/wmgenmenu.c:227
+#: ../../util/wmgenmenu.c:246
 msgid "Sunset"
 msgstr "Залазак сунца"
 
-#: ../../util/wmgenmenu.c:234
+#: ../../util/wmgenmenu.c:253
 msgid "Sky"
 msgstr "Небо"
 
-#: ../../util/wmgenmenu.c:235
+#: ../../util/wmgenmenu.c:254
 msgid "Blue Shades"
 msgstr "Нијансе плаве"
 
-#: ../../util/wmgenmenu.c:236
+#: ../../util/wmgenmenu.c:255
 msgid "Indigo Shades"
 msgstr "Индиго нијансе"
 
-#: ../../util/wmgenmenu.c:237
+#: ../../util/wmgenmenu.c:256
 msgid "Purple Shades"
 msgstr "Нијансе љубичасте"
 
-#: ../../util/wmgenmenu.c:238
+#: ../../util/wmgenmenu.c:257
 msgid "Wheat Shades"
 msgstr "Нијансе боје жита"
 
-#: ../../util/wmgenmenu.c:239
+#: ../../util/wmgenmenu.c:258
 msgid "Grey Shades"
 msgstr "Нијансе сиве"
 
-#: ../../util/wmgenmenu.c:240
+#: ../../util/wmgenmenu.c:259
 msgid "Wine Shades"
 msgstr "Нијансе боје вина"
 
-#: ../../util/wmgenmenu.c:246
+#: ../../util/wmgenmenu.c:265
 msgid "Images"
 msgstr "Слике"
 
-#: ../../util/wmgenmenu.c:257
+#: ../../util/wmgenmenu.c:276
 msgid "Save Theme"
 msgstr "Сачувај тему"
 
-#: ../../util/wmgenmenu.c:266
+#: ../../util/wmgenmenu.c:285
 msgid "Save IconSet"
 msgstr "Сачувај сет икона"
 
-#: ../../util/wmgenmenu.c:277
+#: ../../util/wmgenmenu.c:296
 msgid "Workspaces"
 msgstr "Радне површине"
 
 #. Root -> Workspace
-#: ../../util/wmgenmenu.c:284
+#: ../../util/wmgenmenu.c:303
 msgid "Workspace"
 msgstr "Радна површина"
 
-#: ../../util/wmgenmenu.c:286
+#: ../../util/wmgenmenu.c:305
 msgid "Hide Others"
 msgstr "Сакриј остале"
 
-#: ../../util/wmgenmenu.c:294
+#: ../../util/wmgenmenu.c:313
 msgid "Show All"
 msgstr "Прикажи све"
 
-#: ../../util/wmgenmenu.c:302
+#: ../../util/wmgenmenu.c:321
 msgid "Arrange Icons"
 msgstr "Поређај иконе"
 
-#: ../../util/wmgenmenu.c:310
+#: ../../util/wmgenmenu.c:329
 msgid "Refresh"
 msgstr "Освежи"
 
-#: ../../util/wmgenmenu.c:318
+#: ../../util/wmgenmenu.c:337
 msgid "Save Session"
 msgstr "Сачувај сесију"
 
-#: ../../util/wmgenmenu.c:326
+#: ../../util/wmgenmenu.c:345
 msgid "Clear Session"
 msgstr "Очисти сесију"
 
-#: ../../util/wmgenmenu.c:335
+#: ../../util/wmgenmenu.c:354
 msgid "Configure Window Maker"
 msgstr "Подеси Window Maker"
 
-#: ../../util/wmgenmenu.c:344
+#: ../../util/wmgenmenu.c:363
 msgid "Info Panel"
 msgstr "Панел за информације"
 
-#: ../../util/wmgenmenu.c:352
+#: ../../util/wmgenmenu.c:371
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+#: ../../util/wmgenmenu.c:379
 msgid "Restart Window Maker"
 msgstr "Поново покрени Window Maker"
 
-#: ../../util/wmgenmenu.c:365
+#: ../../util/wmgenmenu.c:392
 msgid "Lock Screen"
 msgstr "Закључај екран"
 
-#: ../../util/wmgenmenu.c:376
+#: ../../util/wmgenmenu.c:403
 msgid "Exit Window Maker"
 msgstr "Изађи из Window Maker-а"
 
-#: ../../util/wmgenmenu.c:487
+#: ../../util/wmgenmenu.c:513
 #, c-format
 msgid "Start %s"
 msgstr "Покрени %s"
 
-#: ../../util/wmgenmenu.c:497
+#: ../../util/wmgenmenu.c:523
 msgid "Other Window Managers"
 msgstr "Други менаџери прозора"
 

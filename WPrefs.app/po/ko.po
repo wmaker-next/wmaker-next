@@ -6,10 +6,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: 0.95.4\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2013-08-13 19:07+0900\n"
-"PO-Revision-Date: 2013-08-13 19:26+0900\n"
+"Project-Id-Version: WindowMaker 0.96.0-next\n"
+"Report-Msgid-Bugs-To: wmaker-dev@googlegroups.com\n"
+"POT-Creation-Date: 2026-11-16 21:59-0500\n"
+"PO-Revision-Date: 2026-11-16 22:16-0500\n"
 "Last-Translator: \n"
 "Language-Team: Korean\n"
 "Language: ko\n"
@@ -18,72 +18,242 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 1.5.4\n"
 
-#: ../../WPrefs.app/Appearance.c:1051
-msgid "Select File"
-msgstr "파일 선택"
+#. Related to Window titles
+#: ../../WPrefs.app/Appearance.c:47
+msgid "Focused Window Title"
+msgstr "활성 창 제목"
 
-#: ../../WPrefs.app/Appearance.c:1406
-msgid "Focused Window"
-msgstr "활성화 창"
+#: ../../WPrefs.app/Appearance.c:49
+msgid "Unfocused Window Title"
+msgstr "비활성 창 제목"
 
-#: ../../WPrefs.app/Appearance.c:1411
-msgid "Unfocused Window"
-msgstr "비활성 창"
+#: ../../WPrefs.app/Appearance.c:51
+msgid "Owner of Focused Window Title"
+msgstr "활성 창 제목의 소유자"
 
-#: ../../WPrefs.app/Appearance.c:1416
-msgid "Owner of Focused Window"
-msgstr "활성 창의 부모창"
-
-#: ../../WPrefs.app/Appearance.c:1420 ../../WPrefs.app/Appearance.c:1718
+#. Related to Menus
+#: ../../WPrefs.app/Appearance.c:55 ../../WPrefs.app/Appearance.c:1605
 #: ../../WPrefs.app/FontSimple.c:100
 msgid "Menu Title"
 msgstr "메뉴 타이틀"
 
-#: ../../WPrefs.app/Appearance.c:1424 ../../WPrefs.app/Appearance.c:1426
-msgid "Normal Item"
-msgstr "일반 항목"
+#: ../../WPrefs.app/Appearance.c:57
+msgid "Menu Item Text"
+msgstr "메뉴 항목 글자"
 
-#: ../../WPrefs.app/Appearance.c:1431
-msgid "Disabled Item"
-msgstr "안 쓰는 항목"
+#: ../../WPrefs.app/Appearance.c:59
+msgid "Disabled Menu Item Text"
+msgstr "꺼진 메뉴 항목 글자"
 
-#: ../../WPrefs.app/Appearance.c:1440
-msgid "Highlighted"
-msgstr "선택됨"
+#: ../../WPrefs.app/Appearance.c:61
+msgid "Menu Highlight Color"
+msgstr "선택된 메뉴 색상"
 
-#: ../../WPrefs.app/Appearance.c:1618
-msgid "Texture"
-msgstr "텍스처"
+#: ../../WPrefs.app/Appearance.c:63
+msgid "Highlighted Menu Text Color"
+msgstr "선택된 메뉴의 글자 색상"
 
-#: ../../WPrefs.app/Appearance.c:1625
+#.
+#. * yuck kluge: the coordinate for HighlightTextColor are actually those of the last "Normal item"
+#. * at the bottom when user clicks it, the "yuck kluge" in the function 'previewClick' will swap it
+#. * for the MenuTextColor selection as user would expect
+#. *
+#. * Note that the entries are reffered by their index for performance
+#.
+#. Related to Window's border
+#: ../../WPrefs.app/Appearance.c:74
+#, fuzzy
+msgid "Focused Window Border Color"
+msgstr "활성화 창"
+
+#: ../../WPrefs.app/Appearance.c:76
+msgid "Window Border Color"
+msgstr ""
+
+#: ../../WPrefs.app/Appearance.c:78
+#, fuzzy
+msgid "Selected Window Border Color"
+msgstr "창 선택하기"
+
+#. Related to Icons and Clip
+#: ../../WPrefs.app/Appearance.c:82
+#, fuzzy
+msgid "Miniwindow Title"
+msgstr "작은 창 제목"
+
+#: ../../WPrefs.app/Appearance.c:84
+#, fuzzy
+msgid "Miniwindow Title Back"
+msgstr "작은 창 제목"
+
+#: ../../WPrefs.app/Appearance.c:86 ../../WPrefs.app/FontSimple.c:103
+msgid "Clip Title"
+msgstr "클립 제목"
+
+#: ../../WPrefs.app/Appearance.c:88
+#, fuzzy
+msgid "Collapsed Clip Title"
+msgstr "클립 제목"
+
+#: ../../WPrefs.app/Appearance.c:385
+#, fuzzy
+msgid "[Focused]"
+msgstr "활성화 창"
+
+#: ../../WPrefs.app/Appearance.c:386
 msgid "Titlebar of Focused Window"
 msgstr "활성 창 타이틀바"
 
-#: ../../WPrefs.app/Appearance.c:1626
+#: ../../WPrefs.app/Appearance.c:389
+#, fuzzy
+msgid "[Unfocused]"
+msgstr "비활성 창"
+
+#: ../../WPrefs.app/Appearance.c:390
 msgid "Titlebar of Unfocused Windows"
 msgstr "비활성 창 타이틀바"
 
-#: ../../WPrefs.app/Appearance.c:1627
+#: ../../WPrefs.app/Appearance.c:393
+#, fuzzy
+msgid "[Owner of Focused]"
+msgstr "활성 창의 부모창"
+
+#: ../../WPrefs.app/Appearance.c:394
 msgid "Titlebar of Focused Window's Owner"
 msgstr "활성 창의 부모창 타이틀바"
 
-#: ../../WPrefs.app/Appearance.c:1628
+#: ../../WPrefs.app/Appearance.c:397
+#, fuzzy
+msgid "[Resizebar]"
+msgstr "창 크기조정 바"
+
+#: ../../WPrefs.app/Appearance.c:398
 msgid "Window Resizebar"
 msgstr "창 크기조정 바"
 
-#: ../../WPrefs.app/Appearance.c:1629
+#: ../../WPrefs.app/Appearance.c:401
+#, fuzzy
+msgid "[Menu Title]"
+msgstr "메뉴 타이틀"
+
+#: ../../WPrefs.app/Appearance.c:402
 msgid "Titlebar of Menus"
 msgstr "메뉴 타이틀바"
 
-#: ../../WPrefs.app/Appearance.c:1630
+#: ../../WPrefs.app/Appearance.c:405
+#, fuzzy
+msgid "[Menu Item]"
+msgstr "메뉴 항목"
+
+#: ../../WPrefs.app/Appearance.c:406
 msgid "Menu Items"
 msgstr "메뉴 항목"
 
-#: ../../WPrefs.app/Appearance.c:1631
+#: ../../WPrefs.app/Appearance.c:409
+msgid "[Icon]"
+msgstr ""
+
+#: ../../WPrefs.app/Appearance.c:410
 msgid "Icon Background"
 msgstr "아이콘 배경"
 
-#: ../../WPrefs.app/Appearance.c:1646
+#: ../../WPrefs.app/Appearance.c:413
+#, fuzzy
+msgid "[Background]"
+msgstr "배경"
+
+#: ../../WPrefs.app/Appearance.c:414
+#, fuzzy
+msgid "Workspace Background"
+msgstr "작업공간 탐색"
+
+#: ../../WPrefs.app/Appearance.c:584 ../../WPrefs.app/TexturePanel.c:891
+#, c-format
+msgid "could not load file '%s': %s"
+msgstr "%s 파일을 읽을 수 없음: %s"
+
+#: ../../WPrefs.app/Appearance.c:587
+#, fuzzy, c-format
+msgid "could not find file '%s' for texture type %s"
+msgstr "%s 파일을 읽을 수 없음: %s"
+
+#: ../../WPrefs.app/Appearance.c:636 ../../WPrefs.app/Appearance.c:663
+#: ../../WPrefs.app/Appearance.c:699
+#, c-format
+msgid "unknown direction in '%s', falling back to diagonal"
+msgstr ""
+
+#: ../../WPrefs.app/Appearance.c:747
+#, c-format
+msgid "type '%s' is not a supported type for a texture"
+msgstr ""
+
+#: ../../WPrefs.app/Appearance.c:1146
+#, fuzzy, c-format
+msgid "could not remove file %s"
+msgstr "%s 파일을 %s로 바꿀 수 없음"
+
+#: ../../WPrefs.app/Appearance.c:1168
+msgid "Select File"
+msgstr "파일 선택"
+
+#: ../../WPrefs.app/Appearance.c:1381
+#, fuzzy, c-format
+msgid "could not read size of image from '%s', ignoring"
+msgstr "'%s'로 부터 기본 메뉴를 열 수 없음"
+
+#: ../../WPrefs.app/Appearance.c:1386
+#, c-format
+msgid "image \"%s\" has an invalid depth of %u, ignoring"
+msgstr ""
+
+#: ../../WPrefs.app/Appearance.c:1392
+#, fuzzy, c-format
+msgid "could not create RImage for \"%s\": %s"
+msgstr "이미지 %s 파일을 찾을 수 없음"
+
+#: ../../WPrefs.app/Appearance.c:1582
+msgid "Focused Window"
+msgstr "활성화 창"
+
+#: ../../WPrefs.app/Appearance.c:1590
+msgid "Unfocused Window"
+msgstr "비활성 창"
+
+#: ../../WPrefs.app/Appearance.c:1598
+msgid "Owner of Focused Window"
+msgstr "활성 창의 부모창"
+
+#: ../../WPrefs.app/Appearance.c:1612 ../../WPrefs.app/Appearance.c:1617
+msgid "Normal Item"
+msgstr "일반 항목"
+
+#: ../../WPrefs.app/Appearance.c:1624
+msgid "Disabled Item"
+msgstr "안 쓰는 항목"
+
+#: ../../WPrefs.app/Appearance.c:1643
+msgid "Highlighted"
+msgstr "선택됨"
+
+#: ../../WPrefs.app/Appearance.c:1708
+#, fuzzy
+msgid "Icon Text"
+msgstr "아이콘 제목"
+
+#: ../../WPrefs.app/Appearance.c:1788 ../../WPrefs.app/Appearance.c:1795
+msgid "Clip"
+msgstr ""
+
+#: ../../WPrefs.app/Appearance.c:1792
+msgid "Coll."
+msgstr ""
+
+#: ../../WPrefs.app/Appearance.c:1944
+msgid "Texture"
+msgstr "텍스처"
+
+#: ../../WPrefs.app/Appearance.c:1967
 msgid ""
 "Double click in the texture you want to use\n"
 "for the selected item."
@@ -91,121 +261,59 @@ msgstr ""
 "선택한 아이템에서 사용하고자 하는\n"
 "텍스쳐를 더블 클릭하십시오."
 
-#: ../../WPrefs.app/Appearance.c:1658
+#: ../../WPrefs.app/Appearance.c:1979
 msgid "New"
 msgstr "생성"
 
-#: ../../WPrefs.app/Appearance.c:1662
+#: ../../WPrefs.app/Appearance.c:1983
 msgid "Create a new texture."
 msgstr "새로운 텍스쳐를 생성합니다."
 
-#: ../../WPrefs.app/Appearance.c:1669
+#: ../../WPrefs.app/Appearance.c:1990
 msgid "Extract..."
 msgstr "추출..."
 
-#: ../../WPrefs.app/Appearance.c:1673
+#: ../../WPrefs.app/Appearance.c:1994
 msgid "Extract texture(s) from a theme or a style file."
 msgstr "테마나 스타일 파일에서 텍스쳐를 추출합니다."
 
-#: ../../WPrefs.app/Appearance.c:1682
+#: ../../WPrefs.app/Appearance.c:2003
 msgid "Edit"
 msgstr "편집"
 
-#: ../../WPrefs.app/Appearance.c:1685
+#: ../../WPrefs.app/Appearance.c:2006
 msgid "Edit the highlighted texture."
 msgstr "선택된 텍스쳐를 편집합니다."
 
-#: ../../WPrefs.app/Appearance.c:1692 ../../WPrefs.app/TexturePanel.c:1195
+#: ../../WPrefs.app/Appearance.c:2013 ../../WPrefs.app/TexturePanel.c:1235
 msgid "Delete"
 msgstr "지움"
 
-#: ../../WPrefs.app/Appearance.c:1696
+#: ../../WPrefs.app/Appearance.c:2017
 msgid "Delete the highlighted texture."
 msgstr "선택된 텍스쳐를 삭제합니다."
 
-#: ../../WPrefs.app/Appearance.c:1708
+#: ../../WPrefs.app/Appearance.c:2029
 msgid "Color"
 msgstr "색상"
 
-#: ../../WPrefs.app/Appearance.c:1715
-msgid "Focused Window Title"
-msgstr "활성 창 제목"
-
-#: ../../WPrefs.app/Appearance.c:1716
-msgid "Unfocused Window Title"
-msgstr "비활성 창 제목"
-
-#: ../../WPrefs.app/Appearance.c:1717
-msgid "Owner of Focused Window Title"
-msgstr "활성 창 제목의 소유자"
-
-#: ../../WPrefs.app/Appearance.c:1719
-msgid "Menu Item Text"
-msgstr "메뉴 항목 글자"
-
-#: ../../WPrefs.app/Appearance.c:1720
-msgid "Disabled Menu Item Text"
-msgstr "꺼진 메뉴 항목 글자"
-
-#: ../../WPrefs.app/Appearance.c:1721
-msgid "Menu Highlight Color"
-msgstr "선택된 메뉴 색상"
-
-#: ../../WPrefs.app/Appearance.c:1722
-msgid "Highlighted Menu Text Color"
-msgstr "선택된 메뉴의 글자 색상"
-
-#: ../../WPrefs.app/Appearance.c:1759
-msgid "Background"
-msgstr "배경"
-
-#: ../../WPrefs.app/Appearance.c:1771 ../../WPrefs.app/TexturePanel.c:1370
-msgid "Browse..."
-msgstr "보기..."
-
-#: ../../WPrefs.app/Appearance.c:1781
+#: ../../WPrefs.app/Appearance.c:2085
 msgid "Options"
 msgstr "옵션"
 
-#: ../../WPrefs.app/Appearance.c:1788
+#: ../../WPrefs.app/Appearance.c:2092
 msgid "Menu Style"
 msgstr "메뉴 스타일"
 
-#: ../../WPrefs.app/Appearance.c:1816 ../../WPrefs.app/Configurations.c:179
-#: ../../WPrefs.app/Configurations.c:191 ../../WPrefs.app/Docks.c:187
-#: ../../WPrefs.app/Docks.c:195 ../../WPrefs.app/Focus.c:266
-#: ../../WPrefs.app/Focus.c:277 ../../WPrefs.app/MenuPreferences.c:127
-#: ../../WPrefs.app/MenuPreferences.c:138
-#: ../../WPrefs.app/MenuPreferences.c:166
-#: ../../WPrefs.app/MenuPreferences.c:181 ../../WPrefs.app/MouseSettings.c:517
-#: ../../WPrefs.app/MouseSettings.c:528 ../../WPrefs.app/WPrefs.c:501
-#: ../../WPrefs.app/WPrefs.c:526
-#, c-format
-msgid "could not load icon file %s"
-msgstr "아이콘 파일 %s를 읽을 수 없음"
-
-#: ../../WPrefs.app/Appearance.c:1829
+#: ../../WPrefs.app/Appearance.c:2110
 msgid "Title Alignment"
 msgstr "제목 정렬"
 
-#: ../../WPrefs.app/Appearance.c:1836
-msgid "Left"
-msgstr "왼쪽"
-
-#: ../../WPrefs.app/Appearance.c:1839 ../../WPrefs.app/TexturePanel.c:1384
-#: ../../WPrefs.app/WindowHandling.c:278 ../../WPrefs.app/Workspace.c:189
-msgid "Center"
-msgstr "가운데"
-
-#: ../../WPrefs.app/Appearance.c:1842
-msgid "Right"
-msgstr "오른쪽"
-
-#: ../../WPrefs.app/Appearance.c:2045
+#: ../../WPrefs.app/Appearance.c:2361
 msgid "Appearance Preferences"
 msgstr "모양 설정"
 
-#: ../../WPrefs.app/Appearance.c:2047
+#: ../../WPrefs.app/Appearance.c:2363
 msgid ""
 "Background texture configuration for windows,\n"
 "menus and icons."
@@ -213,41 +321,55 @@ msgstr ""
 "창, 메뉴, 아이콘에 사용할\n"
 "배경 텍스쳐를 설정합니다."
 
-#: ../../WPrefs.app/Appearance.c:2083
+#: ../../WPrefs.app/Appearance.c:2400
 msgid "Extract Texture"
 msgstr "텍스처 추출하기"
 
-#: ../../WPrefs.app/Appearance.c:2103
+#: ../../WPrefs.app/Appearance.c:2420
 msgid "Textures"
 msgstr "텍스처"
 
-#: ../../WPrefs.app/Appearance.c:2112 ../../WPrefs.app/WPrefs.c:230
+#: ../../WPrefs.app/Appearance.c:2429 ../../WPrefs.app/WPrefs.c:562
 msgid "Close"
 msgstr "닫기"
 
-#: ../../WPrefs.app/Appearance.c:2117
+#: ../../WPrefs.app/Appearance.c:2434
 msgid "Extract"
 msgstr "추출"
 
-#: ../../WPrefs.app/Configurations.c:130 ../../WPrefs.app/Docks.c:141
-#: ../../WPrefs.app/Workspace.c:106
+#: ../../WPrefs.app/Configurations.c:111 ../../WPrefs.app/Docks.c:183
+#: ../../WPrefs.app/HotCornerShortcuts.c:383 ../../WPrefs.app/Workspace.c:105
 #, c-format
 msgid "could not load image file %s"
 msgstr "이미지 파일 %s를 읽을 수 없음"
 
-#: ../../WPrefs.app/Configurations.c:141
+#: ../../WPrefs.app/Configurations.c:122
 msgid "Icon Slide Speed"
 msgstr "아이콘 슬라이드 속도"
 
-#: ../../WPrefs.app/Configurations.c:147
+#: ../../WPrefs.app/Configurations.c:128
 msgid "Shade Animation Speed"
 msgstr "그림자 애니메이션 속도"
 
-#: ../../WPrefs.app/Configurations.c:206
-msgid "Smooth Scaling"
+#: ../../WPrefs.app/Configurations.c:160 ../../WPrefs.app/Configurations.c:172
+#: ../../WPrefs.app/Docks.c:225 ../../WPrefs.app/Docks.c:233
+#: ../../WPrefs.app/WPrefs.c:769 ../../WPrefs.app/WPrefs.c:790
+#: ../../WPrefs.app/WPrefs.c:806
+#, c-format
+msgid "could not load icon file %s"
+msgstr "아이콘 파일 %s를 읽을 수 없음"
+
+#: ../../WPrefs.app/Configurations.c:187
+#, fuzzy
+msgid "Smoothing"
 msgstr "부드러운 스케일링"
 
-#: ../../WPrefs.app/Configurations.c:207
+#: ../../WPrefs.app/Configurations.c:193
+#, fuzzy
+msgid "Images"
+msgstr "이미지"
+
+#: ../../WPrefs.app/Configurations.c:224
 msgid ""
 "Smooth scaled background images, neutralizing\n"
 "the `pixelization' effect. This will slow\n"
@@ -257,15 +379,29 @@ msgstr ""
 "효과를 중화시킵니다. 배경 이미지를 읽어 들이는\n"
 "속도가 상당히 느려집니다."
 
-#: ../../WPrefs.app/Configurations.c:247
+#: ../../WPrefs.app/Configurations.c:232
+msgid "Font edges"
+msgstr ""
+
+#: ../../WPrefs.app/Configurations.c:243
+msgid ""
+"Render fonts with antialiased (smooth) edges.\n"
+"Applies to all WINGs applications immediately."
+msgstr ""
+
+#: ../../WPrefs.app/Configurations.c:252
 msgid "Titlebar Style"
 msgstr "타이틀바 스타일"
 
-#: ../../WPrefs.app/Configurations.c:300 ../../WPrefs.app/Configurations.c:306
+#: ../../WPrefs.app/Configurations.c:320
+msgid "Animations and Sound"
+msgstr "애니메이션과 음향효과"
+
+#: ../../WPrefs.app/Configurations.c:326
 msgid "Animations"
 msgstr "애니메이션"
 
-#: ../../WPrefs.app/Configurations.c:317
+#: ../../WPrefs.app/Configurations.c:337
 msgid ""
 "Disable/enable animations such as those shown\n"
 "for window miniaturization, shading etc."
@@ -273,23 +409,16 @@ msgstr ""
 "윈도우 최소화시, 쉐이딩 기능등에서 애니메이션을\n"
 "켜고 끄는 것을 설정합니다."
 
-#: ../../WPrefs.app/Configurations.c:352
-msgid ""
-"Disable/enable sound effects for window actions like shading, iconifying\n"
-"and docking. Requires the wmsoundd daemon to be running."
-msgstr ""
-"창 작업(셰이드, 아이콘화, 독 작업 등)의 음향 효과를\n"
-"활성화/비활성화합니다. wmsoundd 데몬이 실행 중이어야 합니다."
-
-#: ../../WPrefs.app/Configurations.c:324
+#: ../../WPrefs.app/Configurations.c:344
 msgid "Superfluous"
 msgstr "추가 설정"
 
-#: ../../WPrefs.app/Configurations.c:335
+#: ../../WPrefs.app/Configurations.c:355
+#, fuzzy
 msgid ""
 "Disable/enable `superfluous' features and\n"
 "animations. These include the `ghosting' of the\n"
-"dock when it's being moved to another side and\n"
+"dock when it's being moved to another edge and\n"
 "the explosion animation when undocking icons."
 msgstr ""
 "`추가설정' 기능과 애니메이션을 끄고 켭니다.\n"
@@ -297,73 +426,70 @@ msgstr ""
 "끌리는 효과나 독에서 아이콘을 버릴 때\n"
 "폭파되는 효과를 포함합니다."
 
-#: ../../WPrefs.app/Configurations.c:348
-msgid "Dithering colormap for 8bpp"
-msgstr "8bpp(256색)용 컬러맵 디더링"
+#: ../../WPrefs.app/Configurations.c:364
+msgid "Sounds"
+msgstr "음향 효과"
 
-#: ../../WPrefs.app/Configurations.c:350
+#: ../../WPrefs.app/Configurations.c:375
 msgid ""
-"Number of colors to reserve for Window Maker\n"
-"on displays that support only 8bpp (PseudoColor)."
+"Disable/enable sound effects for window actions like shading, iconifying\n"
+"and docking. Requires the wmsoundd daemon to be running."
 msgstr ""
-"8bpp(가상 색) 만 지원하는 화면에서\n"
-" 윈도우 메이커가 사용할 색 수를 정합니다."
+"창 작업(셰이드, 아이콘화, 독 작업 등)의 음향 효과를\n"
+"활성화/비활성화합니다. wmsoundd 데몬이 실행 중이어야 합니다."
 
-#: ../../WPrefs.app/Configurations.c:357
-msgid "Disable dithering in any visual/depth"
-msgstr "모든 비주얼/색상 깊이에서 디더링 사용하지 않음"
-
-#: ../../WPrefs.app/Configurations.c:378
-msgid ""
-"More colors for\n"
-"applications"
-msgstr ""
-"응용프로그램이\n"
-" 더 많은 색 사용"
-
-#: ../../WPrefs.app/Configurations.c:385
-msgid ""
-"More colors for\n"
-"Window Maker"
-msgstr ""
-"윈도우 메이커가\n"
-" 더 많은 색 사용"
-
-#: ../../WPrefs.app/Configurations.c:434
+#: ../../WPrefs.app/Configurations.c:431
 msgid "Other Configurations"
 msgstr "기타 설정"
 
-#: ../../WPrefs.app/Configurations.c:435
+#: ../../WPrefs.app/Configurations.c:432
+#, fuzzy
 msgid ""
-"Animation speeds, titlebar styles, various option\n"
-"toggling and number of colors to reserve for\n"
-"Window Maker on 8bit displays."
+"Animation speeds, titlebar styles and\n"
+"various option toggling."
 msgstr ""
 "애니메이션 속도, 타이틀바 스타일, 그 외 옵션 설정과\n"
 "8bit 화면에서 윈도우 메이커가 사용할 \n"
 "색상의 수를 설정합니다."
 
-#: ../../WPrefs.app/Docks.c:159
-msgid "Delays in milliseconds for autocollapsing clips"
-msgstr "밀리세컨드로 표시된 클립 자동 축소 지연 시간"
+#: ../../WPrefs.app/Docks.c:28
+msgid "Clip autocollapsing delays"
+msgstr ""
 
-#: ../../WPrefs.app/Docks.c:161
-msgid "Delays in milliseconds for autoraising clips"
-msgstr "밀리세컨드로 표시된 클립 자동 올림 지연 시간"
+#: ../../WPrefs.app/Docks.c:29
+msgid "Clip autoraising delays"
+msgstr ""
 
-#: ../../WPrefs.app/Docks.c:214
-msgid "Dock/Clip/Drawer"
-msgstr "독/클립/서랍"
+#: ../../WPrefs.app/Docks.c:36
+#, fuzzy
+msgid "Before auto-expansion"
+msgstr "자동 확장 전 지연 시간"
 
-#: ../../WPrefs.app/Docks.c:234
+#: ../../WPrefs.app/Docks.c:37
+#, fuzzy
+msgid "Before auto-collapsing"
+msgstr "자동 축소 전 지연 시간"
+
+#: ../../WPrefs.app/Docks.c:38
+#, fuzzy
+msgid "Before auto-raising"
+msgstr "자동 올림 전 지연 시간"
+
+#: ../../WPrefs.app/Docks.c:39
+#, fuzzy
+msgid "Before auto-lowering"
+msgstr "자동 내림 전 지연 시간"
+
+#: ../../WPrefs.app/Docks.c:50
+#, fuzzy
 msgid ""
 "Disable/enable the application Dock (the\n"
-"vertical icon bar in the side of the screen)."
+"icon bar pinned to a screen edge)."
 msgstr ""
 "애플리케이션 Dock을 사용할 것인지 설정합니다.\n"
 "(스크린 구석의 수직 아이콘 바)"
 
-#: ../../WPrefs.app/Docks.c:238
+#: ../../WPrefs.app/Docks.c:52
 msgid ""
 "Disable/enable the Clip (that thing with\n"
 "a paper clip icon)."
@@ -371,7 +497,7 @@ msgstr ""
 "클립을 사용할 것인지 설정합니다.\n"
 "(클립 모양의 아이콘이 있는 것)"
 
-#: ../../WPrefs.app/Docks.c:242
+#: ../../WPrefs.app/Docks.c:54
 msgid ""
 "Disable/enable Drawers (a dock that stores\n"
 "application icons horizontally). The dock is required."
@@ -379,27 +505,33 @@ msgstr ""
 "서랍 사용/끄기 (응용프로그램 아이콘을\n"
 " 세로로 저장하는 독). 독이 필요합니다."
 
-#: ../../WPrefs.app/Docks.c:293
-msgid "Delay before auto-expansion"
-msgstr "자동 확장 전 지연 시간"
+#: ../../WPrefs.app/Docks.c:247 ../../WPrefs.app/Focus.c:259
+#: ../../WPrefs.app/HotCornerShortcuts.c:468
+#: ../../WPrefs.app/MouseSettings.c:574
+msgid "ms"
+msgstr "ms"
 
-#: ../../WPrefs.app/Docks.c:294
-msgid "Delay before auto-collapsing"
-msgstr "자동 축소 전 지연 시간"
+#: ../../WPrefs.app/Docks.c:263
+msgid "Dock/Clip/Drawer"
+msgstr "독/클립/서랍"
 
-#: ../../WPrefs.app/Docks.c:295
-msgid "Delay before auto-raising"
-msgstr "자동 올림 전 지연 시간"
+#: ../../WPrefs.app/Docks.c:290
+#, fuzzy
+msgid "Dock position"
+msgstr "아이콘 위치"
 
-#: ../../WPrefs.app/Docks.c:296
-msgid "Delay before auto-lowering"
-msgstr "자동 내림 전 지연 시간"
+#: ../../WPrefs.app/Docks.c:297
+msgid ""
+"The screen edge the Dock is pinned to. Apply moves a\n"
+"running Dock; dragging the Dock to another edge is\n"
+"kept for this session and overwritten on the next Apply."
+msgstr ""
 
-#: ../../WPrefs.app/Docks.c:301
+#: ../../WPrefs.app/Docks.c:368
 msgid "Dock Preferences"
 msgstr "독 설정"
 
-#: ../../WPrefs.app/Docks.c:303
+#: ../../WPrefs.app/Docks.c:370
 msgid ""
 "Dock and clip features.\n"
 "Enable/disable the Dock and Clip, and tune some delays."
@@ -407,71 +539,183 @@ msgstr ""
 "독과 클립의 기능 설정.\n"
 "독과 클립을 사용 여부 및 활성화 지연 시간을 조정합니다."
 
-#: ../../WPrefs.app/Expert.c:41
+#: ../../WPrefs.app/Expert.c:46
 msgid ""
 "Disable miniwindows (icons for minimized windows). For use with KDE/GNOME."
 msgstr "최소화창 (최소화된 창의 아이콘)을 사용하지 않습니다. KDE/GNOME 사용시."
 
-#. default:
-#: ../../WPrefs.app/Expert.c:44
-msgid "Do not set non-WindowMaker specific parameters (do not use xset)."
+#: ../../WPrefs.app/Expert.c:49
+#, fuzzy
+msgid "Ignore decoration hints for GTK applications."
 msgstr ""
-"윈도우 메이커 고유 설정 이외는 지정하지 않습니다 (xset을 사용하지 않음)."
+"응용프로그램이\n"
+" 더 많은 색 사용"
 
-#. default:
-#: ../../WPrefs.app/Expert.c:47
+#: ../../WPrefs.app/Expert.c:52
+msgid "Enable workspace pager."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:55
 msgid "Automatically save session when exiting Window Maker."
 msgstr "윈도우 메이커 종료시 세션을 자동으로 저장합니다."
 
-#. default:
-#: ../../WPrefs.app/Expert.c:50
+#: ../../WPrefs.app/Expert.c:58
 msgid "Use SaveUnder in window frames, icons, menus and other objects."
 msgstr "창 프레임, 아이콘, 메뉴 등에서 SaveUnder를 사용합니다."
 
-#. default:
-#: ../../WPrefs.app/Expert.c:53
+#: ../../WPrefs.app/Expert.c:61
 msgid "Disable confirmation panel for the Kill command."
 msgstr "강제 종료 명령시 확인 패널을 사용치 않음."
 
-#. default:
-#: ../../WPrefs.app/Expert.c:56
+#: ../../WPrefs.app/Expert.c:64
 msgid "Disable selection animation for selected icons."
 msgstr "선택된 아이콘에 선택 애니메이션을 사용하지 않습니다."
 
-#. default:
-#: ../../WPrefs.app/Expert.c:59
-msgid "Smooth font edges (needs restart)."
-msgstr "글꼴 가장자리를 부드럽게 (재시작 필요)."
+#: ../../WPrefs.app/Expert.c:67
+msgid "Blink the titlebar of windows that demand attention."
+msgstr ""
 
-#. default:
-#: ../../WPrefs.app/Expert.c:62
+#: ../../WPrefs.app/Expert.c:70
 msgid "Cycle windows only on the active head."
 msgstr "활성화된 창에서만 순환합니다."
 
-#. default:
-#: ../../WPrefs.app/Expert.c:65
+#: ../../WPrefs.app/Expert.c:73
+msgid "Let a new window on another head take focus automatically."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:76
+msgid "Each monitor keeps its own active workspace (requires restart)."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:79
+msgid "Keep at least this many workspaces."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:83
+msgid "Enable virtual desktop (pannable workspaces larger than the screen)."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:87
+#, fuzzy
+msgid "Cycle all windows from all workspaces."
+msgstr "최소화창들이 모든 작업 공간에서 보이게 합니다."
+
+#: ../../WPrefs.app/Expert.c:90
 msgid "Ignore minimized windows when cycling."
 msgstr "순환할 때 최소화된 창을 무시합니다."
 
-#. default:
-#: ../../WPrefs.app/Expert.c:68
+#: ../../WPrefs.app/Expert.c:93
+msgid "Order the switch panel by creation time instead of focus history."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:96
+msgid "Show app icons in window list."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:99
+#, fuzzy
+msgid "Show switch panel when cycling windows."
+msgstr "창을 끄는 동안 작업공간을 전환합니다"
+
+#: ../../WPrefs.app/Expert.c:102
+msgid "Show every tab-group member in the window switch panel."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:105
+msgid "Draw tab groups as titlebar segments instead of a [N/M] prefix."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:108
+msgid "Accept tab drops anywhere on the target window, not just its titlebar."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:111
 msgid "Show workspace title on Clip."
 msgstr "클립에 작업공간 제목을 보여줍니다."
 
-#. default:
-#: ../../WPrefs.app/Expert.c:71
+#: ../../WPrefs.app/Expert.c:114
+msgid ""
+"Skip empty workspaces when switching with Next/Prev/Left/Right/Up/Down keys."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:117
 msgid "Highlight the icon of the application when it has the focus."
 msgstr "활성화된 응용프로그램의 아이콘을 강조합니다."
 
-#: ../../WPrefs.app/Expert.c:75
+#: ../../WPrefs.app/Expert.c:121
 msgid "Enable keyboard language switch button in window titlebars."
 msgstr "창 타이틀바에 키보드 언어 전환 버튼을 표시합니다."
 
-#: ../../WPrefs.app/Expert.c:174
+#: ../../WPrefs.app/Expert.c:125
+msgid "Snap a window to edge or corner by dragging."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:128
+msgid "Distance from edge to begin window snap."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:131
+msgid "Distance from corner to begin window snap."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:134
+msgid "Snap a window to the top to maximize it to the full screen."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:137
+msgid "Allow move half-maximized windows between multiple screens."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:140
+msgid "Alternative transitions between states for half maximized windows."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:143
+msgid "Move mouse pointer with half maximized windows."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:146
+#, fuzzy
+msgid "Open dialogs in the same workspace as their owners."
+msgstr "같은 작업 공간에서 소유자로서 대화창 열기"
+
+#: ../../WPrefs.app/Expert.c:149
+msgid "Wrap dock-attached icons around the screen edges."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:152
+msgid "Double click on titlebar maximizes a window instead of shading it."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:155
+msgid "Close rootmenu when mouse (left or right) is clicked outside focus."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:158
+msgid "Keep dock on primary head."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:161
+msgid "Keep a separate dock icon list per screen resolution."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:164
+msgid "Allow windows to take focus using mouse wheel."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:167
+msgid "Enable automatic mouse pointer hiding."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:171
+msgid "Automatically (de)activate monitors on hotplug events."
+msgstr ""
+
+#: ../../WPrefs.app/Expert.c:597
 msgid "Expert User Preferences"
 msgstr "고급 사용자용 설정"
 
-#: ../../WPrefs.app/Expert.c:176
+#: ../../WPrefs.app/Expert.c:599
 msgid ""
 "Options for people who know what they're doing...\n"
 "Also has some other misc. options."
@@ -479,65 +723,84 @@ msgstr ""
 "자신이 무엇을 하고 있는지 아는 사람들을 위한 옵션...\n"
 "또한 기타 기능들의 설정을 합니다."
 
-#: ../../WPrefs.app/Focus.c:75
+#: ../../WPrefs.app/Focus.c:133 ../../WPrefs.app/HotCornerShortcuts.c:124
+#: ../../WPrefs.app/Icons.c:155 ../../WPrefs.app/Icons.c:353
+#: ../../WPrefs.app/Preferences.c:112 ../../WPrefs.app/WindowHandling.c:135
+#: ../../WPrefs.app/WindowHandling.c:153 ../../WPrefs.app/WindowHandling.c:172
 #, c-format
-msgid "bad option value %s for option FocusMode. Using default Manual"
-msgstr "FocusMode 옵션에 잘못된 값 %s. 기본값인 Manual을 사용"
+msgid "OFF"
+msgstr "끄기"
 
-#: ../../WPrefs.app/Focus.c:87
-#, c-format
-msgid "bad option value %s for option ColormapMode. Using default Auto"
-msgstr "ColormapMode 옵션에 잘못된 값 %s. 기본값인 Auto를 사용"
-
-#: ../../WPrefs.app/Focus.c:195
+#: ../../WPrefs.app/Focus.c:178
 msgid "Input Focus Mode"
 msgstr "입력 활성화 모드"
 
-#: ../../WPrefs.app/Focus.c:203
+#: ../../WPrefs.app/Focus.c:185
 msgid "Manual:  Click on the window to set keyboard input focus"
 msgstr "수동: 키보드 입력을 활성화하려면 창을 클릭합니다"
 
-#: ../../WPrefs.app/Focus.c:209
+#: ../../WPrefs.app/Focus.c:191
 msgid "Auto:  Set keyboard input focus to the window under the mouse pointer"
 msgstr "자동: 마우스 포인터 아래에 있는 창으로 키보드 입력을 활성화합니다"
 
-#: ../../WPrefs.app/Focus.c:222
+#: ../../WPrefs.app/Focus.c:203
 msgid "Install colormap from the window..."
 msgstr "컬러맵의 설치는"
 
-#: ../../WPrefs.app/Focus.c:227
+#: ../../WPrefs.app/Focus.c:205
+msgid ""
+"This option is for screens that can display only a limited number\n"
+"of colors at a time, so they use an indexed table of colors (called\n"
+"a ColorMap) that each application customizes for its needs, and\n"
+"WindowMaker will set the global ColorMap dynamically from the\n"
+"active application.\n"
+"You can know the capability of your screen in WindowMaker's info\n"
+"panel as the 'visual'."
+msgstr ""
+
+#: ../../WPrefs.app/Focus.c:217
 msgid "...that has the input focus"
 msgstr "입력 활성화가 된 창"
 
-#: ../../WPrefs.app/Focus.c:232
+#: ../../WPrefs.app/Focus.c:222
 msgid "...that's under the mouse pointer"
 msgstr "...마우스 포인터 아래입니다"
 
-#: ../../WPrefs.app/Focus.c:241
+#: ../../WPrefs.app/Focus.c:231
 msgid "Automatic Window Raise Delay"
 msgstr "자동 창 올림 지연 시간"
 
-#: ../../WPrefs.app/Focus.c:296 ../../WPrefs.app/MouseSettings.c:558
-msgid "ms"
-msgstr "ms"
-
-#: ../../WPrefs.app/Focus.c:313
+#: ../../WPrefs.app/Focus.c:276
 msgid "Do not let applications receive the click used to focus windows"
 msgstr "응용프로그램이 창을 활성화하는 클릭을 받지 못하도록 합니다"
 
-#: ../../WPrefs.app/Focus.c:318
+#: ../../WPrefs.app/Focus.c:281
 msgid "Automatically focus new windows"
 msgstr "새로운 창을 자동 활성화합니다"
 
-#: ../../WPrefs.app/Focus.c:323
+#: ../../WPrefs.app/Focus.c:286
+#, fuzzy
+msgid "Move pointer to focused window"
+msgstr "활성 창의 부모창"
+
+#: ../../WPrefs.app/Focus.c:287
+msgid ""
+"Moves the pointer to the center of a window when focus is set by the\n"
+"keyboard, the window switcher, activation requests, or when a new\n"
+"window is created. Does not move the pointer when you focus a\n"
+"window by moving the mouse into it. Restoring windows from\n"
+"miniwindows or dock icons also moves the pointer."
+msgstr ""
+
+#: ../../WPrefs.app/Focus.c:297
 msgid "Raise window when switching focus with keyboard"
 msgstr "키보드로 활성화 전환시 창을 올립니다"
 
-#: ../../WPrefs.app/Focus.c:339
+#: ../../WPrefs.app/Focus.c:313
 msgid "Window Focus Preferences"
 msgstr "창 활성화 설정"
 
-#: ../../WPrefs.app/Focus.c:340
+#: ../../WPrefs.app/Focus.c:314
 msgid "Keyboard focus switching policy and related options."
 msgstr "키보드 활성화 전환 방법 및 관련된 옵션을 설정합니다."
 
@@ -553,100 +816,239 @@ msgstr "메뉴 글자"
 msgid "Icon Title"
 msgstr "아이콘 제목"
 
-#: ../../WPrefs.app/FontSimple.c:103
-msgid "Clip Title"
-msgstr "클립 제목"
-
 #: ../../WPrefs.app/FontSimple.c:104
 msgid "Desktop Caption"
 msgstr "바탕화면 제목"
 
-#: ../../WPrefs.app/FontSimple.c:638
+#: ../../WPrefs.app/FontSimple.c:105
+#, fuzzy
+msgid "System Font"
+msgstr "메뉴 항목 글꼴"
+
+#: ../../WPrefs.app/FontSimple.c:106
+#, fuzzy
+msgid "Bold System Font"
+msgstr "메뉴 항목 글꼴"
+
+#: ../../WPrefs.app/FontSimple.c:673
 msgid "Sample Text"
 msgstr "글자 예제"
 
-#: ../../WPrefs.app/FontSimple.c:655
+#: ../../WPrefs.app/FontSimple.c:690
 msgid "Family"
 msgstr "글꼴"
 
-#: ../../WPrefs.app/FontSimple.c:681
+#: ../../WPrefs.app/FontSimple.c:715
 msgid "Style"
 msgstr "글꼴 스타일"
 
-#: ../../WPrefs.app/FontSimple.c:684
+#: ../../WPrefs.app/FontSimple.c:718
 msgid "Size"
 msgstr "크기"
 
-#: ../../WPrefs.app/FontSimple.c:716
+#: ../../WPrefs.app/FontSimple.c:765
 msgid "Font Configuration"
 msgstr "글꼴 설정"
 
-#: ../../WPrefs.app/FontSimple.c:718
+#: ../../WPrefs.app/FontSimple.c:767
 msgid "Configure fonts for Window Maker titlebars, menus etc."
 msgstr "윈도우 메이커의 제목이나 메뉴 등의 글꼴을 설정합니다."
 
-#: ../../WPrefs.app/Icons.c:166
-msgid "Icon Positioning"
-msgstr "아이콘 위치"
-
-#: ../../WPrefs.app/Icons.c:212
-msgid "Icon Size"
-msgstr "아이콘 크기"
-
-#: ../../WPrefs.app/Icons.c:214
-msgid "The size of the dock/application icon and miniwindows"
-msgstr "독/응용프로그램 아이콘, 최소화창의 크기"
-
-#: ../../WPrefs.app/Icons.c:231
-msgid "Iconification Animation"
-msgstr "아이콘화시 애니메이션"
-
-#: ../../WPrefs.app/Icons.c:242
-msgid "Shrinking/Zooming"
-msgstr "축소/확대"
-
-#: ../../WPrefs.app/Icons.c:243
-msgid "Spinning/Twisting"
-msgstr "회전/트위스트"
-
-#: ../../WPrefs.app/Icons.c:244
-msgid "3D-flipping"
-msgstr "3차원 회전"
-
-#: ../../WPrefs.app/Icons.c:245 ../../WPrefs.app/MouseSettings.c:787
-#: ../../WPrefs.app/MouseSettings.c:792
+#. MouseSettings.c, keys "MouseWheelAction" / "MouseWheelTiltAction"
+#: ../../WPrefs.app/HotCornerShortcuts.c:68 ../../WPrefs.app/enumchoices.h:49
+#: ../../WPrefs.app/enumchoices.h:66 ../../WPrefs.app/enumchoices.h:77
+#: ../../WPrefs.app/enumchoices.h:89
 msgid "None"
 msgstr "없음"
 
-#: ../../WPrefs.app/Icons.c:258
+#: ../../WPrefs.app/HotCornerShortcuts.c:69
+msgid "Show Desktop"
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:70 ../../WPrefs.app/Menu.c:746
+msgid "Show All Windows"
+msgstr "모든 창 보이기"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:71
+#, fuzzy
+msgid "Minimize All Windows"
+msgstr "모든 창 최소화"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:72 ../../WPrefs.app/enumchoices.h:71
+#: ../../WPrefs.app/enumchoices.h:82
+#, fuzzy
+msgid "Next Workspace"
+msgstr "작업 공간"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:73 ../../WPrefs.app/enumchoices.h:70
+#: ../../WPrefs.app/enumchoices.h:81
+#, fuzzy
+msgid "Previous Workspace"
+msgstr "이전 작업공간으로 전환"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:74
+msgid "Lock Screen"
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:81
+msgid "Custom action..."
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:126 ../../WPrefs.app/Preferences.c:114
+#, c-format
+msgid "1 pixel"
+msgstr "1 픽셀"
+
+#. 2-4
+#: ../../WPrefs.app/HotCornerShortcuts.c:129 ../../WPrefs.app/Preferences.c:117
+#, c-format
+msgid "%i pixels"
+msgstr "%i 픽셀"
+
+#. >4
+#: ../../WPrefs.app/HotCornerShortcuts.c:132 ../../WPrefs.app/Preferences.c:120
+#, c-format
+msgid "%i pixels "
+msgstr "%i 픽셀"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:215
+#, fuzzy
+msgid "Hot Corner Action"
+msgstr "글꼴 설정"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:216
+msgid "Enter a built-in action name or a shell command:"
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:218
+#: ../../WPrefs.app/KeyboardShortcuts.c:363 ../../WPrefs.app/Menu.c:1540
+#: ../../WPrefs.app/Menu.c:1582 ../../WPrefs.app/Menu.c:1635
+#: ../../WPrefs.app/MouseSettings.c:143 ../../WPrefs.app/MouseSettings.c:163
+#: ../../WPrefs.app/TexturePanel.c:584 ../../WPrefs.app/TexturePanel.c:662
+#: ../../WPrefs.app/TexturePanel.c:1430 ../../WPrefs.app/WPrefs.c:154
+#: ../../WPrefs.app/WPrefs.c:377 ../../WPrefs.app/WPrefs.c:961
+#: ../../WPrefs.app/WPrefs.c:965 ../../WPrefs.app/WPrefs.c:986
+#: ../../WPrefs.app/WPrefs.c:996 ../../WPrefs.app/WPrefs.c:1002
+#: ../../WPrefs.app/WPrefs.c:1011 ../../WPrefs.app/WPrefs.c:1038
+#: ../../WPrefs.app/WPrefs.c:1042 ../../WPrefs.app/WPrefs.c:1074
+msgid "OK"
+msgstr "확인"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:218
+#: ../../WPrefs.app/KeyboardShortcuts.c:345 ../../WPrefs.app/Menu.c:282
+#: ../../WPrefs.app/Menu.c:2000 ../../WPrefs.app/TexturePanel.c:1436
+#: ../../WPrefs.app/WPrefs.c:362
+msgid "Cancel"
+msgstr "취소"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:280
+msgid "invalid data in option HotCornerActions."
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:399
+msgid "Enable Hot Corners"
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:405
+msgid "Hot Corner Edge"
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:430
+msgid ""
+"Instructions:\n"
+" - choose an action per corner\n"
+" - None disables a corner\n"
+" - custom accepts key names or commands\n"
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:442
+msgid "Hot Corner Delay"
+msgstr ""
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:483
+#, fuzzy
+msgid "Hot Corner Actions"
+msgstr "글꼴 설정"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:608
+#, fuzzy
+msgid "Hot Corner Shortcut Preferences"
+msgstr "키보드 단축키 설정"
+
+#: ../../WPrefs.app/HotCornerShortcuts.c:609
+msgid ""
+"Choose actions to perform when you move the\n"
+"mouse pointer to the screen corners."
+msgstr ""
+
+#: ../../WPrefs.app/Icons.c:180 ../../WPrefs.app/WPrefs.c:1323
+#, fuzzy, c-format
+msgid "bad value \"%s\" for option %s, using default \"%s\""
+msgstr "옵션 %s에 잘못된 속도 값을 주었습니다;기본값 Medium을 사용합니다"
+
+#: ../../WPrefs.app/Icons.c:239
+msgid "Icon Positioning"
+msgstr "아이콘 위치"
+
+#: ../../WPrefs.app/Icons.c:318
+msgid "Icon Size"
+msgstr "아이콘 크기"
+
+#: ../../WPrefs.app/Icons.c:320
+msgid "The size of the dock/application icon and miniwindows"
+msgstr "독/응용프로그램 아이콘, 최소화창의 크기"
+
+#: ../../WPrefs.app/Icons.c:337
+msgid "Mini-Previews for Icons"
+msgstr ""
+
+#: ../../WPrefs.app/Icons.c:339
+msgid ""
+"The Mini-Preview provides a small view of the content of the\n"
+"window when the mouse is placed over the icon."
+msgstr ""
+
+#: ../../WPrefs.app/Icons.c:361
+msgid "Iconification Animation"
+msgstr "아이콘화시 애니메이션"
+
+#: ../../WPrefs.app/Icons.c:381
 msgid "Auto-arrange icons"
 msgstr "아이콘 자동 정렬"
 
-#: ../../WPrefs.app/Icons.c:260
+#: ../../WPrefs.app/Icons.c:383
 msgid "Keep icons and miniwindows arranged all the time."
 msgstr "언제나 아이콘과 최소화창을 정렬하도록 합니다."
 
-#: ../../WPrefs.app/Icons.c:265
+#: ../../WPrefs.app/Icons.c:389
 msgid "Omnipresent miniwindows"
 msgstr "최소화창 항상 보임"
 
-#: ../../WPrefs.app/Icons.c:267
+#: ../../WPrefs.app/Icons.c:391
 msgid "Make miniwindows be present in all workspaces."
 msgstr "최소화창들이 모든 작업 공간에서 보이게 합니다."
 
-#: ../../WPrefs.app/Icons.c:272
+#: ../../WPrefs.app/Icons.c:397
 msgid "Single click activation"
 msgstr "한번 눌러 활성화"
 
-#: ../../WPrefs.app/Icons.c:274
+#: ../../WPrefs.app/Icons.c:399
 msgid "Launch applications and restore windows with a single click."
 msgstr "마우스를 한번 눌러 응용프로그램을 실행하고 창을 복원합니다."
 
-#: ../../WPrefs.app/Icons.c:329
+#: ../../WPrefs.app/Icons.c:404
+msgid "Enforce icon margin"
+msgstr ""
+
+#: ../../WPrefs.app/Icons.c:406
+msgid "Make sure that the icon image does not protrude into the icon frame."
+msgstr ""
+
+#: ../../WPrefs.app/Icons.c:457
 msgid "Icon Preferences"
 msgstr "아이콘 설정"
 
-#: ../../WPrefs.app/Icons.c:331
+#: ../../WPrefs.app/Icons.c:459
 msgid ""
 "Icon/Miniwindow handling options. Icon positioning\n"
 "area, sizes of icons, miniaturization animation style."
@@ -654,366 +1056,71 @@ msgstr ""
 "아이콘/최소화창의 제어 옵션. 아이콘의 위치\n"
 "크기, 최소화시의 애니메이션 스타일을 지정합니다."
 
-#: ../../WPrefs.app/KeyboardSettings.c:68
-msgid "Initial Key Repeat"
-msgstr "초기 키 반복 속도"
-
-#: ../../WPrefs.app/KeyboardSettings.c:109
-msgid "Key Repeat Rate"
-msgstr "키 반복율"
-
-#: ../../WPrefs.app/KeyboardSettings.c:149
-msgid "Type here to test"
-msgstr "여기서 시험하세요"
-
-#: ../../WPrefs.app/KeyboardSettings.c:164
-msgid "Keyboard Preferences"
-msgstr "키보드 설정"
-
-#: ../../WPrefs.app/KeyboardSettings.c:166
-msgid "Not done"
-msgstr "완료 안됨"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:72
-msgid "Open applications menu"
-msgstr "응용프로그램 메뉴 열기"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:73
-msgid "Open window list menu"
-msgstr "창 목록 메뉴 열기"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:74
-msgid "Open window commands menu"
-msgstr "창 명령 메뉴 열기"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:75
-msgid "Hide active application"
-msgstr "활성화된 응용프로그램 숨김"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:76
-msgid "Hide other applications"
-msgstr "다른 응용프로그램 숨김"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:77
-msgid "Miniaturize active window"
-msgstr "활성화된 창 최소화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:78
-msgid "Miniaturize all windows"
-msgstr "모든 창 최소화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:79
-msgid "Close active window"
-msgstr "활성화된 창 닫기"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:80
-msgid "Maximize active window"
-msgstr "활성화된 창 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:81
-msgid "Maximize active window vertically"
-msgstr "창을 세로로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:82
-msgid "Maximize active window horizontally"
-msgstr "활성 창을 세로로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:83
-msgid "Maximize active window left half"
-msgstr "활성 창을 왼쪽 가운데로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:84
-msgid "Maximize active window right half"
-msgstr "활성 창을 오른쪽 가운데로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:85
-msgid "Maximize active window top half"
-msgstr "활성 창을 위 가운데로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:86
-msgid "Maximize active window bottom half"
-msgstr "활성 창을 바닥 가운데로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:87
-msgid "Maximize active window left top corner"
-msgstr "활성 창을 왼쪽 위 구석으로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:88
-msgid "Maximize active window right top corner"
-msgstr "활성 창을 오른쪽 위 구석으로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:89
-msgid "Maximize active window left bottom corner"
-msgstr "창을 세활성 창을 왼쪽바닥 구석으로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:90
-msgid "Maximize active window right bottom corner"
-msgstr "활성 창을 오른쪽 바닥 구석으로 최대화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:91
-msgid "Maximus: Tiled maximization "
-msgstr ""
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:92
-msgid "Raise active window"
-msgstr "활성화된 창을 위로"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:93
-msgid "Lower active window"
-msgstr "활성화된 창을 아래로"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:94
-msgid "Raise/Lower window under mouse pointer"
-msgstr "마우스가 위치한 창 올림/내림"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:95
-msgid "Shade active window"
-msgstr "활성화된 창에 그림자 표시"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:96
-msgid "Move/Resize active window"
-msgstr "활성화된 창 이동/크기바꿈"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:97
-msgid "Select active window"
-msgstr "활성화 창 선택"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:98
-msgid "Focus next window"
-msgstr "다음 창 활성화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:99
-msgid "Focus previous window"
-msgstr "이전 창 활성화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:100
-msgid "Focus next group window"
-msgstr "다음 창 그룹 활성화"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:101
-msgid "Focus previous group window"
-msgstr "이전 창 그룹 활성화"
-
-#. Workspace Related
-#: ../../WPrefs.app/KeyboardShortcuts.c:104
-msgid "Switch to next workspace"
-msgstr "다음 작업공간으로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:105
-msgid "Switch to previous workspace"
-msgstr "이전 작업공간으로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:106
-msgid "Switch to last used workspace"
-msgstr "마지막으로 사용된 작업공간으로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:107
-msgid "Switch to next ten workspaces"
-msgstr "10개 뒤 작업공간으로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:108
-msgid "Switch to previous ten workspaces"
-msgstr "10개 앞 작업공간으로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:109
-msgid "Switch to workspace 1"
-msgstr "작업공간 1로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:110
-msgid "Switch to workspace 2"
-msgstr "작업공간 2로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:111
-msgid "Switch to workspace 3"
-msgstr "작업공간 3으로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:112
-msgid "Switch to workspace 4"
-msgstr "작업공간 4로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:113
-msgid "Switch to workspace 5"
-msgstr "작업공간 5로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:114
-msgid "Switch to workspace 6"
-msgstr "작업공간 6으로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:115
-msgid "Switch to workspace 7"
-msgstr "작업공간 7로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:116
-msgid "Switch to workspace 8"
-msgstr "작업공간 8로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:117
-msgid "Switch to workspace 9"
-msgstr "작업공간 9로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:118
-msgid "Switch to workspace 10"
-msgstr "작업공간 10으로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:119
-msgid "Move window to next workspace"
-msgstr "창을 다음 작업공간으로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:120
-msgid "Move window to previous workspace"
-msgstr "창을 이전 작업공간으로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:121
-msgid "Move window to last used workspace"
-msgstr "창을 마지막에 사용된 작업공간으로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:122
-msgid "Move window to next ten workspaces"
-msgstr "창을 10개 뒤 작업공간으로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:123
-msgid "Move window to previous ten workspaces"
-msgstr "창을 10개 앞 작업공간으로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:124
-msgid "Move window to workspace 1"
-msgstr "창을 작업공간 1로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:125
-msgid "Move window to workspace 2"
-msgstr "창을 작업공간 2로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:126
-msgid "Move window to workspace 3"
-msgstr "창을 작업공간 3으로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:127
-msgid "Move window to workspace 4"
-msgstr "창을 작업공간 4로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:128
-msgid "Move window to workspace 5"
-msgstr "창을 작업공간 5로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:129
-msgid "Move window to workspace 6"
-msgstr "창을 작업공간 6으로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:130
-msgid "Move window to workspace 7"
-msgstr "창을 작업공간 7로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:131
-msgid "Move window to workspace 8"
-msgstr "창을 작업공간 8로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:132
-msgid "Move window to workspace 9"
-msgstr "창을 작업공간 9로 이동"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:133
-msgid "Move window to workspace 10"
-msgstr "창을 작업공간 10으로 이동"
-
-#. Window Selection
-#: ../../WPrefs.app/KeyboardShortcuts.c:136
-msgid "Shortcut for window 1"
-msgstr "1번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:137
-msgid "Shortcut for window 2"
-msgstr "2번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:138
-msgid "Shortcut for window 3"
-msgstr "3번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:139
-msgid "Shortcut for window 4"
-msgstr "4번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:140
-msgid "Shortcut for window 5"
-msgstr "5번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:141
-msgid "Shortcut for window 6"
-msgstr "6번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:142
-msgid "Shortcut for window 7"
-msgstr "7번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:143
-msgid "Shortcut for window 8"
-msgstr "8번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:144
-msgid "Shortcut for window 9"
-msgstr "9번 창 단축키"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:145
-msgid "Shortcut for window 10"
-msgstr "10번 창 단축키"
-
-#. Misc.
-#: ../../WPrefs.app/KeyboardShortcuts.c:148
-msgid "Launch new instance of application"
-msgstr "응용프로그램을 새로 실행"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:149
-msgid "Switch to Next Screen/Monitor"
-msgstr "다음 작업 화면/모니터로 전환"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:150
-msgid "Raise/Lower Dock"
-msgstr "독 올림/내림"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:151
-msgid "Raise/Lower Clip"
-msgstr "클립 올림/내림"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:153
-msgid "Toggle keyboard language"
-msgstr "키보드 언어 선택"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:334 ../../WPrefs.app/Menu.c:275
-#: ../../WPrefs.app/TexturePanel.c:1401
-msgid "Cancel"
-msgstr "취소"
-
-#: ../../WPrefs.app/KeyboardShortcuts.c:336
+#: ../../WPrefs.app/KeyboardShortcuts.c:347
 msgid "Press the desired shortcut key(s) or click Cancel to stop capturing."
 msgstr "원하는 단축키를 누르십시오. 취소를 누르면 캡쳐가 중단됩니다."
 
-#: ../../WPrefs.app/KeyboardShortcuts.c:355
-#: ../../WPrefs.app/KeyboardShortcuts.c:519 ../../WPrefs.app/Menu.c:285
-#: ../../WPrefs.app/Menu.c:733
+#: ../../WPrefs.app/KeyboardShortcuts.c:359
+msgid "Key shortcut already in use by the "
+msgstr ""
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:361 ../../WPrefs.app/Menu.c:1582
+#: ../../WPrefs.app/MouseSettings.c:141 ../../WPrefs.app/MouseSettings.c:160
+#: ../../WPrefs.app/TexturePanel.c:584 ../../WPrefs.app/TexturePanel.c:660
+#: ../../WPrefs.app/WPrefs.c:154 ../../WPrefs.app/WPrefs.c:375
+#: ../../WPrefs.app/WPrefs.c:961 ../../WPrefs.app/WPrefs.c:965
+#: ../../WPrefs.app/WPrefs.c:983 ../../WPrefs.app/WPrefs.c:992
+#: ../../WPrefs.app/WPrefs.c:1002 ../../WPrefs.app/WPrefs.c:1038
+#: ../../WPrefs.app/WPrefs.c:1042 ../../WPrefs.app/WPrefs.c:1074
+msgid "Error"
+msgstr "오류"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:381
+#: ../../WPrefs.app/KeyboardShortcuts.c:613 ../../WPrefs.app/Menu.c:292
+#: ../../WPrefs.app/Menu.c:723
 msgid "Capture"
 msgstr "캡쳐"
 
-#: ../../WPrefs.app/KeyboardShortcuts.c:356
-#: ../../WPrefs.app/KeyboardShortcuts.c:527
-msgid "Click on Capture to interactively define the shortcut key."
+#: ../../WPrefs.app/KeyboardShortcuts.c:382
+#, fuzzy
+msgid "Click on Capture to interactively define the shortcut key(s)."
 msgstr "캡쳐 버튼을 눌러 단축키를 쉽게 지정합니다."
 
-#: ../../WPrefs.app/KeyboardShortcuts.c:476
+#: ../../WPrefs.app/KeyboardShortcuts.c:546
 msgid "Actions"
 msgstr "동작"
 
-#: ../../WPrefs.app/KeyboardShortcuts.c:503
+#: ../../WPrefs.app/KeyboardShortcuts.c:573
+msgid "List Mode"
+msgstr ""
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:578
+#, fuzzy
+msgid "All Actions"
+msgstr "동작"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:584
+#, fuzzy
+msgid "Assigned Actions"
+msgstr "동작"
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:597
 msgid "Shortcut"
 msgstr "단축키"
 
-#: ../../WPrefs.app/KeyboardShortcuts.c:513 ../../WPrefs.app/Menu.c:739
+#: ../../WPrefs.app/KeyboardShortcuts.c:607 ../../WPrefs.app/Menu.c:729
 msgid "Clear"
 msgstr "지움"
 
-#: ../../WPrefs.app/KeyboardShortcuts.c:568
+#: ../../WPrefs.app/KeyboardShortcuts.c:621
+msgid "Click on Capture to interactively define the shortcut key."
+msgstr "캡쳐 버튼을 눌러 단축키를 쉽게 지정합니다."
+
+#: ../../WPrefs.app/KeyboardShortcuts.c:664
 msgid "Keyboard Shortcut Preferences"
 msgstr "키보드 단축키 설정"
 
-#: ../../WPrefs.app/KeyboardShortcuts.c:570
+#: ../../WPrefs.app/KeyboardShortcuts.c:666
 msgid ""
 "Change the keyboard shortcuts for actions such\n"
 "as changing workspaces and opening menus."
@@ -1021,193 +1128,196 @@ msgstr ""
 "메뉴 열기, 작업 공간 전환 같은 동작을 하는 키보드\n"
 "단축키를 설정합니다."
 
-#: ../../WPrefs.app/Menu.c:251
+#: ../../WPrefs.app/Menu.c:258
 msgid "Select Program"
 msgstr "프로그램 선택"
 
-#: ../../WPrefs.app/Menu.c:413
+#: ../../WPrefs.app/Menu.c:415
 msgid "New Items"
 msgstr "새 항목"
 
-#: ../../WPrefs.app/Menu.c:414
+#: ../../WPrefs.app/Menu.c:416
 msgid "Sample Commands"
 msgstr "명령 예시"
 
-#: ../../WPrefs.app/Menu.c:415
+#: ../../WPrefs.app/Menu.c:417
 msgid "Sample Submenus"
 msgstr "하부메뉴 예시"
 
-#: ../../WPrefs.app/Menu.c:427
+#: ../../WPrefs.app/Menu.c:426
 msgid "Run Program"
 msgstr "프로그램 실행"
 
-#: ../../WPrefs.app/Menu.c:428
+#: ../../WPrefs.app/Menu.c:427
 msgid "Internal Command"
 msgstr "내부 명령"
 
-#: ../../WPrefs.app/Menu.c:429
+#: ../../WPrefs.app/Menu.c:428
 msgid "Submenu"
 msgstr "하부메뉴"
 
-#: ../../WPrefs.app/Menu.c:430
+#: ../../WPrefs.app/Menu.c:429
 msgid "External Submenu"
 msgstr "외부 하부메뉴"
 
-#: ../../WPrefs.app/Menu.c:431
+#: ../../WPrefs.app/Menu.c:430
 msgid "Generated Submenu"
 msgstr "생성된 하부메뉴"
 
-#: ../../WPrefs.app/Menu.c:432
+#: ../../WPrefs.app/Menu.c:431
 msgid "Generated PL Menu"
 msgstr "생성된 PL 메뉴"
 
-#: ../../WPrefs.app/Menu.c:433
+#: ../../WPrefs.app/Menu.c:432
 msgid "Directory Contents"
 msgstr "디렉터리 내용"
 
-#: ../../WPrefs.app/Menu.c:434
+#: ../../WPrefs.app/Menu.c:433
 msgid "Workspace Menu"
 msgstr "작업공간 메뉴"
 
-#: ../../WPrefs.app/Menu.c:435 ../../WPrefs.app/MouseSettings.c:789
+#: ../../WPrefs.app/Menu.c:434 ../../WPrefs.app/enumchoices.h:68
+#: ../../WPrefs.app/enumchoices.h:79
 msgid "Window List Menu"
 msgstr "창 목록 메뉴"
 
-#: ../../WPrefs.app/Menu.c:454
+#: ../../WPrefs.app/Menu.c:447
 msgid "XTerm"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:457
+#: ../../WPrefs.app/Menu.c:450
 msgid "rxvt"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:460
+#: ../../WPrefs.app/Menu.c:453
 msgid "ETerm"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:463
-msgid "Run..."
-msgstr "실행..."
-
-#: ../../WPrefs.app/Menu.c:464
-#, c-format
-msgid "%A(Run,Type command to run)"
+#: ../../WPrefs.app/Menu.c:456
+msgid "Find..."
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:466
+#: ../../WPrefs.app/Menu.c:457
+#, c-format
+msgid "%A(Find)"
+msgstr ""
+
+#: ../../WPrefs.app/Menu.c:459
 msgid "Firefox"
 msgstr "파이어폭스"
 
-#: ../../WPrefs.app/Menu.c:469
+#: ../../WPrefs.app/Menu.c:462
 msgid "gimp"
 msgstr "김프"
 
-#: ../../WPrefs.app/Menu.c:472
+#: ../../WPrefs.app/Menu.c:465
 msgid "epic"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:475
+#: ../../WPrefs.app/Menu.c:468
 msgid "ee"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:478
+#: ../../WPrefs.app/Menu.c:471
 msgid "xv"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:481
+#: ../../WPrefs.app/Menu.c:474
 msgid "Evince"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:484
+#: ../../WPrefs.app/Menu.c:477
 msgid "ghostview"
 msgstr "고스트뷰"
 
-#: ../../WPrefs.app/Menu.c:487 ../../WPrefs.app/Menu.c:758
+#: ../../WPrefs.app/Menu.c:480 ../../WPrefs.app/Menu.c:748
+#: ../../src/keybind_descriptions.h:222
 msgid "Exit Window Maker"
 msgstr "윈도우 메이커 종료"
 
-#: ../../WPrefs.app/Menu.c:509
+#: ../../WPrefs.app/Menu.c:496
 msgid "Debian Menu"
 msgstr "데비안 메뉴"
 
-#: ../../WPrefs.app/Menu.c:512
+#: ../../WPrefs.app/Menu.c:499
 msgid "RedHat Menu"
 msgstr "레드햇 메뉴"
 
-#: ../../WPrefs.app/Menu.c:515
+#: ../../WPrefs.app/Menu.c:502
 msgid "Menu Conectiva"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:518 ../../WPrefs.app/Themes.c:211
+#: ../../WPrefs.app/Menu.c:505
 msgid "Themes"
 msgstr "테마"
 
-#: ../../WPrefs.app/Menu.c:524
+#: ../../WPrefs.app/Menu.c:512
 msgid "Bg Images (scale)"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:530
+#: ../../WPrefs.app/Menu.c:519
 msgid "Bg Images (tile)"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:536
+#: ../../WPrefs.app/Menu.c:526
 msgid "Assorted XTerms"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:538
+#: ../../WPrefs.app/Menu.c:528
 msgid "XTerm Yellow on Blue"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:541
+#: ../../WPrefs.app/Menu.c:531
 msgid "XTerm White on Black"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:544
+#: ../../WPrefs.app/Menu.c:534
 msgid "XTerm Black on White"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:547
+#: ../../WPrefs.app/Menu.c:537
 msgid "XTerm Black on Beige"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:550
+#: ../../WPrefs.app/Menu.c:540
 msgid "XTerm White on Green"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:553
+#: ../../WPrefs.app/Menu.c:543
 msgid "XTerm White on Olive"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:556
+#: ../../WPrefs.app/Menu.c:546
 msgid "XTerm Blue on Blue"
 msgstr ""
 
-#: ../../WPrefs.app/Menu.c:559
+#: ../../WPrefs.app/Menu.c:549
 msgid "XTerm BIG FONTS"
 msgstr "XTerm 큰 글꼴"
 
-#: ../../WPrefs.app/Menu.c:580
+#: ../../WPrefs.app/Menu.c:569
 msgid "Program to Run"
 msgstr "실행할 프로그램"
 
-#: ../../WPrefs.app/Menu.c:590
+#: ../../WPrefs.app/Menu.c:579
 msgid "Browse"
 msgstr "찾기"
 
-#: ../../WPrefs.app/Menu.c:599
+#: ../../WPrefs.app/Menu.c:588
 msgid "Run the program inside a Xterm"
 msgstr "Xterm 안에서 프로그램 실행하기"
 
-#: ../../WPrefs.app/Menu.c:608
+#: ../../WPrefs.app/Menu.c:597
 msgid "Path for Menu"
 msgstr "메뉴 경로"
 
-#: ../../WPrefs.app/Menu.c:619
+#: ../../WPrefs.app/Menu.c:608
+#, fuzzy
 msgid ""
 "Enter the path for a file containing a menu\n"
 "or a list of directories with the programs you\n"
 "want to have listed in the menu. Ex:\n"
-"~/GNUstep/Library/WindowMaker/menu\n"
+"$WMAKER_USER_DATA/menu\n"
 "or\n"
 "/usr/bin ~/xbin"
 msgstr ""
@@ -1218,11 +1328,11 @@ msgstr ""
 "또는\n"
 "/usr/bin ~/xbin"
 
-#: ../../WPrefs.app/Menu.c:631 ../../WPrefs.app/Menu.c:656
+#: ../../WPrefs.app/Menu.c:621 ../../WPrefs.app/Menu.c:646
 msgid "Command"
 msgstr "명령"
 
-#: ../../WPrefs.app/Menu.c:642
+#: ../../WPrefs.app/Menu.c:632
 msgid ""
 "Enter a command that outputs a menu\n"
 "definition to stdout when invoked."
@@ -1230,13 +1340,13 @@ msgstr ""
 "실행되었을 때 메뉴 정의를 표준출력으로\n"
 "내보내는 명령을 입력합니다."
 
-#: ../../WPrefs.app/Menu.c:647 ../../WPrefs.app/Menu.c:672
+#: ../../WPrefs.app/Menu.c:637 ../../WPrefs.app/Menu.c:662
 msgid ""
 "Cache menu contents after opening for\n"
 "the first time"
 msgstr "처음 실행 후에 메뉴 내용을 캐싱합니다."
 
-#: ../../WPrefs.app/Menu.c:667
+#: ../../WPrefs.app/Menu.c:657
 msgid ""
 "Enter a command that outputs a proplist menu\n"
 "definition to stdout when invoked."
@@ -1244,11 +1354,11 @@ msgstr ""
 "실행되었을 때 속성목록 메뉴 정의를 표준출력으로\n"
 "내보내는 명령을 입력합니다."
 
-#: ../../WPrefs.app/Menu.c:681
+#: ../../WPrefs.app/Menu.c:671
 msgid "Command to Open Files"
 msgstr "파일을 여는 명령"
 
-#: ../../WPrefs.app/Menu.c:692
+#: ../../WPrefs.app/Menu.c:682
 msgid ""
 "Enter the command you want to use to open the\n"
 "files in the directories listed below."
@@ -1256,73 +1366,75 @@ msgstr ""
 "아래에 표시된 디렉터리 안의 파일을\n"
 " 여는데 필요한 명령을 입력합니다."
 
-#: ../../WPrefs.app/Menu.c:700
+#: ../../WPrefs.app/Menu.c:690
 msgid "Directories with Files"
 msgstr "파일을 포함한 디렉터리"
 
-#: ../../WPrefs.app/Menu.c:711
+#: ../../WPrefs.app/Menu.c:701
 msgid "Strip extensions from file names"
 msgstr "파일 이름에서 확장자 제거하기"
 
-#: ../../WPrefs.app/Menu.c:722
+#: ../../WPrefs.app/Menu.c:712
 msgid "Keyboard Shortcut"
 msgstr "키보드 단축키"
 
-#: ../../WPrefs.app/Menu.c:754
+#: ../../WPrefs.app/Menu.c:744
 msgid "Arrange Icons"
 msgstr "아이콘 정렬"
 
-#: ../../WPrefs.app/Menu.c:755
+#: ../../WPrefs.app/Menu.c:745
 msgid "Hide All Windows Except For The Focused One"
 msgstr "활성화된 창을 제외한 모든 창 숨기기"
 
-#: ../../WPrefs.app/Menu.c:756
-msgid "Show All Windows"
-msgstr "모든 창 보이기"
-
-#: ../../WPrefs.app/Menu.c:759
+#: ../../WPrefs.app/Menu.c:749
 msgid "Exit X Session"
 msgstr "X 세션 종료"
 
-#: ../../WPrefs.app/Menu.c:760
+#: ../../WPrefs.app/Menu.c:750
 msgid "Restart Window Maker"
 msgstr "윈도우 메이커 재시작"
 
-#: ../../WPrefs.app/Menu.c:761
+#: ../../WPrefs.app/Menu.c:751
 msgid "Start Another Window Manager   : ("
 msgstr "다른 창 관리자 시작 :("
 
-#: ../../WPrefs.app/Menu.c:763
+#: ../../WPrefs.app/Menu.c:753
 msgid "Save Current Session"
 msgstr "현재 세션 저장"
 
-#: ../../WPrefs.app/Menu.c:764
+#: ../../WPrefs.app/Menu.c:754
 msgid "Clear Saved Session"
 msgstr "저장된 세션 지우기"
 
-#: ../../WPrefs.app/Menu.c:765
+#: ../../WPrefs.app/Menu.c:755
 msgid "Refresh Screen"
 msgstr "다시 그리기"
 
-#: ../../WPrefs.app/Menu.c:766
+#: ../../WPrefs.app/Menu.c:756
 msgid "Open Info Panel"
 msgstr "정보 패널 열기"
 
-#: ../../WPrefs.app/Menu.c:767
+#: ../../WPrefs.app/Menu.c:757
 msgid "Open Copyright Panel"
 msgstr "저작권 패널 열기"
 
-#: ../../WPrefs.app/Menu.c:772
+#: ../../WPrefs.app/Menu.c:758
+#, fuzzy
+msgid "Open Keyboard Shortcuts Panel"
+msgstr "키보드 단축키"
+
+#: ../../WPrefs.app/Menu.c:763
 msgid "Window Manager to Start"
 msgstr "시작할 창 관리자"
 
-#: ../../WPrefs.app/Menu.c:785
+#: ../../WPrefs.app/Menu.c:776
 msgid "Do not confirm action."
 msgstr "동작을 확인하지 않습니다."
 
-#: ../../WPrefs.app/Menu.c:792
+#: ../../WPrefs.app/Menu.c:783
+#, fuzzy
 msgid ""
-"Instructions:\n"
+"<b>Instructions:</b>\n"
 "\n"
 " - drag items from the left to the menu to add new items\n"
 " - drag items out of the menu to remove items\n"
@@ -1340,102 +1452,111 @@ msgstr ""
 "- 제목을 바꾸려면 메뉴 항목에서 두 번 누릅니다\n"
 "- 관련된 정보를 바꾸려면 메뉴 항목 위에서 한번 누릅니다"
 
-#: ../../WPrefs.app/Menu.c:1031
+#: ../../WPrefs.app/Menu.c:792
+msgid " - click "
+msgstr ""
+
+#: ../../WPrefs.app/Menu.c:793 ../../WPrefs.app/Menu.c:1996
+#: ../../WPrefs.app/Menu.c:2000
+#, fuzzy
+msgid "Load Default"
+msgstr "기본 메뉴 복사"
+
+#: ../../WPrefs.app/Menu.c:794
+msgid "to reset the menu to the shipped default"
+msgstr ""
+
+#: ../../WPrefs.app/Menu.c:1110
 #, c-format
 msgid "unknown command '%s' in menu"
 msgstr "메뉴에 알려지지 않은 명령 '%s' 입니다"
 
-#: ../../WPrefs.app/Menu.c:1055
+#: ../../WPrefs.app/Menu.c:1138
 msgid ": Execute Program"
 msgstr ": 프로그램 실행"
 
-#: ../../WPrefs.app/Menu.c:1059
+#: ../../WPrefs.app/Menu.c:1142
 msgid ": Perform Internal Command"
 msgstr ": 내부 명령 실행하기"
 
-#: ../../WPrefs.app/Menu.c:1063
+#: ../../WPrefs.app/Menu.c:1146
 msgid ": Open a Submenu"
 msgstr ": 새 하부메뉴 열기"
 
-#: ../../WPrefs.app/Menu.c:1067
+#: ../../WPrefs.app/Menu.c:1150
 msgid ": Program Generated Submenu"
 msgstr ": 프로그램이 만든 하위메뉴"
 
-#: ../../WPrefs.app/Menu.c:1071
+#: ../../WPrefs.app/Menu.c:1154
 msgid ": Program Generated Proplist Submenu"
 msgstr ": 프로그램이 만든 속성목록 하위메뉴"
 
-#: ../../WPrefs.app/Menu.c:1075
+#: ../../WPrefs.app/Menu.c:1158
 msgid ": Directory Contents Menu"
 msgstr ": 디렉터리 내용 메뉴"
 
-#: ../../WPrefs.app/Menu.c:1079
+#: ../../WPrefs.app/Menu.c:1162
 msgid ": Open Workspaces Submenu"
 msgstr ": 작업공간 하부메뉴 열기"
 
-#: ../../WPrefs.app/Menu.c:1083
+#: ../../WPrefs.app/Menu.c:1166
 msgid ": Open Window List Submenu"
 msgstr ": 창 목록 하부메뉴 열기"
 
-#: ../../WPrefs.app/Menu.c:1292
+#: ../../WPrefs.app/Menu.c:1382
 msgid "Remove Submenu"
 msgstr "하부메뉴 지우기"
 
-#: ../../WPrefs.app/Menu.c:1293
+#: ../../WPrefs.app/Menu.c:1383
 msgid ""
 "Removing this item will destroy all items inside\n"
 "the submenu. Do you really want to do that?"
 msgstr "이 항목을 제거하면 하위메뉴 안의 모든 항목이 지워집니다.제거합니까?"
 
-#: ../../WPrefs.app/Menu.c:1295
+#: ../../WPrefs.app/Menu.c:1385
 msgid "Yes"
 msgstr "예"
 
-#: ../../WPrefs.app/Menu.c:1295
+#: ../../WPrefs.app/Menu.c:1385
 msgid "No"
 msgstr "아니오"
 
-#: ../../WPrefs.app/Menu.c:1295
+#: ../../WPrefs.app/Menu.c:1385
 msgid "Yes, don't ask again"
 msgstr "예, 다시 묻지 않습니다"
 
-#: ../../WPrefs.app/Menu.c:1426
+#: ../../WPrefs.app/Menu.c:1499
+#, fuzzy
+msgid "Applications"
+msgstr "응용프로그램 메뉴"
+
+#: ../../WPrefs.app/Menu.c:1538
 #, c-format
 msgid "Invalid menu command \"%s\" with label \"%s\" cleared"
 msgstr "잘못된 메뉴 명령 \"%s\" 과 레이블 \"%s\" 이 지워졌습니다"
 
-#: ../../WPrefs.app/Menu.c:1429 ../../WPrefs.app/Menu.c:1487
-#: ../../WPrefs.app/WPrefs.c:734
+#: ../../WPrefs.app/Menu.c:1540 ../../WPrefs.app/Menu.c:1634
+#: ../../WPrefs.app/Menu.c:1654 ../../WPrefs.app/WPrefs.c:1011
 msgid "Warning"
 msgstr "경고"
 
-#: ../../WPrefs.app/Menu.c:1429 ../../WPrefs.app/Menu.c:1462
-#: ../../WPrefs.app/MouseSettings.c:123 ../../WPrefs.app/MouseSettings.c:143
-#: ../../WPrefs.app/TexturePanel.c:554 ../../WPrefs.app/TexturePanel.c:632
-#: ../../WPrefs.app/TexturePanel.c:1395 ../../WPrefs.app/Themes.c:84
-#: ../../WPrefs.app/WPrefs.c:683 ../../WPrefs.app/WPrefs.c:687
-#: ../../WPrefs.app/WPrefs.c:707 ../../WPrefs.app/WPrefs.c:719
-#: ../../WPrefs.app/WPrefs.c:725 ../../WPrefs.app/WPrefs.c:734
-#: ../../WPrefs.app/WPrefs.c:765 ../../WPrefs.app/WPrefs.c:769
-msgid "OK"
-msgstr "확인"
-
-#: ../../WPrefs.app/Menu.c:1458
+#: ../../WPrefs.app/Menu.c:1569
 #, c-format
 msgid "Could not open default menu from '%s'"
 msgstr "'%s'로 부터 기본 메뉴를 열 수 없음"
 
-#: ../../WPrefs.app/Menu.c:1462 ../../WPrefs.app/MouseSettings.c:121
-#: ../../WPrefs.app/MouseSettings.c:140 ../../WPrefs.app/TexturePanel.c:554
-#: ../../WPrefs.app/TexturePanel.c:630 ../../WPrefs.app/Themes.c:83
-#: ../../WPrefs.app/WPrefs.c:683 ../../WPrefs.app/WPrefs.c:687
-#: ../../WPrefs.app/WPrefs.c:704 ../../WPrefs.app/WPrefs.c:715
-#: ../../WPrefs.app/WPrefs.c:725 ../../WPrefs.app/WPrefs.c:765
-#: ../../WPrefs.app/WPrefs.c:769
-msgid "Error"
-msgstr "오류"
+#: ../../WPrefs.app/Menu.c:1605
+msgid "WMRootMenu reference chain too deep, possible loop"
+msgstr ""
 
-#: ../../WPrefs.app/Menu.c:1488
+#: ../../WPrefs.app/Menu.c:1628
+#, c-format
+msgid ""
+"The menu file \"%s\" referenced by WMRootMenu is read-only.\n"
+"You cannot use WPrefs to modify it."
+msgstr ""
+
+#: ../../WPrefs.app/Menu.c:1655
 msgid ""
 "The menu file format currently in use is not supported\n"
 "by this tool. Do you want to discard the current menu\n"
@@ -1444,19 +1565,33 @@ msgstr ""
 "이 도구는 현재 사용중인 파일 형식을 지원하지 않습니다.\n"
 "이 도구를 사용하기 위해 현재 메뉴를 버립니까?"
 
-#: ../../WPrefs.app/Menu.c:1491
+#: ../../WPrefs.app/Menu.c:1658
 msgid "Yes, Discard and Update"
 msgstr "예, 버리고 새로 만듭니다."
 
-#: ../../WPrefs.app/Menu.c:1491
+#: ../../WPrefs.app/Menu.c:1658
 msgid "No, Keep Current Menu"
 msgstr "아니오, 현재 메뉴를 유지합니다"
 
-#: ../../WPrefs.app/Menu.c:1732
+#: ../../WPrefs.app/Menu.c:1677 ../../WPrefs.app/Menu.c:2021
+#, c-format
+msgid ""
+"When saved, the menu will be written to the file\n"
+"\"%s\"."
+msgstr ""
+
+#: ../../WPrefs.app/Menu.c:1997
+msgid ""
+"This will replace the menu being edited with\n"
+"the shipped default. The next Save writes it to\n"
+"the current menu file."
+msgstr ""
+
+#: ../../WPrefs.app/Menu.c:2032
 msgid "Applications Menu Definition"
 msgstr "응용프로그램 메뉴 정의"
 
-#: ../../WPrefs.app/Menu.c:1734
+#: ../../WPrefs.app/Menu.c:2034
 msgid "Edit the menu for launching applications."
 msgstr "응용프로그램 실행을 위한 메뉴를 편집합니다."
 
@@ -1464,27 +1599,27 @@ msgstr "응용프로그램 실행을 위한 메뉴를 편집합니다."
 msgid "Menu Scrolling Speed"
 msgstr "메뉴 스크롤 속도"
 
-#: ../../WPrefs.app/MenuPreferences.c:153
+#: ../../WPrefs.app/MenuPreferences.c:129
 msgid "Submenu Alignment"
 msgstr "하부 메뉴 정렬"
 
-#: ../../WPrefs.app/MenuPreferences.c:197
+#: ../../WPrefs.app/MenuPreferences.c:153
 msgid "Always open submenus inside the screen, instead of scrolling."
 msgstr "스크롤하는 대신 항상 화면 내에 하부 메뉴를 엽니다."
 
-#: ../../WPrefs.app/MenuPreferences.c:202
+#: ../../WPrefs.app/MenuPreferences.c:158
 msgid "Scroll off-screen menus when pointer is moved over them."
 msgstr "화면 밖으로 나간 메뉴 쪽으로 마우스를 움직이면 스크롤합니다."
 
-#: ../../WPrefs.app/MenuPreferences.c:206
+#: ../../WPrefs.app/MenuPreferences.c:162
 msgid "Use h/j/k/l keys to select menu options."
 msgstr "메뉴 옵션을 고르는데 h/j/k/l 키를 사용합니다."
 
-#: ../../WPrefs.app/MenuPreferences.c:222
+#: ../../WPrefs.app/MenuPreferences.c:178
 msgid "Menu Preferences"
 msgstr "메뉴 설정"
 
-#: ../../WPrefs.app/MenuPreferences.c:224
+#: ../../WPrefs.app/MenuPreferences.c:180
 msgid ""
 "Menu usability related options. Scrolling speed,\n"
 "alignment of submenus etc."
@@ -1492,11 +1627,41 @@ msgstr ""
 "메뉴와 관련된 유용한 옵션들. 스크롤 속도, 하부\n"
 "메뉴의 정렬 방법등을 설정합니다."
 
-#: ../../WPrefs.app/MouseSettings.c:122
+#: ../../WPrefs.app/MouseSettings.c:35
+msgid "Left Button"
+msgstr "왼쪽 버튼"
+
+#: ../../WPrefs.app/MouseSettings.c:36
+msgid "Middle Button"
+msgstr "가운데 버튼"
+
+#: ../../WPrefs.app/MouseSettings.c:37
+msgid "Right Button"
+msgstr "오른쪽 버튼"
+
+#: ../../WPrefs.app/MouseSettings.c:38
+#, fuzzy
+msgid "Back Button"
+msgstr "왼쪽 버튼"
+
+#: ../../WPrefs.app/MouseSettings.c:39
+msgid "Forward Button"
+msgstr ""
+
+#: ../../WPrefs.app/MouseSettings.c:40
+msgid "Mouse Wheel"
+msgstr "마우스 휠"
+
+#: ../../WPrefs.app/MouseSettings.c:41
+#, fuzzy
+msgid "Mouse Wheel Tilt"
+msgstr "마우스 휠"
+
+#: ../../WPrefs.app/MouseSettings.c:142
 msgid "Invalid mouse acceleration value. Must be a positive real value."
 msgstr "잘못된 마우스 가속 임계치 값. 가속 전에 움직일 픽셀의 수여야 함."
 
-#: ../../WPrefs.app/MouseSettings.c:142
+#: ../../WPrefs.app/MouseSettings.c:162
 msgid ""
 "Invalid mouse acceleration threshold value. Must be the number of pixels to "
 "travel before accelerating."
@@ -1504,13 +1669,12 @@ msgstr ""
 "잘못된 마우스 가속 임계치 값입니다. 가속 전에 움직일 픽셀의 수가 되어야 합니"
 "다."
 
-#: ../../WPrefs.app/MouseSettings.c:228 ../../WPrefs.app/MouseSettings.c:240
-#: ../../WPrefs.app/MouseSettings.c:252 ../../WPrefs.app/MouseSettings.c:264
+#: ../../WPrefs.app/MouseSettings.c:272
 #, c-format
 msgid "bad value %s for option %s"
 msgstr "%s 옵션에 잘못된 값 %s"
 
-#: ../../WPrefs.app/MouseSettings.c:323
+#: ../../WPrefs.app/MouseSettings.c:343
 #, c-format
 msgid ""
 "modifier key %s for option ModifierKey was not recognized. Using %s as "
@@ -1519,67 +1683,35 @@ msgstr ""
 "ModifierKey의 수정자 키 값 %s 를 인식할 수 없습니다. 기본값인 %s를 사용합니"
 "다."
 
-#: ../../WPrefs.app/MouseSettings.c:344
+#: ../../WPrefs.app/MouseSettings.c:366
 msgid "could not retrieve keyboard modifier mapping"
 msgstr "키보드 수정자 매핑을 얻을 수 없습니다"
 
-#: ../../WPrefs.app/MouseSettings.c:438
+#: ../../WPrefs.app/MouseSettings.c:465
 msgid "Mouse Speed"
 msgstr "마우스 속도"
 
-#: ../../WPrefs.app/MouseSettings.c:451 ../../WPrefs.app/WPrefs.c:382
-#: ../../WPrefs.app/WPrefs.c:398 ../../WPrefs.app/WindowHandling.c:359
-#: ../../WPrefs.app/WindowHandling.c:371 ../../WPrefs.app/WindowHandling.c:390
-#: ../../WPrefs.app/WindowHandling.c:402
+#: ../../WPrefs.app/MouseSettings.c:478 ../../WPrefs.app/WPrefs.c:716
+#: ../../WPrefs.app/WPrefs.c:732 ../../WPrefs.app/WindowHandling.c:366
+#: ../../WPrefs.app/WindowHandling.c:417 ../../WPrefs.app/WindowHandling.c:429
+#: ../../WPrefs.app/WindowHandling.c:448 ../../WPrefs.app/WindowHandling.c:460
 #, c-format
 msgid "could not load icon %s"
 msgstr "아이콘 %s를 읽어들일 수 없음"
 
-#: ../../WPrefs.app/MouseSettings.c:468
+#: ../../WPrefs.app/MouseSettings.c:495
 msgid "Accel.:"
 msgstr "가속.:"
 
-#: ../../WPrefs.app/MouseSettings.c:479
+#: ../../WPrefs.app/MouseSettings.c:506
 msgid "Threshold:"
 msgstr "임계치:"
 
-#: ../../WPrefs.app/MouseSettings.c:493
-msgid "Double-Click Delay"
-msgstr "더블 클릭 지연 시간"
-
-#: ../../WPrefs.app/MouseSettings.c:536
-msgid "Test"
-msgstr "시험"
-
-#: ../../WPrefs.app/MouseSettings.c:566
-msgid "Workspace Mouse Actions"
-msgstr "작업공간 마우스 동작"
-
-#: ../../WPrefs.app/MouseSettings.c:571
-msgid "Disable mouse actions"
-msgstr "마우스 동작 사용 안함"
-
-#: ../../WPrefs.app/MouseSettings.c:577
-msgid "Left Button"
-msgstr "왼쪽 버튼"
-
-#: ../../WPrefs.app/MouseSettings.c:587
-msgid "Middle Button"
-msgstr "가운데 버튼"
-
-#: ../../WPrefs.app/MouseSettings.c:597
-msgid "Right Button"
-msgstr "오른쪽 버튼"
-
-#: ../../WPrefs.app/MouseSettings.c:607
-msgid "Mouse Wheel"
-msgstr "마우스 휠"
-
-#: ../../WPrefs.app/MouseSettings.c:629
+#: ../../WPrefs.app/MouseSettings.c:519
 msgid "Mouse Grab Modifier"
 msgstr "마우스 잡기 수정자"
 
-#: ../../WPrefs.app/MouseSettings.c:631
+#: ../../WPrefs.app/MouseSettings.c:521
 msgid ""
 "Keyboard modifier to use for actions that\n"
 "involve dragging windows with the mouse,\n"
@@ -1588,70 +1720,59 @@ msgstr ""
 "창 안에서 눌러, 마우스로 창을 끌어다 놓는\n"
 "동작과 연관된 키보드 수정자입니다."
 
-#: ../../WPrefs.app/MouseSettings.c:661
-#, c-format
-msgid "could not create %s"
-msgstr "%s를 만들 수 없음"
+#: ../../WPrefs.app/MouseSettings.c:537
+msgid "Double-Click Delay"
+msgstr "더블 클릭 지연 시간"
 
-#: ../../WPrefs.app/MouseSettings.c:676
-#, c-format
-msgid "could not create temporary file %s"
-msgstr "임시 파일 %s를 만들 수 없음"
+#: ../../WPrefs.app/MouseSettings.c:555
+msgid "Test"
+msgstr "시험"
 
-#: ../../WPrefs.app/MouseSettings.c:709
-#, c-format
-msgid "could not rename file %s to %s"
-msgstr "%s 파일을 %s로 바꿀 수 없음"
+#: ../../WPrefs.app/MouseSettings.c:583
+msgid "Workspace Mouse Actions"
+msgstr "작업공간 마우스 동작"
 
-#: ../../WPrefs.app/MouseSettings.c:778
+#: ../../WPrefs.app/MouseSettings.c:588
+msgid "Disable mouse actions"
+msgstr "마우스 동작 사용 안함"
+
+#: ../../WPrefs.app/MouseSettings.c:687
 msgid "Shift"
 msgstr "시프트"
 
-#: ../../WPrefs.app/MouseSettings.c:779
+#: ../../WPrefs.app/MouseSettings.c:688
 msgid "Lock"
 msgstr "고정"
 
-#: ../../WPrefs.app/MouseSettings.c:780
+#: ../../WPrefs.app/MouseSettings.c:689
 msgid "Control"
 msgstr "컨트롤"
 
-#: ../../WPrefs.app/MouseSettings.c:781
+#: ../../WPrefs.app/MouseSettings.c:690
 msgid "Mod1"
 msgstr ""
 
-#: ../../WPrefs.app/MouseSettings.c:782
+#: ../../WPrefs.app/MouseSettings.c:691
 msgid "Mod2"
 msgstr ""
 
-#: ../../WPrefs.app/MouseSettings.c:783
+#: ../../WPrefs.app/MouseSettings.c:692
 msgid "Mod3"
 msgstr ""
 
-#: ../../WPrefs.app/MouseSettings.c:784
+#: ../../WPrefs.app/MouseSettings.c:693
 msgid "Mod4"
 msgstr ""
 
-#: ../../WPrefs.app/MouseSettings.c:785
+#: ../../WPrefs.app/MouseSettings.c:694
 msgid "Mod5"
 msgstr ""
 
-#: ../../WPrefs.app/MouseSettings.c:788
-msgid "Applications Menu"
-msgstr "응용프로그램 메뉴"
-
-#: ../../WPrefs.app/MouseSettings.c:790
-msgid "Select Windows"
-msgstr "창 선택하기"
-
-#: ../../WPrefs.app/MouseSettings.c:793
-msgid "Switch Workspaces"
-msgstr "작업공간 전환"
-
-#: ../../WPrefs.app/MouseSettings.c:797
+#: ../../WPrefs.app/MouseSettings.c:698
 msgid "Mouse Preferences"
 msgstr "마우스 설정"
 
-#: ../../WPrefs.app/MouseSettings.c:799
+#: ../../WPrefs.app/MouseSettings.c:700
 msgid ""
 "Mouse speed/acceleration, double click delay,\n"
 "mouse button bindings etc."
@@ -1659,72 +1780,99 @@ msgstr ""
 "마우스 속도/가속 기능, 더블 클릭 지연 시간,\n"
 "마우스 버튼 정의 등"
 
-#: ../../WPrefs.app/Paths.c:78
+#: ../../WPrefs.app/Paths.c:89
 msgid "bad value in option IconPath. Using default path list"
 msgstr "IconPath 에 잘못된 값. 기본 경로 목록  사용"
 
-#: ../../WPrefs.app/Paths.c:95
+#: ../../WPrefs.app/Paths.c:108
 msgid "bad value in option PixmapPath. Using default path list"
 msgstr "PixmapPath 에 잘못된 값. 기본 경로 목록 사용"
 
-#: ../../WPrefs.app/Paths.c:140
+#: ../../WPrefs.app/Paths.c:126
+#, fuzzy
+msgid "bad value in option SoundPath. Using default path list"
+msgstr "IconPath 에 잘못된 값. 기본 경로 목록  사용"
+
+#: ../../WPrefs.app/Paths.c:183
 msgid "Select directory"
 msgstr "디렉터리 선택"
 
-#: ../../WPrefs.app/Paths.c:245
+#: ../../WPrefs.app/Paths.c:309
 msgid "Icon Search Paths"
 msgstr "아이콘을 찾을 경로"
 
-#: ../../WPrefs.app/Paths.c:256 ../../WPrefs.app/Paths.c:287
-#: ../../WPrefs.app/TexturePanel.c:1189
+#: ../../WPrefs.app/Paths.c:320 ../../WPrefs.app/Paths.c:351
+#: ../../WPrefs.app/Paths.c:382 ../../WPrefs.app/TexturePanel.c:1229
 msgid "Add"
 msgstr "추가"
 
-#: ../../WPrefs.app/Paths.c:263 ../../WPrefs.app/Paths.c:294
+#: ../../WPrefs.app/Paths.c:327 ../../WPrefs.app/Paths.c:358
+#: ../../WPrefs.app/Paths.c:389
 msgid "Remove"
 msgstr "삭제"
 
-#: ../../WPrefs.app/Paths.c:276
+#: ../../WPrefs.app/Paths.c:340
 msgid "Pixmap Search Paths"
 msgstr "픽스맵을 찾을 경로"
 
-#: ../../WPrefs.app/Paths.c:311
+#: ../../WPrefs.app/Paths.c:371
+#, fuzzy
+msgid "Sound Search Paths"
+msgstr "아이콘을 찾을 경로"
+
+#: ../../WPrefs.app/Paths.c:406
 msgid "Search Path Configuration"
 msgstr "찾을 경로 설정"
 
-#: ../../WPrefs.app/Paths.c:313
+#: ../../WPrefs.app/Paths.c:408
 msgid ""
 "Search paths to use when looking for pixmaps\n"
 "and icons."
 msgstr "픽스맵과 아이콘을 찾을 경로를 지정합니다."
 
-#: ../../WPrefs.app/Preferences.c:68
-#, c-format
-msgid "OFF"
-msgstr "끄기"
+#: ../../WPrefs.app/Preferences.c:45
+msgid "incomplete window titles"
+msgstr "불완전한 창 제목"
 
-#: ../../WPrefs.app/Preferences.c:70
-#, c-format
-msgid "1 pixel"
-msgstr "1 픽셀"
+#: ../../WPrefs.app/Preferences.c:46
+msgid "miniwindow titles"
+msgstr "작은 창 제목"
 
-#. 2-4
-#: ../../WPrefs.app/Preferences.c:73
-#, c-format
-msgid "%i pixels"
-msgstr "%i 픽셀"
+#: ../../WPrefs.app/Preferences.c:47
+msgid "application/dock icons"
+msgstr "응용프로그램/독 아이콘"
 
-#. >4
-#: ../../WPrefs.app/Preferences.c:76
-#, c-format
-msgid "%i pixels "
-msgstr "%i 픽셀"
+#: ../../WPrefs.app/Preferences.c:48
+msgid "internal help"
+msgstr "내부 도움말"
 
-#: ../../WPrefs.app/Preferences.c:214
+#: ../../WPrefs.app/Preferences.c:57
+msgid "Disable AppIcon bounce"
+msgstr "앱 아이콘 튕김 효과 끄기"
+
+#: ../../WPrefs.app/Preferences.c:58
+msgid "By default, the AppIcon bounces when the application is launched"
+msgstr ""
+
+#: ../../WPrefs.app/Preferences.c:60
+msgid "Bounce when the application wants attention"
+msgstr "응용프로그램에서 메시지가 있으면 앱 아이콘을 튕깁니다"
+
+#: ../../WPrefs.app/Preferences.c:63
+msgid "Raise AppIcon when bouncing"
+msgstr "튕기는 앱 아아콘을 엽니다"
+
+#: ../../WPrefs.app/Preferences.c:64
+msgid ""
+"Otherwise you will not see it bouncing if\n"
+"there is a window in front of the AppIcon"
+msgstr ""
+
+#: ../../WPrefs.app/Preferences.c:208
 msgid "Size Display"
 msgstr "크기 표시"
 
-#: ../../WPrefs.app/Preferences.c:216
+#: ../../WPrefs.app/Preferences.c:210
 msgid ""
 "The position or style of the window size\n"
 "display that's shown when a window is resized."
@@ -1732,31 +1880,11 @@ msgstr ""
 "창 크기를 변경할 때에 그 크기의 변경 사항을\n"
 "보여주는 스타일과 위치를 설정합니다."
 
-#: ../../WPrefs.app/Preferences.c:222 ../../WPrefs.app/Preferences.c:242
-msgid "Corner of screen"
-msgstr "화면 구석"
-
-#: ../../WPrefs.app/Preferences.c:223 ../../WPrefs.app/Preferences.c:243
-msgid "Center of screen"
-msgstr "화면 가운데"
-
-#: ../../WPrefs.app/Preferences.c:224 ../../WPrefs.app/Preferences.c:244
-msgid "Center of resized window"
-msgstr "현재 창 가운데"
-
-#: ../../WPrefs.app/Preferences.c:225
-msgid "Technical drawing-like"
-msgstr "제도 크기 표시 방법 사용"
-
-#: ../../WPrefs.app/Preferences.c:226 ../../WPrefs.app/Preferences.c:245
-msgid "Disabled"
-msgstr "사용 안함"
-
-#: ../../WPrefs.app/Preferences.c:234
+#: ../../WPrefs.app/Preferences.c:224
 msgid "Position Display"
 msgstr "위치 표시"
 
-#: ../../WPrefs.app/Preferences.c:236
+#: ../../WPrefs.app/Preferences.c:226
 msgid ""
 "The position or style of the window position\n"
 "display that's shown when a window is moved."
@@ -1764,59 +1892,32 @@ msgstr ""
 "창을 이동할 때 그 창의 위치를 출력할 스타일과\n"
 "보여줄 위치를 설정합니다."
 
-#: ../../WPrefs.app/Preferences.c:253
-msgid "Show balloon text for..."
+#: ../../WPrefs.app/Preferences.c:240
+#, fuzzy
+msgid "Show balloon for..."
 msgstr "다음에 대해 풍선 도움말을 보기..."
 
-#: ../../WPrefs.app/Preferences.c:260
-msgid "incomplete window titles"
-msgstr "불완전한 창 제목"
-
-#: ../../WPrefs.app/Preferences.c:261
-msgid "miniwindow titles"
-msgstr "작은 창 제목"
-
-#: ../../WPrefs.app/Preferences.c:262
-msgid "application/dock icons"
-msgstr "응용프로그램/독 아이콘"
-
-#: ../../WPrefs.app/Preferences.c:263
-msgid "internal help"
-msgstr "내부 도움말"
-
-#: ../../WPrefs.app/Preferences.c:271
+#: ../../WPrefs.app/Preferences.c:255
 msgid "AppIcon bouncing"
 msgstr "앱 아이콘 튕김"
 
-#: ../../WPrefs.app/Preferences.c:276
-msgid "Disable AppIcon bounce"
-msgstr "앱 아이콘 튕김 효과 끄기"
-
-#: ../../WPrefs.app/Preferences.c:281
-msgid "Bounce when the application wants attention"
-msgstr "응용프로그램에서 메시지가 있으면 앱 아이콘을 튕깁니다"
-
-#: ../../WPrefs.app/Preferences.c:287
-msgid "Raise AppIcon when bouncing"
-msgstr "튕기는 앱 아아콘을 엽니다"
-
-#: ../../WPrefs.app/Preferences.c:295
+#: ../../WPrefs.app/Preferences.c:278
 msgid "Workspace border"
 msgstr "작업공간 테두리"
 
-#: ../../WPrefs.app/Preferences.c:311
+#: ../../WPrefs.app/Preferences.c:294
 msgid "Left/Right"
 msgstr "왼쪽/오른쪽"
 
-#: ../../WPrefs.app/Preferences.c:316
+#: ../../WPrefs.app/Preferences.c:299
 msgid "Top/Bottom"
 msgstr "위/아래"
 
-#: ../../WPrefs.app/Preferences.c:332
+#: ../../WPrefs.app/Preferences.c:315
 msgid "Miscellaneous Ergonomic Preferences"
 msgstr "기타 인간 환경 공학적 설정"
 
-#: ../../WPrefs.app/Preferences.c:333
+#: ../../WPrefs.app/Preferences.c:316
 msgid ""
 "Various settings like balloon text, geometry\n"
 "displays etc."
@@ -1824,208 +1925,246 @@ msgstr ""
 "풍선 도움말, 크기 조정 표시 방법, 창 위치 표시\n"
 "방법등 다양한 설정을 합니다."
 
-#: ../../WPrefs.app/TexturePanel.c:293
+#: ../../WPrefs.app/TexturePanel.c:296
 msgid "Saturation"
 msgstr "채도"
 
-#: ../../WPrefs.app/TexturePanel.c:295
+#: ../../WPrefs.app/TexturePanel.c:298
 msgid "Brightness"
 msgstr "명도"
 
-#: ../../WPrefs.app/TexturePanel.c:340 ../../WPrefs.app/TexturePanel.c:346
+#: ../../WPrefs.app/TexturePanel.c:343 ../../WPrefs.app/TexturePanel.c:349
 msgid "Hue"
 msgstr "색상"
 
-#: ../../WPrefs.app/TexturePanel.c:551
+#: ../../WPrefs.app/TexturePanel.c:581
 msgid "Could not load the selected file: "
 msgstr "선택한 파일을 읽을 수 없음: "
 
-#: ../../WPrefs.app/TexturePanel.c:601
+#: ../../WPrefs.app/TexturePanel.c:631
 msgid "Open Image"
 msgstr "이미지 열기"
 
-#: ../../WPrefs.app/TexturePanel.c:631
+#: ../../WPrefs.app/TexturePanel.c:661
 msgid "The selected file does not contain a supported image."
 msgstr "선택한 이미지 파일의 형식을 지원하지 않습니다."
 
-#: ../../WPrefs.app/TexturePanel.c:861
-#, c-format
-msgid "could not load file '%s': %s"
-msgstr "%s 파일을 읽을 수 없음: %s"
-
-#: ../../WPrefs.app/TexturePanel.c:975
+#: ../../WPrefs.app/TexturePanel.c:1009
 #, c-format
 msgid "error creating texture %s"
 msgstr "텍스쳐 %s 생성하는 데 오류 발생"
 
-#: ../../WPrefs.app/TexturePanel.c:1134
+#: ../../WPrefs.app/TexturePanel.c:1174
 msgid "Texture Panel"
 msgstr "텍스처 패널"
 
-#: ../../WPrefs.app/TexturePanel.c:1141
+#: ../../WPrefs.app/TexturePanel.c:1181
 msgid "Texture Name"
 msgstr "텍스처 이름"
 
-#: ../../WPrefs.app/TexturePanel.c:1153
+#: ../../WPrefs.app/TexturePanel.c:1193
 msgid "Solid Color"
 msgstr "단색"
 
-#: ../../WPrefs.app/TexturePanel.c:1154
+#: ../../WPrefs.app/TexturePanel.c:1194
 msgid "Gradient Texture"
 msgstr "그래디언트 텍스처"
 
-#: ../../WPrefs.app/TexturePanel.c:1155
+#: ../../WPrefs.app/TexturePanel.c:1195
 msgid "Simple Gradient Texture"
 msgstr "간결한 그래디언트 텍스쳐"
 
-#: ../../WPrefs.app/TexturePanel.c:1156
+#: ../../WPrefs.app/TexturePanel.c:1196
 msgid "Textured Gradient"
 msgstr "텍스쳐 그래디언트"
 
-#: ../../WPrefs.app/TexturePanel.c:1157
+#: ../../WPrefs.app/TexturePanel.c:1197
 msgid "Image Texture"
 msgstr "이미지 텍스처"
 
-#: ../../WPrefs.app/TexturePanel.c:1165
+#: ../../WPrefs.app/TexturePanel.c:1205
 msgid "Default Color"
 msgstr "기본색"
 
-#: ../../WPrefs.app/TexturePanel.c:1177
+#: ../../WPrefs.app/TexturePanel.c:1217
 msgid "Gradient Colors"
 msgstr "그래디언트 색"
 
-#: ../../WPrefs.app/TexturePanel.c:1266
+#: ../../WPrefs.app/TexturePanel.c:1306
 msgid "Direction"
 msgstr "방향"
 
-#: ../../WPrefs.app/TexturePanel.c:1294
+#: ../../WPrefs.app/TexturePanel.c:1334
 msgid "Gradient"
 msgstr "그래디언트"
 
-#: ../../WPrefs.app/TexturePanel.c:1310
+#: ../../WPrefs.app/TexturePanel.c:1350
 msgid "Gradient Opacity"
 msgstr "그래디언트 불투명도"
 
-#: ../../WPrefs.app/TexturePanel.c:1350
+#: ../../WPrefs.app/TexturePanel.c:1384
 msgid "Image"
 msgstr "이미지"
 
-#: ../../WPrefs.app/TexturePanel.c:1382
+#: ../../WPrefs.app/TexturePanel.c:1404
+msgid "Browse..."
+msgstr "보기..."
+
+#: ../../WPrefs.app/TexturePanel.c:1416 ../../WPrefs.app/enumchoices.h:96
 msgid "Tile"
 msgstr "타일"
 
-#: ../../WPrefs.app/TexturePanel.c:1383
+#: ../../WPrefs.app/TexturePanel.c:1417
 msgid "Scale"
 msgstr "스케일"
 
-#: ../../WPrefs.app/TexturePanel.c:1385
+#: ../../WPrefs.app/TexturePanel.c:1418 ../../WPrefs.app/enumchoices.h:60
+#: ../../WPrefs.app/enumchoices.h:108 ../../WPrefs.app/enumchoices.h:191
+msgid "Center"
+msgstr "가운데"
+
+#: ../../WPrefs.app/TexturePanel.c:1419
 msgid "Maximize"
 msgstr "최대화"
 
-#: ../../WPrefs.app/Themes.c:63 ../../WPrefs.app/Themes.c:71
-msgid "Set"
-msgstr "지정"
+#: ../../WPrefs.app/TexturePanel.c:1420
+msgid "Fill"
+msgstr ""
 
-#: ../../WPrefs.app/Themes.c:114
-msgid "Stop"
-msgstr "중지"
+#: ../../WPrefs.app/WPrefs.c:150
+#, fuzzy
+msgid "Could not save settings to "
+msgstr "%s 파일을 %s로 바꿀 수 없음"
 
-#: ../../WPrefs.app/Themes.c:125 ../../WPrefs.app/Themes.c:170
-#: ../../WPrefs.app/Themes.c:190
-msgid "Download"
-msgstr "다운로드"
+#: ../../WPrefs.app/WPrefs.c:152
+#, fuzzy
+msgid "Could not save settings."
+msgstr "아이콘 %s를 읽어들일 수 없음"
 
-#: ../../WPrefs.app/Themes.c:139
-msgid "Save Current Theme"
-msgstr "현재 테마 저장"
+#: ../../WPrefs.app/WPrefs.c:193
+msgid "Restart Required"
+msgstr ""
 
-#: ../../WPrefs.app/Themes.c:148
-msgid "Load"
-msgstr "불러오기"
+#: ../../WPrefs.app/WPrefs.c:194
+msgid ""
+"One or more options you changed only take\n"
+"effect after Window Maker is restarted."
+msgstr ""
 
-#: ../../WPrefs.app/Themes.c:153
-msgid "Install"
-msgstr "설치"
+#: ../../WPrefs.app/WPrefs.c:196
+#, fuzzy
+msgid "Restart Now"
+msgstr "윈도우 메이커 재시작"
 
-#: ../../WPrefs.app/Themes.c:160
-msgid "Tile of The Day"
-msgstr "오늘의 타일(Tile)"
+#: ../../WPrefs.app/WPrefs.c:196
+msgid "Later"
+msgstr ""
 
-#: ../../WPrefs.app/Themes.c:180
-msgid "Bar of The Day"
-msgstr "오늘의 바(Bar)"
+#: ../../WPrefs.app/WPrefs.c:304
+#, fuzzy, c-format
+msgid "could not back up %s as %s"
+msgstr "%s 파일을 %s로 바꿀 수 없음"
 
-#: ../../WPrefs.app/WPrefs.c:189 ../../WPrefs.app/WPrefs.c:259
+#: ../../WPrefs.app/WPrefs.c:356 ../../WPrefs.app/WPrefs.c:550
+msgid "Reset Defaults"
+msgstr ""
+
+#: ../../WPrefs.app/WPrefs.c:357
+msgid ""
+"This will discard the settings WPrefs manages\n"
+"(WindowMaker, WMSound, WMGLOBAL and the Applications\n"
+"Menu) and restore the shipped defaults. Session, dock\n"
+"and per-window attributes are not touched.\n"
+"\n"
+"Each replaced file is kept as a .wprefs-backup sibling."
+msgstr ""
+
+#: ../../WPrefs.app/WPrefs.c:362
+msgid "Reset"
+msgstr ""
+
+#: ../../WPrefs.app/WPrefs.c:376
+msgid ""
+"Could not back up the current settings.\n"
+"Nothing was changed."
+msgstr ""
+
+#: ../../WPrefs.app/WPrefs.c:513 ../../WPrefs.app/WPrefs.c:589
 msgid "Window Maker Preferences"
 msgstr "윈도우 메이커 설정"
 
-#: ../../WPrefs.app/WPrefs.c:212
+#: ../../WPrefs.app/WPrefs.c:517
+#, fuzzy
+msgid "Preferences"
+msgstr "독 설정"
+
+#: ../../WPrefs.app/WPrefs.c:536
 msgid "Revert Page"
 msgstr "페이지 복구"
 
-#: ../../WPrefs.app/WPrefs.c:218
+#: ../../WPrefs.app/WPrefs.c:542
 msgid "Revert All"
 msgstr "모두 복구"
 
-#: ../../WPrefs.app/WPrefs.c:224
+#: ../../WPrefs.app/WPrefs.c:556
 msgid "Save"
 msgstr "저장"
 
-#: ../../WPrefs.app/WPrefs.c:236
+#: ../../WPrefs.app/WPrefs.c:568
 msgid "Balloon Help"
 msgstr "풍선 도움말"
 
-#: ../../WPrefs.app/WPrefs.c:266
+#: ../../WPrefs.app/WPrefs.c:596
 #, c-format
 msgid "Version %s"
 msgstr "버전 %s"
 
-#: ../../WPrefs.app/WPrefs.c:273
+#: ../../WPrefs.app/WPrefs.c:603
 msgid "Starting..."
 msgstr "시작합니다..."
 
-#: ../../WPrefs.app/WPrefs.c:357
+#: ../../WPrefs.app/WPrefs.c:691
 #, c-format
 msgid "could not locate image file %s"
 msgstr "이미지 %s 파일을 찾을 수 없음"
 
-#: ../../WPrefs.app/WPrefs.c:411
+#: ../../WPrefs.app/WPrefs.c:745
 #, c-format
 msgid "could not process icon %s: %s"
 msgstr "아이콘 %s를 처리할 수 없음: %s"
 
-#: ../../WPrefs.app/WPrefs.c:603
+#: ../../WPrefs.app/WPrefs.c:873
 #, c-format
 msgid "could not load image file %s:%s"
 msgstr "이미지 파일 %s를 읽을 수 없음:%s"
 
-#: ../../WPrefs.app/WPrefs.c:620
+#: ../../WPrefs.app/WPrefs.c:894
 msgid "Loading Window Maker configuration files..."
 msgstr "윈도우 메이커 설정 파일을 읽는 중..."
 
-#: ../../WPrefs.app/WPrefs.c:624
+#: ../../WPrefs.app/WPrefs.c:899
 msgid "Initializing configuration panels..."
 msgstr "설정 패널 초기화 중..."
 
-#: ../../WPrefs.app/WPrefs.c:682 ../../WPrefs.app/WPrefs.c:764
+#: ../../WPrefs.app/WPrefs.c:960 ../../WPrefs.app/WPrefs.c:1037
 #, c-format
 msgid "Window Maker domain (%s) is corrupted!"
 msgstr "윈도우 메이커 도메인(%s)이 깨졌습니다!"
 
-#: ../../WPrefs.app/WPrefs.c:686
+#: ../../WPrefs.app/WPrefs.c:964
 #, c-format
 msgid "Could not load Window Maker domain (%s) from defaults database."
 msgstr "기본 데이터베이스에서 윈도우 메이커 도메인(%s)을 읽을 수 없습니다."
 
-#: ../../WPrefs.app/WPrefs.c:701
+#: ../../WPrefs.app/WPrefs.c:980
 msgid "could not extract version information from Window Maker"
 msgstr "윈도우 메이커에서 버전 정보를 얻을 수 없습니다"
 
-#: ../../WPrefs.app/WPrefs.c:702
+#: ../../WPrefs.app/WPrefs.c:981
 msgid "Make sure wmaker is in your search path."
 msgstr "wmaker가 검색 경로에 있는지 확인하세요."
 
-#: ../../WPrefs.app/WPrefs.c:706
+#: ../../WPrefs.app/WPrefs.c:985
 msgid ""
 "Could not extract version from Window Maker. Make sure it is correctly "
 "installed and is in your PATH environment variable."
@@ -2033,7 +2172,7 @@ msgstr ""
 "윈도우 메이커에서 버전 정보를 얻을 수 없습니다. PATH 환경 변수에 지정된 곳에 "
 "제대로 설치되었는지 확인하세요."
 
-#: ../../WPrefs.app/WPrefs.c:716
+#: ../../WPrefs.app/WPrefs.c:993
 msgid ""
 "Could not extract version from Window Maker. Make sure it is correctly "
 "installed and the path where it installed is in the PATH environment "
@@ -2042,7 +2181,7 @@ msgstr ""
 "윈도우 메이커에서 버전 정보를 얻을 수 없습니다. PATH 환경 변수에 지정된 곳에 "
 "제대로 설치되었는지 확인하세요."
 
-#: ../../WPrefs.app/WPrefs.c:723
+#: ../../WPrefs.app/WPrefs.c:1000
 #, c-format
 msgid ""
 "WPrefs only supports Window Maker 0.18.0 or newer.\n"
@@ -2051,7 +2190,7 @@ msgstr ""
 "WPrefs는 윈도우 메이커 0.18.0 이상만을 지원합니다.\n"
 "설치된 버젼은 %i.%i.%i 입니다.\n"
 
-#: ../../WPrefs.app/WPrefs.c:732
+#: ../../WPrefs.app/WPrefs.c:1009
 #, c-format
 msgid ""
 "Window Maker %i.%i.%i, which is installed in your system, is not fully "
@@ -2060,36 +2199,40 @@ msgstr ""
 "시스템에 설치된 윈도우 메이커 %i.%i.%i는 WPrefs에서 제대로 지원하는 버전이 아"
 "닙니다."
 
-#: ../../WPrefs.app/WPrefs.c:745
+#: ../../WPrefs.app/WPrefs.c:1018
 #, c-format
 msgid "could not run \"%s --global_defaults_path\"."
 msgstr " \"%s --global_defaults_path\" 을 실행할 수 없습니다."
 
-#: ../../WPrefs.app/WPrefs.c:768
+#: ../../WPrefs.app/WPrefs.c:1027
+msgid "global defaults path is too long"
+msgstr ""
+
+#: ../../WPrefs.app/WPrefs.c:1041
 #, c-format
 msgid "Could not load global Window Maker domain (%s)."
 msgstr "전역 윈도우 메이커 도메인 (%s)를 읽어들일 수 없습니다."
 
-#: ../../WPrefs.app/WPrefs.c:988
-#, c-format
-msgid "bad speed value for option %s; using default Medium"
-msgstr "옵션 %s에 잘못된 속도 값을 주었습니다;기본값 Medium을 사용합니다"
+#: ../../WPrefs.app/WPrefs.c:1073
+#, fuzzy, c-format
+msgid "Window Maker sound domain (%s) is corrupted!"
+msgstr "윈도우 메이커 도메인(%s)이 깨졌습니다!"
 
-#: ../../WPrefs.app/WindowHandling.c:158
-#, c-format
-msgid "bad option value %s in WindowPlacement. Using default value"
-msgstr "WindowPlacement에 잘못된 옵션 값 %s입니다. 기본값을 사용합니다"
+#: ../../WPrefs.app/WPrefs.c:1282
+#, fuzzy, c-format
+msgid "bad value \"%s\" for option %s"
+msgstr "%s 옵션에 잘못된 값 %s"
 
-#: ../../WPrefs.app/WindowHandling.c:177
+#: ../../WPrefs.app/WindowHandling.c:196 ../../WPrefs.app/WindowHandling.c:204
 msgid "invalid data in option WindowPlaceOrigin. Using default (0,0)"
 msgstr ""
 "WindowPlaceOrigin 옵션에 잘못된 데이터입니다. 기본값 (0,0)을 사용합니다"
 
-#: ../../WPrefs.app/WindowHandling.c:266
+#: ../../WPrefs.app/WindowHandling.c:306
 msgid "Window Placement"
 msgstr "창 배치"
 
-#: ../../WPrefs.app/WindowHandling.c:267
+#: ../../WPrefs.app/WindowHandling.c:307
 msgid ""
 "How to place windows when they are first put\n"
 "on screen."
@@ -2097,35 +2240,15 @@ msgstr ""
 "스크린에 창을 놓을 때에 어느 곳을 부터 놓을\n"
 "것인지 설정합니다."
 
-#: ../../WPrefs.app/WindowHandling.c:273
-msgid "Automatic"
-msgstr "자동"
+#: ../../WPrefs.app/WindowHandling.c:319
+msgid "Origin:"
+msgstr ""
 
-#: ../../WPrefs.app/WindowHandling.c:274
-msgid "Random"
-msgstr "임의"
-
-#: ../../WPrefs.app/WindowHandling.c:275
-msgid "Manual"
-msgstr "수동"
-
-#: ../../WPrefs.app/WindowHandling.c:276
-msgid "Cascade"
-msgstr "계단식"
-
-#: ../../WPrefs.app/WindowHandling.c:277
-msgid "Smart"
-msgstr "스마트"
-
-#: ../../WPrefs.app/WindowHandling.c:284
-msgid "Placement Origin"
-msgstr "기본 위치"
-
-#: ../../WPrefs.app/WindowHandling.c:342
+#: ../../WPrefs.app/WindowHandling.c:400
 msgid "Opaque Move/Resize"
 msgstr "창 이동/크기 조절할 때 창을 불투명하게"
 
-#: ../../WPrefs.app/WindowHandling.c:343
+#: ../../WPrefs.app/WindowHandling.c:401
 msgid ""
 "Whether the window contents or only a frame should\n"
 "be displayed during a move or resize.\n"
@@ -2133,27 +2256,48 @@ msgstr ""
 "창을 이동하거나 크기를 바꾸는 동안\n"
 "창의 내용 또는 한 장면만 보여줄지 정합니다.\n"
 
-#: ../../WPrefs.app/WindowHandling.c:410
+#: ../../WPrefs.app/WindowHandling.c:468
 msgid "by keyboard"
 msgstr "키보드 사용"
 
-#: ../../WPrefs.app/WindowHandling.c:419
+#: ../../WPrefs.app/WindowHandling.c:470
+msgid ""
+"When selected, moving or resizing windows\n"
+"using keyboard shortcuts will also display its\n"
+"content instead of just a frame."
+msgstr ""
+
+#: ../../WPrefs.app/WindowHandling.c:481
 msgid "When maximizing..."
 msgstr "최대화시에는"
 
-#: ../../WPrefs.app/WindowHandling.c:424
-msgid "...do not cover icons"
-msgstr "아이콘을 덮지 않음"
-
-#: ../../WPrefs.app/WindowHandling.c:430
-msgid "...do not cover dock"
+#: ../../WPrefs.app/WindowHandling.c:484
+#, fuzzy
+msgid "...do not cover:"
 msgstr "독을 덮지 않음"
 
-#: ../../WPrefs.app/WindowHandling.c:454
+#: ../../WPrefs.app/WindowHandling.c:491
+msgid "Icons"
+msgstr ""
+
+#: ../../WPrefs.app/WindowHandling.c:496
+msgid "The dock"
+msgstr ""
+
+#: ../../WPrefs.app/WindowHandling.c:504
+#, fuzzy
+msgid "Mod+Wheel"
+msgstr "마우스 휠"
+
+#: ../../WPrefs.app/WindowHandling.c:507
+msgid "Resize increment:"
+msgstr ""
+
+#: ../../WPrefs.app/WindowHandling.c:528
 msgid "Edge Resistance"
 msgstr "가장자리 걸림"
 
-#: ../../WPrefs.app/WindowHandling.c:456
+#: ../../WPrefs.app/WindowHandling.c:530
 msgid ""
 "Edge resistance will make windows `resist'\n"
 "being moved further for the defined threshold\n"
@@ -2164,23 +2308,34 @@ msgstr ""
 "경계나 화면의 가장자리에서 서로 겹쳐지지 않기\n"
 "위해 약간의 걸림 현상을 주는 것입니다."
 
-#: ../../WPrefs.app/WindowHandling.c:475
+#: ../../WPrefs.app/WindowHandling.c:549
 msgid "Resist"
 msgstr "밀기"
 
-#: ../../WPrefs.app/WindowHandling.c:480
+#: ../../WPrefs.app/WindowHandling.c:554
 msgid "Attract"
 msgstr "당김"
 
-#: ../../WPrefs.app/WindowHandling.c:493
-msgid "Open dialogs in the same workspace as their owners"
-msgstr "같은 작업 공간에서 소유자로서 대화창 열기"
+#: ../../WPrefs.app/WindowHandling.c:563
+#, fuzzy
+msgid "Window Gap"
+msgstr "창 제목"
 
-#: ../../WPrefs.app/WindowHandling.c:515
+#: ../../WPrefs.app/WindowHandling.c:565
+msgid ""
+"Margin (in pixels) left between windows and screen/window\n"
+"edges by edge-snap actions. 0 = flush."
+msgstr ""
+
+#: ../../WPrefs.app/WindowHandling.c:586
+msgid "Dragging a maximized window..."
+msgstr ""
+
+#: ../../WPrefs.app/WindowHandling.c:615
 msgid "Window Handling Preferences"
 msgstr "창 처리 설정"
 
-#: ../../WPrefs.app/WindowHandling.c:517
+#: ../../WPrefs.app/WindowHandling.c:617
 msgid ""
 "Window handling options. Initial placement style\n"
 "edge resistance, opaque move etc."
@@ -2188,361 +2343,1862 @@ msgstr ""
 "창 제어 옵션. 초기 창 배치 스타일, 가장 자리 걸림\n"
 "이동시 창 내용 보이기등을 설정합니다."
 
-#: ../../WPrefs.app/Workspace.c:118
+#: ../../WPrefs.app/Workspace.c:165
 msgid "Workspace Navigation"
 msgstr "작업공간 탐색"
 
-#: ../../WPrefs.app/Workspace.c:123
+#: ../../WPrefs.app/Workspace.c:170
 msgid "Wrap to the first workspace from the last workspace"
 msgstr "마지막 작업공간에서 처음 작업공간으로 이동합니다"
 
-#: ../../WPrefs.app/Workspace.c:139
+#: ../../WPrefs.app/Workspace.c:186
 msgid "Switch workspaces while dragging windows"
 msgstr "창을 끄는 동안 작업공간을 전환합니다"
 
-#: ../../WPrefs.app/Workspace.c:155
+#: ../../WPrefs.app/Workspace.c:202
 msgid "Automatically create new workspaces"
 msgstr "자동으로 새 작업공간을 만듭니다"
 
+#: ../../WPrefs.app/Workspace.c:218
 msgid "Automatically remove empty workspaces"
 msgstr ""
 
-msgid "Keep at least this many workspaces."
-msgstr ""
-
 #. WMSetLabelTextAlignment(panel->posL, WARight);
-#: ../../WPrefs.app/Workspace.c:172
+#: ../../WPrefs.app/Workspace.c:234
 msgid "Position of workspace name display"
 msgstr "작업공간 이름 표시 위치"
 
-#: ../../WPrefs.app/Workspace.c:188
-msgid "Disable"
-msgstr "사용 안함"
+#: ../../WPrefs.app/Workspace.c:259
+msgid "Default Workspace Layout"
+msgstr ""
 
-#: ../../WPrefs.app/Workspace.c:190
-msgid "Top"
-msgstr "위"
+#: ../../WPrefs.app/Workspace.c:261
+msgid ""
+"Workspace layout applied to newly created workspaces.\n"
+"Existing workspaces keep whatever layout they were\n"
+"last set to. 'Float' is the ordinary unmanaged\n"
+"placement."
+msgstr ""
 
-#: ../../WPrefs.app/Workspace.c:191
-msgid "Bottom"
-msgstr "아래"
+#: ../../WPrefs.app/Workspace.c:277
+msgid "Master count:"
+msgstr ""
 
-#: ../../WPrefs.app/Workspace.c:192
-msgid "Top/Left"
-msgstr "위/왼쪽"
+#: ../../WPrefs.app/Workspace.c:287
+#, fuzzy
+msgid "Master ratio:"
+msgstr "채도"
 
-#: ../../WPrefs.app/Workspace.c:193
-msgid "Top/Right"
-msgstr "위/오른쪽"
-
-#: ../../WPrefs.app/Workspace.c:194
-msgid "Bottom/Left"
-msgstr "아래/왼쪽"
-
-#: ../../WPrefs.app/Workspace.c:195
-msgid "Bottom/Right"
-msgstr "아래/오른쪽"
-
-#: ../../WPrefs.app/Workspace.c:224
+#: ../../WPrefs.app/Workspace.c:334
 msgid "Workspace Preferences"
 msgstr "작업공간 설정"
 
-#: ../../WPrefs.app/Workspace.c:226
+#: ../../WPrefs.app/Workspace.c:336
+#, fuzzy
 msgid ""
-"Workspace navigation features.\n"
-"You can also enable/disable the Dock and Clip here."
-msgstr ""
-"작업공간 탐색 기능. 독과 클립을\n"
-"사용할 것인지 설정할 수도 있습니다."
+"Workspace navigation features\n"
+"and workspace name display settings."
+msgstr "작업공간 이름 표시 위치"
 
-#: ../../WPrefs.app/main.c:53
+#. Icons.c, key "IconificationStyle"
+#: ../../WPrefs.app/enumchoices.h:46
+msgid "Shrinking/Zooming"
+msgstr "축소/확대"
+
+#: ../../WPrefs.app/enumchoices.h:47
+msgid "Spinning/Twisting"
+msgstr "회전/트위스트"
+
+#: ../../WPrefs.app/enumchoices.h:48
+msgid "3D-flipping"
+msgstr "3차원 회전"
+
+#. Appearance.c, key "TitleJustify", idx is WMAlignment
+#. Docks.c, key "DockEdge". Rows are in schema order, the values are
+#. * stored as the WDockEdge enumerators.
+#: ../../WPrefs.app/enumchoices.h:59 ../../WPrefs.app/enumchoices.h:194
+#: ../../WPrefs.app/enumchoices.h:214
+msgid "Left"
+msgstr "왼쪽"
+
+#: ../../WPrefs.app/enumchoices.h:61 ../../WPrefs.app/enumchoices.h:195
+#: ../../WPrefs.app/enumchoices.h:215
+msgid "Right"
+msgstr "오른쪽"
+
+#: ../../WPrefs.app/enumchoices.h:67 ../../WPrefs.app/enumchoices.h:78
+msgid "Applications Menu"
+msgstr "응용프로그램 메뉴"
+
+#: ../../WPrefs.app/enumchoices.h:69 ../../WPrefs.app/enumchoices.h:80
+msgid "Select Windows"
+msgstr "창 선택하기"
+
+#: ../../WPrefs.app/enumchoices.h:72 ../../WPrefs.app/enumchoices.h:83
+#, fuzzy
+msgid "Previous Window"
+msgstr "이전 창 활성화"
+
+#: ../../WPrefs.app/enumchoices.h:73 ../../WPrefs.app/enumchoices.h:84
+#, fuzzy
+msgid "Next Window"
+msgstr "창 선택하기"
+
+#: ../../WPrefs.app/enumchoices.h:74
+msgid "Pan Viewport"
+msgstr ""
+
+#: ../../WPrefs.app/enumchoices.h:90
+msgid "Switch Workspaces"
+msgstr "작업공간 전환"
+
+#: ../../WPrefs.app/enumchoices.h:91
+#, fuzzy
+msgid "Switch Windows"
+msgstr "창 선택하기"
+
+#. Workspace.c, key "DefaultWorkspaceLayout"
+#: ../../WPrefs.app/enumchoices.h:95
+msgid "Float"
+msgstr ""
+
+#: ../../WPrefs.app/enumchoices.h:97
+#, fuzzy
+msgid "Tile wide"
+msgstr "타일"
+
+#: ../../WPrefs.app/enumchoices.h:98
+msgid "Grid"
+msgstr ""
+
+#: ../../WPrefs.app/enumchoices.h:99
+msgid "Monocle"
+msgstr ""
+
+#. WindowHandling.c, key "WindowPlacement"
+#: ../../WPrefs.app/enumchoices.h:103
+msgid "Automatic"
+msgstr "자동"
+
+#: ../../WPrefs.app/enumchoices.h:104
+msgid "Random"
+msgstr "임의"
+
+#: ../../WPrefs.app/enumchoices.h:105
+msgid "Manual"
+msgstr "수동"
+
+#: ../../WPrefs.app/enumchoices.h:106
+msgid "Cascade"
+msgstr "계단식"
+
+#: ../../WPrefs.app/enumchoices.h:107
+msgid "Smart"
+msgstr "스마트"
+
+#. Expert.c, key "TabAttachArea". Surfaced as an OPTION_WMAKER_ALT
+#. * checkbox that reads the value pair from the schema directly, this
+#. * table is here only so check_wprefs_schema asserts the enum stays
+#. * two-valued.
+#: ../../WPrefs.app/enumchoices.h:115
+#, fuzzy
+msgid "Titlebar"
+msgstr "타이틀바 스타일"
+
+#: ../../WPrefs.app/enumchoices.h:116
+#, fuzzy
+msgid "Window"
+msgstr "창 제목"
+
+#. Expert.c, key "SwitcherOrder". Surfaced as an OPTION_WMAKER_ALT
+#. * checkbox, this table only pins the value pair for check_wprefs_schema.
+#: ../../WPrefs.app/enumchoices.h:121
+msgid "Focus"
+msgstr ""
+
+#: ../../WPrefs.app/enumchoices.h:122
+msgid "Age"
+msgstr ""
+
+#. WindowHandling.c, key "DragMaximizedWindow"
+#: ../../WPrefs.app/enumchoices.h:126
+msgid "...changes its position (normal behavior)"
+msgstr ""
+
+#: ../../WPrefs.app/enumchoices.h:127
+msgid "...restores its unmaximized geometry"
+msgstr ""
+
+#: ../../WPrefs.app/enumchoices.h:128
+msgid "...considers the window now unmaximized"
+msgstr ""
+
+#: ../../WPrefs.app/enumchoices.h:129
+#, fuzzy
+msgid "...does not move the window"
+msgstr "독을 덮지 않음"
+
+#. Preferences.c, key "ResizeDisplay"
+#. Preferences.c, key "MoveDisplay"
+#: ../../WPrefs.app/enumchoices.h:133 ../../WPrefs.app/enumchoices.h:140
+msgid "Corner of screen"
+msgstr "화면 구석"
+
+#: ../../WPrefs.app/enumchoices.h:134 ../../WPrefs.app/enumchoices.h:141
+msgid "Center of screen"
+msgstr "화면 가운데"
+
+#: ../../WPrefs.app/enumchoices.h:135 ../../WPrefs.app/enumchoices.h:142
+msgid "Center of resized window"
+msgstr "현재 창 가운데"
+
+#: ../../WPrefs.app/enumchoices.h:136 ../../WPrefs.app/enumchoices.h:143
+msgid "Disabled"
+msgstr "사용 안함"
+
+#. Workspace.c, key "WorkspaceNameDisplayPosition" (KeychainDisplayPosition
+#. * has no UI). The popup's selected index is written as the enum value,
+#. * so rows must stay in value order. Pinned by check_wprefs_schema.
+#: ../../WPrefs.app/enumchoices.h:190
+msgid "Disable"
+msgstr "사용 안함"
+
+#: ../../WPrefs.app/enumchoices.h:192 ../../WPrefs.app/enumchoices.h:216
+msgid "Top"
+msgstr "위"
+
+#: ../../WPrefs.app/enumchoices.h:193 ../../WPrefs.app/enumchoices.h:217
+msgid "Bottom"
+msgstr "아래"
+
+#: ../../WPrefs.app/enumchoices.h:196
+msgid "Top/Left"
+msgstr "위/왼쪽"
+
+#: ../../WPrefs.app/enumchoices.h:197
+msgid "Top/Right"
+msgstr "위/오른쪽"
+
+#: ../../WPrefs.app/enumchoices.h:198
+msgid "Bottom/Left"
+msgstr "아래/왼쪽"
+
+#: ../../WPrefs.app/enumchoices.h:199
+msgid "Bottom/Right"
+msgstr "아래/오른쪽"
+
+#: ../../WPrefs.app/main.c:59
 #, c-format
 msgid "usage: %s [options]\n"
 msgstr "사용법: %s [옵션]\n"
 
-#: ../../WPrefs.app/main.c:54
+#: ../../WPrefs.app/main.c:60
 msgid "options:"
 msgstr "옵션:"
 
-#: ../../WPrefs.app/main.c:55
+#: ../../WPrefs.app/main.c:61
 msgid " -display <display>\tdisplay to be used"
 msgstr "-display <display>\t사용할 디스플레이"
 
-#: ../../WPrefs.app/main.c:56
+#: ../../WPrefs.app/main.c:62
 msgid " --version\t\tprint version number and exit"
 msgstr "--version\t\t버젼 출력후 종료"
 
-#: ../../WPrefs.app/main.c:57
+#: ../../WPrefs.app/main.c:63
 msgid " --help\t\tprint this message and exit"
 msgstr "--help\t\t현재 메시지 출력 후 종료"
 
-#: ../../WPrefs.app/main.c:124
+#: ../../WPrefs.app/main.c:119
 #, c-format
 msgid "too few arguments for %s"
 msgstr "%s 의 인수 개수가 너무 적음"
 
-#: ../../WPrefs.app/main.c:146
-msgid "X server does not support locale"
-msgstr "X 서버가 로케일을 지원하지 않음"
-
-#: ../../WPrefs.app/main.c:149
-msgid "cannot set locale modifiers"
-msgstr "로케일 수정자를 설정할 수 없음"
-
-#: ../../WPrefs.app/main.c:155
+#: ../../WPrefs.app/main.c:143
 #, c-format
 msgid "could not open display %s"
 msgstr "디스플레이 %s를 열 수 없음"
 
-#: ../../WPrefs.app/main.c:163
+#: ../../WPrefs.app/main.c:150
 msgid "could not initialize application"
 msgstr "응용프로그램을 초기화 할 수 없음"
 
-#~ msgid "Window Maker Preferences Utility"
-#~ msgstr "윈도우 메이커 설정 유틸리티"
+#: ../../WPrefs.app/xmodifier.c:154
+#, c-format
+msgid "%s is being used for both %s and %s"
+msgstr ""
 
-#~ msgid "Version %s for Window Maker %s or newer"
-#~ msgstr "버전 %s - 윈도우 메이커 %s 또는 그 이상"
+#: ../../src/keybind_descriptions.h:42 ../../src/keybind_descriptions.h:43
+#: ../../src/keybind_descriptions.h:44 ../../src/keybind_descriptions.h:45
+#: ../../src/keybind_descriptions.h:46 ../../src/keybind_descriptions.h:47
+#: ../../src/keybind_descriptions.h:48
+msgid "Virtual Desktop"
+msgstr ""
 
-#~ msgid ""
-#~ "Programming/Design: Alfredo K. Kojima\n"
-#~ "Artwork: Marco van Hylckama Vlieg\n"
-#~ "More Programming: James Thompson"
-#~ msgstr ""
-#~ "프로그래밍/디자인: Alfredo K. Kojima\n"
-#~ "아트웍: Macro van Hylckama Vlieg\n"
-#~ "추가 프로그래밍: James Thompson"
+#: ../../src/keybind_descriptions.h:42
+msgid "Move VirtualDesktop to next left edge"
+msgstr ""
 
-#~ msgid ""
-#~ "WPrefs is free software and is distributed WITHOUT ANY\n"
-#~ "WARRANTY under the terms of the GNU General Public License.\n"
-#~ "The icons in this program are licensed through the\n"
-#~ "OpenContent License."
-#~ msgstr ""
-#~ "WPrefs는 공개 소프트웨어이며 GNU General Public\n"
-#~ "License에 따라 배포에 대한 어떠한 책임도 가지지\n"
-#~ "않습니다. 아이콘은 OpenContent License를 따릅니다."
+#: ../../src/keybind_descriptions.h:42
+msgid "VirtualEdgeLeftKey"
+msgstr ""
 
-#~ msgid "Animations and Sound"
-#~ msgstr "애니메이션과 음향효과"
+#: ../../src/keybind_descriptions.h:43
+msgid "Move VirtualDesktop to next right edge"
+msgstr ""
 
-#~ msgid "Sounds"
-#~ msgstr "음향 효과"
+#: ../../src/keybind_descriptions.h:43
+msgid "VirtualEdgeRightKey"
+msgstr ""
 
-#~ msgid ""
-#~ "Disable/enable support for sound effects played\n"
-#~ "for actions like shading and closing a window.\n"
-#~ "You will need a module distributed separately\n"
-#~ "for this. You can get it at:\n"
-#~ "http://www.frontiernet.net/~southgat/wmsound"
-#~ msgstr ""
-#~ "쉐이딩, 창 닫기 같은 동작에서 음향 효과를 사용할\n"
-#~ "것인지의 여부를 설정합니다. 이를 위해서는 따로이\n"
-#~ "배포되는 모듈이 필요합니다. 이 모듈은 아래에서\n"
-#~ "구할 수 있습니다:\n"
-#~ "http://www.frontiernet.net/~southgat/wmsound"
+#: ../../src/keybind_descriptions.h:44
+msgid "Move VirtualDesktop to next top edge"
+msgstr ""
 
-#~ msgid "Note: sound requires a module distributed separately"
-#~ msgstr "주의: 음향 효과는 따로이 배포되는 모듈이 필요함"
+#: ../../src/keybind_descriptions.h:44
+msgid "VirtualEdgeUpKey"
+msgstr ""
 
-#~ msgid "Disable cycling color highlighting of icons."
-#~ msgstr "아이콘에 색상 하이라이팅 순환 사용 않음."
+#: ../../src/keybind_descriptions.h:45
+msgid "Move VirtualDesktop to next bottom edge"
+msgstr ""
 
-#~ msgid "Click window to focus"
-#~ msgstr "활성화하기 위해 창을 클릭"
+#: ../../src/keybind_descriptions.h:45
+msgid "VirtualEdgeDownKey"
+msgstr ""
 
-#~ msgid "Focus follows mouse"
-#~ msgstr "마우스를 따르는 활성화 모드"
+#: ../../src/keybind_descriptions.h:46
+msgid "Move VirtualDesktop to its origin"
+msgstr ""
 
-#~ msgid "\"Sloppy\" focus"
-#~ msgstr "\"느슨한\" 활성화 모드"
+#: ../../src/keybind_descriptions.h:46
+msgid "VirtualDesktopHomeKey"
+msgstr ""
 
-#~ msgid "Raise Clip"
-#~ msgstr "클립 올림"
+#: ../../src/keybind_descriptions.h:47
+msgid "Center the focused window in the VirtualDesktop"
+msgstr ""
 
-#~ msgid "Lower Clip"
-#~ msgstr "클립 내림"
+#: ../../src/keybind_descriptions.h:47
+msgid "VirtualDesktopCenterKey"
+msgstr ""
 
-#~ msgid "Command to Execute"
-#~ msgstr "실행할 명령"
+#: ../../src/keybind_descriptions.h:48
+msgid "Pin the focused window to the VirtualDesktop viewport"
+msgstr ""
 
-#~ msgid "New Command %i"
-#~ msgstr "새 명령 %i"
+#: ../../src/keybind_descriptions.h:48
+msgid "VirtualDesktopPinKey"
+msgstr ""
 
-#~ msgid "Workspaces"
-#~ msgstr "작업 공간"
+#: ../../src/keybind_descriptions.h:55 ../../src/keybind_descriptions.h:56
+#: ../../src/keybind_descriptions.h:220 ../../src/keybind_descriptions.h:221
+#: ../../src/keybind_descriptions.h:222 ../../src/keybind_descriptions.h:223
+#: ../../src/keybind_descriptions.h:224
+msgid "Session & Misc"
+msgstr ""
 
-#~ msgid "Add Command"
-#~ msgstr "명령 추가"
+#: ../../src/keybind_descriptions.h:55
+msgid "Toggle keyboard language"
+msgstr "키보드 언어 선택"
 
-#~ msgid "Add External Menu"
-#~ msgstr "외부 메뉴 추가"
+#: ../../src/keybind_descriptions.h:55
+msgid "ToggleKbdModeKey"
+msgstr ""
 
-#~ msgid "Remove Item"
-#~ msgstr "항목 삭제"
+#: ../../src/keybind_descriptions.h:56
+msgid "Pick accented and special characters"
+msgstr ""
 
-#~ msgid "Cut Item"
-#~ msgstr "항목 잘라내기"
+#: ../../src/keybind_descriptions.h:56
+msgid "AccentPickerKey"
+msgstr ""
 
-#~ msgid "Copy Item"
-#~ msgstr "항목 복사"
+#: ../../src/keybind_descriptions.h:62 ../../src/keybind_descriptions.h:63
+#: ../../src/keybind_descriptions.h:64
+#, fuzzy
+msgid "Menus"
+msgstr "메뉴 항목"
 
-#~ msgid "Paste Item"
-#~ msgstr "항목 붙이기"
+#: ../../src/keybind_descriptions.h:62
+msgid "Open applications menu"
+msgstr "응용프로그램 메뉴 열기"
 
-#~ msgid "Label"
-#~ msgstr "레이블"
+#: ../../src/keybind_descriptions.h:62
+msgid "RootMenuKey"
+msgstr ""
 
-#~ msgid "Execute Shell Command"
-#~ msgstr "쉘 명령 실행"
+#: ../../src/keybind_descriptions.h:63
+msgid "Open window list menu"
+msgstr "창 목록 메뉴 열기"
 
-#~ msgid "Hide Others"
-#~ msgstr "다른 창 숨기기"
+#: ../../src/keybind_descriptions.h:63
+#, fuzzy
+msgid "WindowListKey"
+msgstr "창 목록 메뉴"
 
-#~ msgid "Legal Panel"
-#~ msgstr "법적인 정보 패널"
+#: ../../src/keybind_descriptions.h:64
+msgid "Open window commands menu"
+msgstr "창 명령 메뉴 열기"
 
-#~ msgid "Menu Path/Directory List"
-#~ msgstr "메뉴 경로/디렉토리 목록"
+#: ../../src/keybind_descriptions.h:64
+#, fuzzy
+msgid "WindowMenuKey"
+msgstr "창 목록 메뉴"
 
-#~ msgid "Ask help to the Guru"
-#~ msgstr "Guru에게 도움 요청"
+#: ../../src/keybind_descriptions.h:66 ../../src/keybind_descriptions.h:67
+#: ../../src/keybind_descriptions.h:68 ../../src/keybind_descriptions.h:69
+#: ../../src/keybind_descriptions.h:70 ../../src/keybind_descriptions.h:71
+#: ../../src/keybind_descriptions.h:72
+#, fuzzy
+msgid "Dock & Screen"
+msgstr "독 설정"
 
-#~ msgid "%s/Library/WindowMaker/plmenu"
-#~ msgstr "%s/Library/WindowMaker/plmenu.ko"
+#: ../../src/keybind_descriptions.h:66
+msgid "Raise/Lower Dock"
+msgstr "독 올림/내림"
 
-#~ msgid "Copy Default Menu"
-#~ msgstr "기본 메뉴 복사"
+#: ../../src/keybind_descriptions.h:66
+#, fuzzy
+msgid "DockRaiseLowerKey"
+msgstr "독 올림/내림"
 
-#~ msgid "Menu Guru - Select Type"
-#~ msgstr "메뉴 Guru - 형태를 선택하세요"
+#: ../../src/keybind_descriptions.h:67
+msgid "Raise/Lower Clip"
+msgstr "클립 올림/내림"
 
-#~ msgid "Next"
-#~ msgstr "다음"
+#: ../../src/keybind_descriptions.h:67
+#, fuzzy
+msgid "ClipRaiseLowerKey"
+msgstr "클립 올림/내림"
 
-#~ msgid "Menu Guru - Select Menu File"
-#~ msgstr "메뉴 Guru - 메뉴 파일을 선택하세요"
+#: ../../src/keybind_descriptions.h:68
+#, fuzzy
+msgid "Switch to next screen/monitor"
+msgstr "다음 작업 화면/모니터로 전환"
 
-#~ msgid "Menu Guru - Select Pipe Command"
-#~ msgstr "메뉴 Guru - 파이프 명령을 선택하세요"
+#: ../../src/keybind_descriptions.h:68
+msgid "ScreenSwitchKey"
+msgstr ""
 
-#~ msgid "Menu Guru - Select Directories"
-#~ msgstr "메뉴 Guru - 디렉토리를 선택하세요"
+#: ../../src/keybind_descriptions.h:69
+msgid "Capture the entire screen"
+msgstr ""
 
-#~ msgid "Menu Guru - Select Command"
-#~ msgstr "메뉴 Guru - 명령을 선택하세요"
+#: ../../src/keybind_descriptions.h:69
+#, fuzzy
+msgid "ScreenCaptureKey"
+msgstr "캡쳐"
 
-#~ msgid "Back"
-#~ msgstr "앞으로"
+#: ../../src/keybind_descriptions.h:70
+#, fuzzy
+msgid "Capture a window"
+msgstr "모든 창 최소화"
 
-#~ msgid ""
-#~ "This process will help you create a submenu which definition is located "
-#~ "in another file or is created dynamically.\n"
-#~ "What do you want to use as the contents of the submenu?"
-#~ msgstr ""
-#~ "이 과정은 다른 파일에 정의가 있거나 자동적으로 생성되는 하부메뉴를 만드는 "
-#~ "데 도움을 줍니다.\n"
-#~ "부메뉴의 내용으로 어떤 것을 사용하고 싶습니까?"
+#: ../../src/keybind_descriptions.h:70
+#, fuzzy
+msgid "WindowCaptureKey"
+msgstr "캡쳐"
 
-#~ msgid ""
-#~ "A file containing the menu definition in the plain text (non-property "
-#~ "list) menu format."
-#~ msgstr "메뉴 정의를 보통 텍스트로(특성 없는 목록) 쓴 파일."
+#: ../../src/keybind_descriptions.h:71
+msgid "Capture a portion of the screen"
+msgstr ""
 
-#~ msgid ""
-#~ "The menu definition generated by a script/program read through a pipe."
-#~ msgstr "스크립트/프로그램으로 생성하여 파이프로 읽어들이는 메뉴 정의."
+#: ../../src/keybind_descriptions.h:71
+msgid "PartialCaptureKey"
+msgstr ""
 
-#~ msgid "The files in one or more directories."
-#~ msgstr "하나 이상의 디렉토리의 파일."
+#: ../../src/keybind_descriptions.h:72
+#, fuzzy
+msgid "Find the mouse pointer"
+msgstr "...마우스 포인터 아래입니다"
 
-#~ msgid "Type the path for the menu file:"
-#~ msgstr "메뉴 파일의 경로를 적으세요:"
+#: ../../src/keybind_descriptions.h:72
+msgid "FindMouseKey"
+msgstr ""
 
-#~ msgid ""
-#~ "The menu file must contain a menu in the plain text menu file format. "
-#~ "This format is described in the menu files included with WindowMaker, "
-#~ "probably at ~/GNUstep/Library/WindowMaker/menu"
-#~ msgstr ""
-#~ "메뉴 파일의 내용은 보통 텍스트로 된 메뉴 파일 형식의 메뉴입니다. 이 형식"
-#~ "은 WindowMaker에 포함된 메뉴 파일을 보면 되며, 보통 ~/GNUstep/Library/"
-#~ "WindowMaker/menu.ko입니다."
+#: ../../src/keybind_descriptions.h:74 ../../src/keybind_descriptions.h:75
+#: ../../src/keybind_descriptions.h:76 ../../src/keybind_descriptions.h:77
+#: ../../src/keybind_descriptions.h:78 ../../src/keybind_descriptions.h:79
+#: ../../src/keybind_descriptions.h:80 ../../src/keybind_descriptions.h:81
+#: ../../src/keybind_descriptions.h:82 ../../src/keybind_descriptions.h:83
+#: ../../src/keybind_descriptions.h:84 ../../src/keybind_descriptions.h:85
+#: ../../src/keybind_descriptions.h:86 ../../src/keybind_descriptions.h:87
+#: ../../src/keybind_descriptions.h:88 ../../src/keybind_descriptions.h:89
+#: ../../src/keybind_descriptions.h:90 ../../src/keybind_descriptions.h:91
+#: ../../src/keybind_descriptions.h:92 ../../src/keybind_descriptions.h:93
+#: ../../src/keybind_descriptions.h:94 ../../src/keybind_descriptions.h:95
+#: ../../src/keybind_descriptions.h:96 ../../src/keybind_descriptions.h:97
+#: ../../src/keybind_descriptions.h:98 ../../src/keybind_descriptions.h:99
+#: ../../src/keybind_descriptions.h:100 ../../src/keybind_descriptions.h:101
+#: ../../src/keybind_descriptions.h:102 ../../src/keybind_descriptions.h:103
+#: ../../src/keybind_descriptions.h:104 ../../src/keybind_descriptions.h:105
+#: ../../src/keybind_descriptions.h:106 ../../src/keybind_descriptions.h:107
+#: ../../src/keybind_descriptions.h:108 ../../src/keybind_descriptions.h:109
+#: ../../src/keybind_descriptions.h:110 ../../src/keybind_descriptions.h:111
+#: ../../src/keybind_descriptions.h:112 ../../src/keybind_descriptions.h:113
+#: ../../src/keybind_descriptions.h:114 ../../src/keybind_descriptions.h:115
+#: ../../src/keybind_descriptions.h:116 ../../src/keybind_descriptions.h:117
+#: ../../src/keybind_descriptions.h:118 ../../src/keybind_descriptions.h:119
+#: ../../src/keybind_descriptions.h:120 ../../src/keybind_descriptions.h:121
+#: ../../src/keybind_descriptions.h:122 ../../src/keybind_descriptions.h:123
+#: ../../src/keybind_descriptions.h:124 ../../src/keybind_descriptions.h:125
+#, fuzzy
+msgid "Windows"
+msgstr "창 선택하기"
 
-#~ msgid "Type the command that will generate the menu definition:"
-#~ msgstr "메뉴 정의를 만들어낼 명령을 입력하세요:"
+#: ../../src/keybind_descriptions.h:74
+msgid "Miniaturize active window"
+msgstr "활성화된 창 최소화"
 
-#~ msgid ""
-#~ "The command supplied must generate and output a valid menu definition to "
-#~ "stdout. This definition should be in the plain text menu file format, "
-#~ "described in the menu files included with WindowMaker, usually at ~/"
-#~ "GNUstep/Library/WindowMaker/menu"
-#~ msgstr ""
-#~ "이 명령은 유효한 메뉴 정의를 만들어서 표준 출력으로 내보내야 합니다. 이 정"
-#~ "의는 보통 텍스트로 된 메뉴 파일 형식이어야 하며, WindowMaker에 포함된 메"
-#~ "뉴 파일에 설명되어 있습니다. 보통 ~/GNUstep/Library/WindowMaker/menu.ko 입"
-#~ "니다"
+#: ../../src/keybind_descriptions.h:74
+#, fuzzy
+msgid "MiniaturizeKey"
+msgstr "활성화된 창 최소화"
 
-#~ msgid ""
-#~ "Type the path for the directory. You can type more than one path by "
-#~ "separating them with spaces."
-#~ msgstr ""
-#~ "디렉토리의 경로를 입력하세요. 빈칸으로 분리해서 하나 이상의 경로를 쓸 수 "
-#~ "있습니다."
+#: ../../src/keybind_descriptions.h:75
+msgid "Miniaturize all windows"
+msgstr "모든 창 최소화"
 
-#~ msgid ""
-#~ "The menu generated will have an item for each file in the directory. The "
-#~ "directories can contain program executables or data files (such as jpeg "
-#~ "images)."
-#~ msgstr ""
-#~ "생성되는 메뉴는 디렉토리의 각 파일에 대해 항목을 갖습니다. 디렉토리에는 프"
-#~ "로그램 실행 파일이나 데이터 파일을 넣으면 됩니다.(jpeg 이미지 같은 것들)"
+#: ../../src/keybind_descriptions.h:75
+#, fuzzy
+msgid "MiniaturizeAllKey"
+msgstr "모든 창 최소화"
 
-#~ msgid ""
-#~ "If the directory contain data files, type the command used to open these "
-#~ "files. Otherwise, leave it in blank."
-#~ msgstr ""
-#~ "디렉토리에 데이터 파일이 있는 경우, 이 파일을 열기 위해 사용할 명령을 입력"
-#~ "하세요. 그렇지 않으면 빈칸으로 두세요."
+#: ../../src/keybind_descriptions.h:76
+#, fuzzy
+msgid "Miniaturize other windows"
+msgstr "활성화된 창 최소화"
 
-#~ msgid ""
-#~ "Each file in the directory will have an item and they will be opened with "
-#~ "the supplied command.For example, if the directory contains image files "
-#~ "and the command is \"xv -root\", each file in the directory will have a "
-#~ "menu item like \"xv -root imagefile\"."
-#~ msgstr ""
-#~ "디렉토리의 각 파일에는 항목이 있으며 제공된 명령으로 열 수 있습니다. 예를 "
-#~ "들면, 이 디렉토리에 이미지 파일이 있고 명령이 \"xv -root\"이면, 디렉토리"
-#~ "의 각 파일은 \"xv -root 이미지파일\"과 같은 메뉴 항목을 갖습니다."
+#: ../../src/keybind_descriptions.h:76
+msgid "MiniaturizeOthersKey"
+msgstr ""
 
-#~ msgid "Invalid font %s."
-#~ msgstr "잘못된 글꼴 %s"
+#: ../../src/keybind_descriptions.h:77
+msgid "Hide active application"
+msgstr "활성화된 응용프로그램 숨김"
 
-#~ msgid "Set Font..."
-#~ msgstr "글꼴 지정..."
+#: ../../src/keybind_descriptions.h:77
+msgid "HideKey"
+msgstr ""
 
-#~ msgid "Menu Title Font"
-#~ msgstr "메뉴 제목 글꼴"
+#: ../../src/keybind_descriptions.h:78
+msgid "Hide other applications"
+msgstr "다른 응용프로그램 숨김"
 
-#~ msgid "Menu Item Font"
-#~ msgstr "메뉴 항목 글꼴"
+#: ../../src/keybind_descriptions.h:78
+#, fuzzy
+msgid "HideOthersKey"
+msgstr "다른 창 숨기기"
 
-#~ msgid "Geometry Display Font"
-#~ msgstr "위치/크기 표시 글꼴"
+#: ../../src/keybind_descriptions.h:79
+msgid "Toggle show desktop (minimize/restore all)"
+msgstr ""
 
-#~ msgid ""
-#~ "Sample Text\n"
-#~ "abcdefghijklmnopqrstuvxywz\n"
-#~ "ABCDEFGHIJKLMNOPQRSTUVXYWZ\n"
-#~ "0123456789"
-#~ msgstr ""
-#~ "Sample Text\n"
-#~ "abcdefghijklmnopqrstuvxywz\n"
-#~ "ABCDEFGHIJKLMNOPQRSTUVXYWZ\n"
-#~ "가나다라마바사\n"
-#~ "0123456789"
+#: ../../src/keybind_descriptions.h:79
+msgid "ShowDesktopKey"
+msgstr ""
 
-#~ msgid "Alignment"
-#~ msgstr "정렬"
+#: ../../src/keybind_descriptions.h:80
+#, fuzzy
+msgid "Show all windows"
+msgstr "모든 창 보이기"
 
-#~ msgid "Text Preferences"
-#~ msgstr "텍스트 설정"
+#: ../../src/keybind_descriptions.h:80
+msgid "ShowAllKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:81
+#, fuzzy
+msgid "Arrange icons"
+msgstr "아이콘 정렬"
+
+#: ../../src/keybind_descriptions.h:81
+#, fuzzy
+msgid "ArrangeIconsKey"
+msgstr "아이콘 정렬"
+
+#: ../../src/keybind_descriptions.h:82
+msgid "Move/Resize active window"
+msgstr "활성화된 창 이동/크기바꿈"
+
+#: ../../src/keybind_descriptions.h:82
+#, fuzzy
+msgid "MoveResizeKey"
+msgstr "창 이동/크기 조절할 때 창을 불투명하게"
+
+#: ../../src/keybind_descriptions.h:83
+msgid "Close active window"
+msgstr "활성화된 창 닫기"
+
+#: ../../src/keybind_descriptions.h:83
+#, fuzzy
+msgid "CloseKey"
+msgstr "닫기"
+
+#: ../../src/keybind_descriptions.h:84
+#, fuzzy
+msgid "Restore active window geometry"
+msgstr "활성화된 창을 위로"
+
+#: ../../src/keybind_descriptions.h:84
+msgid "RestoreGeometryKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:85
+msgid "Maximize active window"
+msgstr "활성화된 창 최대화"
+
+#: ../../src/keybind_descriptions.h:85
+#, fuzzy
+msgid "MaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:86
+msgid "Maximize active window vertically"
+msgstr "창을 세로로 최대화"
+
+#: ../../src/keybind_descriptions.h:86
+#, fuzzy
+msgid "VMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:87
+msgid "Maximize active window horizontally"
+msgstr "활성 창을 세로로 최대화"
+
+#: ../../src/keybind_descriptions.h:87
+#, fuzzy
+msgid "HMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:88
+msgid "Maximize active window left half"
+msgstr "활성 창을 왼쪽 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:88
+#, fuzzy
+msgid "LHMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:89
+msgid "Maximize active window right half"
+msgstr "활성 창을 오른쪽 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:89
+#, fuzzy
+msgid "RHMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:90
+msgid "Maximize active window top half"
+msgstr "활성 창을 위 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:90
+#, fuzzy
+msgid "THMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:91
+msgid "Maximize active window bottom half"
+msgstr "활성 창을 바닥 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:91
+#, fuzzy
+msgid "BHMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:92
+#, fuzzy
+msgid "Maximize active window top left corner"
+msgstr "활성 창을 왼쪽 위 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:92
+#, fuzzy
+msgid "TLCMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:93
+#, fuzzy
+msgid "Maximize active window top right corner"
+msgstr "활성 창을 오른쪽 위 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:93
+#, fuzzy
+msgid "TRCMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:94
+#, fuzzy
+msgid "Maximize active window bottom left corner"
+msgstr "창을 세활성 창을 왼쪽바닥 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:94
+#, fuzzy
+msgid "BLCMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:95
+#, fuzzy
+msgid "Maximize active window bottom right corner"
+msgstr "창을 세활성 창을 왼쪽바닥 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:95
+#, fuzzy
+msgid "BRCMaximizeKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:96
+#, fuzzy
+msgid "Tile active window"
+msgstr "활성화된 창 닫기"
+
+#: ../../src/keybind_descriptions.h:96
+#, fuzzy
+msgid "MaximusKey"
+msgstr "최대화"
+
+#: ../../src/keybind_descriptions.h:97
+#, fuzzy
+msgid "Move active window to left edge"
+msgstr "활성 창을 위 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:97
+msgid "MoveToEdgeLeftKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:98
+#, fuzzy
+msgid "Move active window to right edge"
+msgstr "활성 창을 오른쪽 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:98
+msgid "MoveToEdgeRightKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:99
+#, fuzzy
+msgid "Move active window to top edge"
+msgstr "활성 창을 왼쪽 위 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:99
+msgid "MoveToEdgeUpKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:100
+#, fuzzy
+msgid "Move active window to bottom edge"
+msgstr "창을 세활성 창을 왼쪽바닥 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:100
+msgid "MoveToEdgeDownKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:101
+#, fuzzy
+msgid "Move active window to left screen edge"
+msgstr "활성 창을 왼쪽 위 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:101
+msgid "MoveToEdgeLeftNoSnapKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:102
+#, fuzzy
+msgid "Move active window to right screen edge"
+msgstr "활성 창을 오른쪽 위 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:102
+msgid "MoveToEdgeRightNoSnapKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:103
+#, fuzzy
+msgid "Move active window to top screen edge"
+msgstr "활성 창을 왼쪽 위 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:103
+msgid "MoveToEdgeUpNoSnapKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:104
+#, fuzzy
+msgid "Move active window to bottom screen edge"
+msgstr "창을 세활성 창을 왼쪽바닥 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:104
+msgid "MoveToEdgeDownNoSnapKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:105
+#, fuzzy
+msgid "Grow active window to left edge"
+msgstr "활성 창을 위 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:105
+msgid "GrowToEdgeLeftKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:106
+#, fuzzy
+msgid "Grow active window to right edge"
+msgstr "활성 창을 오른쪽 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:106
+msgid "GrowToEdgeRightKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:107
+#, fuzzy
+msgid "Grow active window to top edge"
+msgstr "활성화된 창을 아래로"
+
+#: ../../src/keybind_descriptions.h:107
+msgid "GrowToEdgeUpKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:108
+#, fuzzy
+msgid "Grow active window to bottom edge"
+msgstr "창을 세활성 창을 왼쪽바닥 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:108
+msgid "GrowToEdgeDownKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:109
+#, fuzzy
+msgid "Shrink active window from left edge"
+msgstr "활성 창을 왼쪽 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:109
+msgid "ShrinkToEdgeLeftKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:110
+#, fuzzy
+msgid "Shrink active window from right edge"
+msgstr "활성 창을 오른쪽 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:110
+msgid "ShrinkToEdgeRightKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:111
+#, fuzzy
+msgid "Shrink active window from top edge"
+msgstr "활성 창을 왼쪽 위 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:111
+msgid "ShrinkToEdgeUpKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:112
+#, fuzzy
+msgid "Shrink active window from bottom edge"
+msgstr "창을 세활성 창을 왼쪽바닥 구석으로 최대화"
+
+#: ../../src/keybind_descriptions.h:112
+msgid "ShrinkToEdgeDownKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:113
+#, fuzzy
+msgid "Toggle fullscreen for active window"
+msgstr "활성화된 창을 아래로"
+
+#: ../../src/keybind_descriptions.h:113
+msgid "ToggleFullscreenKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:114
+#, fuzzy
+msgid "Center active window"
+msgstr "활성화된 창을 아래로"
+
+#: ../../src/keybind_descriptions.h:114
+#, fuzzy
+msgid "CenterKey"
+msgstr "가운데"
+
+#: ../../src/keybind_descriptions.h:115
+msgid "Toggle window on top status"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:115
+msgid "KeepOnTopKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:116
+msgid "Toggle window at bottom status"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:116
+msgid "KeepAtBottomKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:117
+#, fuzzy
+msgid "Toggle window omnipresent status"
+msgstr "창을 10개 앞 작업공간으로 이동"
+
+#: ../../src/keybind_descriptions.h:117
+msgid "OmnipresentKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:118
+msgid "Raise active window"
+msgstr "활성화된 창을 위로"
+
+#: ../../src/keybind_descriptions.h:118
+msgid "RaiseKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:119
+msgid "Lower active window"
+msgstr "활성화된 창을 아래로"
+
+#: ../../src/keybind_descriptions.h:119
+msgid "LowerKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:120
+msgid "Raise/Lower window under mouse pointer"
+msgstr "마우스가 위치한 창 올림/내림"
+
+#: ../../src/keybind_descriptions.h:120
+#, fuzzy
+msgid "RaiseLowerKey"
+msgstr "독 올림/내림"
+
+#: ../../src/keybind_descriptions.h:121
+msgid "Shade active window"
+msgstr "활성화된 창에 그림자 표시"
+
+#: ../../src/keybind_descriptions.h:121
+msgid "ShadeKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:122
+msgid "Select active window"
+msgstr "활성화 창 선택"
+
+#: ../../src/keybind_descriptions.h:122
+#, fuzzy
+msgid "SelectKey"
+msgstr "파일 선택"
+
+#: ../../src/keybind_descriptions.h:123
+msgid "Launch new instance of application"
+msgstr "응용프로그램을 새로 실행"
+
+#: ../../src/keybind_descriptions.h:123
+#, fuzzy
+msgid "WindowRelaunchKey"
+msgstr "창 배치"
+
+#: ../../src/keybind_descriptions.h:124
+msgid "Move to right/bottom/left/top head"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:124
+msgid "MoveTo12to6Head"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:125
+msgid "Move to left/top/right/bottom head"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:125
+msgid "MoveTo6to12Head"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:127 ../../src/keybind_descriptions.h:128
+#: ../../src/keybind_descriptions.h:129 ../../src/keybind_descriptions.h:130
+#: ../../src/keybind_descriptions.h:131 ../../src/keybind_descriptions.h:132
+#: ../../src/keybind_descriptions.h:133 ../../src/keybind_descriptions.h:134
+#: ../../src/keybind_descriptions.h:135 ../../src/keybind_descriptions.h:136
+#, fuzzy
+msgid "Window Shortcuts"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:127
+msgid "Shortcut for window 1"
+msgstr "1번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:127
+#, fuzzy
+msgid "WindowShortcut1Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:128
+msgid "Shortcut for window 2"
+msgstr "2번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:128
+#, fuzzy
+msgid "WindowShortcut2Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:129
+msgid "Shortcut for window 3"
+msgstr "3번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:129
+#, fuzzy
+msgid "WindowShortcut3Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:130
+msgid "Shortcut for window 4"
+msgstr "4번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:130
+#, fuzzy
+msgid "WindowShortcut4Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:131
+msgid "Shortcut for window 5"
+msgstr "5번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:131
+#, fuzzy
+msgid "WindowShortcut5Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:132
+msgid "Shortcut for window 6"
+msgstr "6번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:132
+#, fuzzy
+msgid "WindowShortcut6Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:133
+msgid "Shortcut for window 7"
+msgstr "7번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:133
+#, fuzzy
+msgid "WindowShortcut7Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:134
+msgid "Shortcut for window 8"
+msgstr "8번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:134
+#, fuzzy
+msgid "WindowShortcut8Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:135
+msgid "Shortcut for window 9"
+msgstr "9번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:135
+#, fuzzy
+msgid "WindowShortcut9Key"
+msgstr "단축키"
+
+#: ../../src/keybind_descriptions.h:136
+msgid "Shortcut for window 10"
+msgstr "10번 창 단축키"
+
+#: ../../src/keybind_descriptions.h:136
+msgid "WindowShortcut10Key"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:138 ../../src/keybind_descriptions.h:139
+#: ../../src/keybind_descriptions.h:140 ../../src/keybind_descriptions.h:141
+#: ../../src/keybind_descriptions.h:142 ../../src/keybind_descriptions.h:143
+#: ../../src/keybind_descriptions.h:144 ../../src/keybind_descriptions.h:145
+#: ../../src/keybind_descriptions.h:146 ../../src/keybind_descriptions.h:147
+#: ../../src/keybind_descriptions.h:148 ../../src/keybind_descriptions.h:149
+#: ../../src/keybind_descriptions.h:150 ../../src/keybind_descriptions.h:151
+#, fuzzy
+msgid "Focus & Groups"
+msgstr "마우스를 따르는 활성화 모드"
+
+#: ../../src/keybind_descriptions.h:138
+msgid "Focus next window"
+msgstr "다음 창 활성화"
+
+#: ../../src/keybind_descriptions.h:138
+msgid "FocusNextKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:139
+msgid "Focus previous window"
+msgstr "이전 창 활성화"
+
+#: ../../src/keybind_descriptions.h:139
+msgid "FocusPrevKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:140
+#, fuzzy
+msgid "Focus the window to the left"
+msgstr "활성 창 제목"
+
+#: ../../src/keybind_descriptions.h:140
+#, fuzzy
+msgid "FocusWindowLeftKey"
+msgstr "활성화 창"
+
+#: ../../src/keybind_descriptions.h:141
+#, fuzzy
+msgid "Focus the window to the right"
+msgstr "활성 창 제목"
+
+#: ../../src/keybind_descriptions.h:141
+#, fuzzy
+msgid "FocusWindowRightKey"
+msgstr "활성 창 제목"
+
+#: ../../src/keybind_descriptions.h:142
+#, fuzzy
+msgid "Focus the window above"
+msgstr "다음 창 활성화"
+
+#: ../../src/keybind_descriptions.h:142
+#, fuzzy
+msgid "FocusWindowUpKey"
+msgstr "활성화 창"
+
+#: ../../src/keybind_descriptions.h:143
+#, fuzzy
+msgid "Focus the window below"
+msgstr "다음 창 활성화"
+
+#: ../../src/keybind_descriptions.h:143
+#, fuzzy
+msgid "FocusWindowDownKey"
+msgstr "활성화 창"
+
+#: ../../src/keybind_descriptions.h:144
+#, fuzzy
+msgid "Focus next window in group"
+msgstr "다음 창 활성화"
+
+#: ../../src/keybind_descriptions.h:144
+msgid "GroupWindowNextKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:145
+#, fuzzy
+msgid "Focus previous window in group"
+msgstr "이전 창 활성화"
+
+#: ../../src/keybind_descriptions.h:145
+msgid "GroupWindowPrevKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:146
+#, fuzzy
+msgid "Switch to next application group"
+msgstr "10개 뒤 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:146
+msgid "GroupNextKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:147
+#, fuzzy
+msgid "Switch to previous application group"
+msgstr "10개 앞 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:147
+msgid "GroupPrevKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:148
+#, fuzzy
+msgid "Switch to next tab in group"
+msgstr "10개 뒤 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:148
+msgid "GroupTabNextKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:149
+#, fuzzy
+msgid "Switch to previous tab in group"
+msgstr "10개 앞 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:149
+msgid "GroupTabPrevKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:150
+#, fuzzy
+msgid "Attach window as tab"
+msgstr "자동 창 올림 지연 시간"
+
+#: ../../src/keybind_descriptions.h:150
+msgid "GroupTabAttachKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:151
+msgid "Detach tab from group"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:151
+msgid "GroupTabDetachKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:153 ../../src/keybind_descriptions.h:154
+#: ../../src/keybind_descriptions.h:155 ../../src/keybind_descriptions.h:156
+#: ../../src/keybind_descriptions.h:157 ../../src/keybind_descriptions.h:158
+#: ../../src/keybind_descriptions.h:159 ../../src/keybind_descriptions.h:160
+#: ../../src/keybind_descriptions.h:161 ../../src/keybind_descriptions.h:162
+#: ../../src/keybind_descriptions.h:163 ../../src/keybind_descriptions.h:164
+#: ../../src/keybind_descriptions.h:165 ../../src/keybind_descriptions.h:166
+#: ../../src/keybind_descriptions.h:167 ../../src/keybind_descriptions.h:168
+#: ../../src/keybind_descriptions.h:169 ../../src/keybind_descriptions.h:170
+#: ../../src/keybind_descriptions.h:171 ../../src/keybind_descriptions.h:172
+#: ../../src/keybind_descriptions.h:173 ../../src/keybind_descriptions.h:174
+#: ../../src/keybind_descriptions.h:175 ../../src/keybind_descriptions.h:176
+#: ../../src/keybind_descriptions.h:177 ../../src/keybind_descriptions.h:178
+#: ../../src/keybind_descriptions.h:179 ../../src/keybind_descriptions.h:180
+#: ../../src/keybind_descriptions.h:181 ../../src/keybind_descriptions.h:182
+#: ../../src/keybind_descriptions.h:183 ../../src/keybind_descriptions.h:184
+#: ../../src/keybind_descriptions.h:185 ../../src/keybind_descriptions.h:186
+#: ../../src/keybind_descriptions.h:187 ../../src/keybind_descriptions.h:188
+#: ../../src/keybind_descriptions.h:189 ../../src/keybind_descriptions.h:190
+#: ../../src/keybind_descriptions.h:191 ../../src/keybind_descriptions.h:192
+#: ../../src/keybind_descriptions.h:193 ../../src/keybind_descriptions.h:194
+#: ../../src/keybind_descriptions.h:195 ../../src/keybind_descriptions.h:196
+#: ../../src/keybind_descriptions.h:197 ../../src/keybind_descriptions.h:198
+#: ../../src/keybind_descriptions.h:199 ../../src/keybind_descriptions.h:200
+#: ../../src/keybind_descriptions.h:201
+msgid "Workspaces"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:153
+#, fuzzy
+msgid "Open workspace pager"
+msgstr ": 작업공간 하부메뉴 열기"
+
+#: ../../src/keybind_descriptions.h:153
+#, fuzzy
+msgid "WorkspaceMapKey"
+msgstr "작업공간 메뉴"
+
+#: ../../src/keybind_descriptions.h:154
+msgid "Switch to next workspace"
+msgstr "다음 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:154
+#, fuzzy
+msgid "NextWorkspaceKey"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:155
+msgid "Switch to previous workspace"
+msgstr "이전 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:155
+#, fuzzy
+msgid "PrevWorkspaceKey"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:156
+msgid "Switch to last used workspace"
+msgstr "마지막으로 사용된 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:156
+#, fuzzy
+msgid "LastWorkspaceKey"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:157
+msgid "Switch to next ten workspaces"
+msgstr "10개 뒤 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:157
+msgid "NextWorkspaceLayerKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:158
+msgid "Switch to previous ten workspaces"
+msgstr "10개 앞 작업공간으로 전환"
+
+#: ../../src/keybind_descriptions.h:158
+msgid "PrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:159
+#, fuzzy
+msgid "Switch to workspace on the left"
+msgstr "작업공간 1로 전환"
+
+#: ../../src/keybind_descriptions.h:159
+#, fuzzy
+msgid "LeftWorkspaceKey"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:160
+#, fuzzy
+msgid "Switch to workspace on the right"
+msgstr "작업공간 1로 전환"
+
+#: ../../src/keybind_descriptions.h:160
+#, fuzzy
+msgid "RightWorkspaceKey"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:161
+#, fuzzy
+msgid "Switch to workspace above"
+msgstr "작업공간 1로 전환"
+
+#: ../../src/keybind_descriptions.h:161
+#, fuzzy
+msgid "UpWorkspaceKey"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:162
+#, fuzzy
+msgid "Switch to workspace below"
+msgstr "작업공간 1로 전환"
+
+#: ../../src/keybind_descriptions.h:162
+#, fuzzy
+msgid "DownWorkspaceKey"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:163
+msgid "Switch to workspace 1"
+msgstr "작업공간 1로 전환"
+
+#: ../../src/keybind_descriptions.h:163
+#, fuzzy
+msgid "Workspace1Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:164
+msgid "Switch to workspace 2"
+msgstr "작업공간 2로 전환"
+
+#: ../../src/keybind_descriptions.h:164
+#, fuzzy
+msgid "Workspace2Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:165
+msgid "Switch to workspace 3"
+msgstr "작업공간 3으로 전환"
+
+#: ../../src/keybind_descriptions.h:165
+#, fuzzy
+msgid "Workspace3Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:166
+msgid "Switch to workspace 4"
+msgstr "작업공간 4로 전환"
+
+#: ../../src/keybind_descriptions.h:166
+#, fuzzy
+msgid "Workspace4Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:167
+msgid "Switch to workspace 5"
+msgstr "작업공간 5로 전환"
+
+#: ../../src/keybind_descriptions.h:167
+#, fuzzy
+msgid "Workspace5Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:168
+msgid "Switch to workspace 6"
+msgstr "작업공간 6으로 전환"
+
+#: ../../src/keybind_descriptions.h:168
+#, fuzzy
+msgid "Workspace6Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:169
+msgid "Switch to workspace 7"
+msgstr "작업공간 7로 전환"
+
+#: ../../src/keybind_descriptions.h:169
+#, fuzzy
+msgid "Workspace7Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:170
+msgid "Switch to workspace 8"
+msgstr "작업공간 8로 전환"
+
+#: ../../src/keybind_descriptions.h:170
+#, fuzzy
+msgid "Workspace8Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:171
+msgid "Switch to workspace 9"
+msgstr "작업공간 9로 전환"
+
+#: ../../src/keybind_descriptions.h:171
+#, fuzzy
+msgid "Workspace9Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:172
+msgid "Switch to workspace 10"
+msgstr "작업공간 10으로 전환"
+
+#: ../../src/keybind_descriptions.h:172
+#, fuzzy
+msgid "Workspace10Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:173
+msgid "Move window to next workspace"
+msgstr "창을 다음 작업공간으로 이동"
+
+#: ../../src/keybind_descriptions.h:173
+#, fuzzy
+msgid "MoveToNextWorkspaceKey"
+msgstr "창을 다음 작업공간으로 이동"
+
+#: ../../src/keybind_descriptions.h:174
+msgid "Move window to previous workspace"
+msgstr "창을 이전 작업공간으로 이동"
+
+#: ../../src/keybind_descriptions.h:174
+msgid "MoveToPrevWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:175
+msgid "Move window to last used workspace"
+msgstr "창을 마지막에 사용된 작업공간으로 이동"
+
+#: ../../src/keybind_descriptions.h:175
+msgid "MoveToLastWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:176
+msgid "Move window to next ten workspaces"
+msgstr "창을 10개 뒤 작업공간으로 이동"
+
+#: ../../src/keybind_descriptions.h:176
+msgid "MoveToNextWorkspaceLayerKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:177
+msgid "Move window to previous ten workspaces"
+msgstr "창을 10개 앞 작업공간으로 이동"
+
+#: ../../src/keybind_descriptions.h:177
+msgid "MoveToPrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:178
+#, fuzzy
+msgid "Move window to workspace on the left"
+msgstr "창을 작업공간 1로 이동"
+
+#: ../../src/keybind_descriptions.h:178
+msgid "MoveToLeftWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:179
+#, fuzzy
+msgid "Move window to workspace on the right"
+msgstr "창을 작업공간 1로 이동"
+
+#: ../../src/keybind_descriptions.h:179
+msgid "MoveToRightWorkspaceKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:180
+#, fuzzy
+msgid "Move window to workspace above"
+msgstr "창을 작업공간 1로 이동"
+
+#: ../../src/keybind_descriptions.h:180
+#, fuzzy
+msgid "MoveToUpWorkspaceKey"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:181
+#, fuzzy
+msgid "Move window to workspace below"
+msgstr "창을 작업공간 1로 이동"
+
+#: ../../src/keybind_descriptions.h:181
+#, fuzzy
+msgid "MoveToDownWorkspaceKey"
+msgstr "창을 작업공간 1로 이동"
+
+#: ../../src/keybind_descriptions.h:182
+msgid "Move window to workspace 1"
+msgstr "창을 작업공간 1로 이동"
+
+#: ../../src/keybind_descriptions.h:182
+#, fuzzy
+msgid "MoveToWorkspace1Key"
+msgstr "창을 작업공간 1로 이동"
+
+#: ../../src/keybind_descriptions.h:183
+msgid "Move window to workspace 2"
+msgstr "창을 작업공간 2로 이동"
+
+#: ../../src/keybind_descriptions.h:183
+#, fuzzy
+msgid "MoveToWorkspace2Key"
+msgstr "창을 작업공간 2로 이동"
+
+#: ../../src/keybind_descriptions.h:184
+msgid "Move window to workspace 3"
+msgstr "창을 작업공간 3으로 이동"
+
+#: ../../src/keybind_descriptions.h:184
+#, fuzzy
+msgid "MoveToWorkspace3Key"
+msgstr "창을 작업공간 3으로 이동"
+
+#: ../../src/keybind_descriptions.h:185
+msgid "Move window to workspace 4"
+msgstr "창을 작업공간 4로 이동"
+
+#: ../../src/keybind_descriptions.h:185
+#, fuzzy
+msgid "MoveToWorkspace4Key"
+msgstr "창을 작업공간 4로 이동"
+
+#: ../../src/keybind_descriptions.h:186
+msgid "Move window to workspace 5"
+msgstr "창을 작업공간 5로 이동"
+
+#: ../../src/keybind_descriptions.h:186
+#, fuzzy
+msgid "MoveToWorkspace5Key"
+msgstr "창을 작업공간 5로 이동"
+
+#: ../../src/keybind_descriptions.h:187
+msgid "Move window to workspace 6"
+msgstr "창을 작업공간 6으로 이동"
+
+#: ../../src/keybind_descriptions.h:187
+#, fuzzy
+msgid "MoveToWorkspace6Key"
+msgstr "창을 작업공간 6으로 이동"
+
+#: ../../src/keybind_descriptions.h:188
+msgid "Move window to workspace 7"
+msgstr "창을 작업공간 7로 이동"
+
+#: ../../src/keybind_descriptions.h:188
+#, fuzzy
+msgid "MoveToWorkspace7Key"
+msgstr "창을 작업공간 7로 이동"
+
+#: ../../src/keybind_descriptions.h:189
+msgid "Move window to workspace 8"
+msgstr "창을 작업공간 8로 이동"
+
+#: ../../src/keybind_descriptions.h:189
+#, fuzzy
+msgid "MoveToWorkspace8Key"
+msgstr "창을 작업공간 8로 이동"
+
+#: ../../src/keybind_descriptions.h:190
+msgid "Move window to workspace 9"
+msgstr "창을 작업공간 9로 이동"
+
+#: ../../src/keybind_descriptions.h:190
+#, fuzzy
+msgid "MoveToWorkspace9Key"
+msgstr "창을 작업공간 9로 이동"
+
+#: ../../src/keybind_descriptions.h:191
+msgid "Move window to workspace 10"
+msgstr "창을 작업공간 10으로 이동"
+
+#: ../../src/keybind_descriptions.h:191
+#, fuzzy
+msgid "MoveToWorkspace10Key"
+msgstr "창을 작업공간 10으로 이동"
+
+#: ../../src/keybind_descriptions.h:192
+#, fuzzy
+msgid "Toggle window on workspace 1"
+msgstr "창을 작업공간 1로 이동"
+
+#: ../../src/keybind_descriptions.h:192
+#, fuzzy
+msgid "ToggleWorkspace1Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:193
+#, fuzzy
+msgid "Toggle window on workspace 2"
+msgstr "창을 작업공간 2로 이동"
+
+#: ../../src/keybind_descriptions.h:193
+#, fuzzy
+msgid "ToggleWorkspace2Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:194
+#, fuzzy
+msgid "Toggle window on workspace 3"
+msgstr "창을 작업공간 3으로 이동"
+
+#: ../../src/keybind_descriptions.h:194
+#, fuzzy
+msgid "ToggleWorkspace3Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:195
+#, fuzzy
+msgid "Toggle window on workspace 4"
+msgstr "창을 작업공간 4로 이동"
+
+#: ../../src/keybind_descriptions.h:195
+#, fuzzy
+msgid "ToggleWorkspace4Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:196
+#, fuzzy
+msgid "Toggle window on workspace 5"
+msgstr "창을 작업공간 5로 이동"
+
+#: ../../src/keybind_descriptions.h:196
+#, fuzzy
+msgid "ToggleWorkspace5Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:197
+#, fuzzy
+msgid "Toggle window on workspace 6"
+msgstr "창을 작업공간 6으로 이동"
+
+#: ../../src/keybind_descriptions.h:197
+#, fuzzy
+msgid "ToggleWorkspace6Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:198
+#, fuzzy
+msgid "Toggle window on workspace 7"
+msgstr "창을 작업공간 7로 이동"
+
+#: ../../src/keybind_descriptions.h:198
+#, fuzzy
+msgid "ToggleWorkspace7Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:199
+#, fuzzy
+msgid "Toggle window on workspace 8"
+msgstr "창을 작업공간 8로 이동"
+
+#: ../../src/keybind_descriptions.h:199
+#, fuzzy
+msgid "ToggleWorkspace8Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:200
+#, fuzzy
+msgid "Toggle window on workspace 9"
+msgstr "창을 작업공간 9로 이동"
+
+#: ../../src/keybind_descriptions.h:200
+#, fuzzy
+msgid "ToggleWorkspace9Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:201
+#, fuzzy
+msgid "Toggle window on workspace 10"
+msgstr "창을 작업공간 10으로 이동"
+
+#: ../../src/keybind_descriptions.h:201
+#, fuzzy
+msgid "ToggleWorkspace10Key"
+msgstr "작업 공간"
+
+#: ../../src/keybind_descriptions.h:203 ../../src/keybind_descriptions.h:204
+#: ../../src/keybind_descriptions.h:205 ../../src/keybind_descriptions.h:206
+#: ../../src/keybind_descriptions.h:207 ../../src/keybind_descriptions.h:208
+#: ../../src/keybind_descriptions.h:209 ../../src/keybind_descriptions.h:210
+#: ../../src/keybind_descriptions.h:211 ../../src/keybind_descriptions.h:212
+msgid "Tiling & Layout"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:203
+msgid "Cycle workspace tiling layout"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:203
+msgid "LayoutCycleKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:204
+msgid "Cycle workspace tiling layout back"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:204
+msgid "LayoutCycleBackKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:205
+msgid "Swap tiling layout axis"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:205
+msgid "LayoutAxisKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:206
+msgid "Set workspace layout to float"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:206
+msgid "LayoutFloatKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:207
+msgid "Increase layout master count"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:207
+msgid "MasterCountIncKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:208
+msgid "Decrease layout master count"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:208
+msgid "MasterCountDecKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:209
+msgid "Increase layout master ratio"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:209
+msgid "MasterRatioIncKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:210
+msgid "Decrease layout master ratio"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:210
+msgid "MasterRatioDecKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:211
+#, fuzzy
+msgid "Toggle tiling for active window"
+msgstr "활성화된 창을 아래로"
+
+#: ../../src/keybind_descriptions.h:211
+msgid "TilingToggleKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:212
+#, fuzzy
+msgid "Swap active window into master"
+msgstr "활성 창을 위 가운데로 최대화"
+
+#: ../../src/keybind_descriptions.h:212
+msgid "TilingSwapMasterKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:214 ../../src/keybind_descriptions.h:215
+#: ../../src/keybind_descriptions.h:216 ../../src/keybind_descriptions.h:217
+#: ../../src/keybind_descriptions.h:218
+#, fuzzy
+msgid "Window Marks"
+msgstr "윈도우 메이커 종료"
+
+#: ../../src/keybind_descriptions.h:214
+msgid "Mark window: set mark"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:214
+msgid "MarkSetKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:215
+msgid "Mark window: unset mark"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:215
+msgid "MarkUnsetKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:216
+msgid "Mark window: bring marked window here"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:216
+msgid "MarkBringKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:217
+msgid "Mark window: jump to marked window"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:217
+msgid "MarkJumpKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:218
+msgid "Mark window: swap with marked window"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:218
+msgid "MarkSwapKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:220
+#, fuzzy
+msgid "Find application"
+msgstr "활성화된 응용프로그램 숨김"
+
+#: ../../src/keybind_descriptions.h:220
+msgid "RunKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:221
+#, fuzzy
+msgid "Show keyboard shortcuts"
+msgstr "키보드 단축키"
+
+#: ../../src/keybind_descriptions.h:221
+msgid "ShowKeybindsKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:222
+msgid "ExitKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:223
+msgid "Lock screen"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:223
+msgid "LockScreenKey"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:224
+msgid "Open clipboard history"
+msgstr ""
+
+#: ../../src/keybind_descriptions.h:224
+msgid "ClipboardKey"
+msgstr ""

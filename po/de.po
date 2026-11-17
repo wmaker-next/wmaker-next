@@ -10,10 +10,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Window Maker 0.91\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-01-16 17:12+0100\n"
-"PO-Revision-Date: 2004-11-08 22:58+0100\n"
+"Project-Id-Version: WindowMaker 0.96.0-next\n"
+"Report-Msgid-Bugs-To: wmaker-dev@googlegroups.com\n"
+"POT-Creation-Date: 2026-11-16 21:59-0500\n"
+"PO-Revision-Date: 2026-11-16 22:16-0500\n"
 "Last-Translator: shlomme@gmx.net\n"
 "Language-Team: German\n"
 "Language: de\n"
@@ -21,25 +21,41 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../src/appicon.c:352 ../src/dialog.c:568 ../src/dock.c:3098
-#: ../src/dockedapp.c:209 ../src/main.c:344 ../src/rootmenu.c:1705
-#: ../src/winspector.c:354 ../src/winspector.c:370
+#: ../src/actions.c:1863
+#, c-format
+msgid "window \"%s\" has a severely broken WM_TRANSIENT_FOR hint"
+msgstr ""
+
+#: ../src/actions.c:1984
+#, c-format
+msgid "creation of mini-preview failed for window \"%s\""
+msgstr ""
+
+#: ../src/appicon.c:635 ../src/dialog_icon.c:113 ../src/dock.c:5158
+#: ../src/dockedapp.c:155 ../src/main.c:347 ../src/rootmenu.c:1960
+#: ../src/winspector.c:546 ../src/winspector.c:570 ../src/workspace.c:338
 msgid "Error"
 msgstr "Fehler"
 
-#: ../src/appicon.c:353
+#: ../src/appicon.c:636
 msgid "Could not open specified icon file"
 msgstr "Symboldatei konnte nicht geöffnet werden"
 
-#: ../src/appicon.c:353 ../src/dialog.c:410 ../src/dialog.c:471
-#: ../src/dialog.c:568 ../src/dialog.c:975 ../src/dialog.c:1628
-#: ../src/dock.c:478 ../src/dock.c:485 ../src/dock.c:507 ../src/dock.c:3098
-#: ../src/dockedapp.c:210 ../src/dockedapp.c:380 ../src/main.c:344
-#: ../src/rootmenu.c:1708 ../src/winspector.c:354 ../src/winspector.c:370
+#: ../src/appicon.c:637 ../src/dialog.c:177 ../src/dialog_crash.c:223
+#: ../src/dialog_icon.c:113 ../src/dialog_icon.c:562 ../src/dialog_run.c:2060
+#: ../src/dock.c:493 ../src/dock.c:500 ../src/dock.c:548 ../src/dock.c:5158
+#: ../src/dock.c:6431 ../src/dockedapp.c:156 ../src/dockedapp.c:397
+#: ../src/main.c:347 ../src/rootmenu.c:1963 ../src/winspector.c:546
+#: ../src/winspector.c:570 ../src/winspector.c:981 ../src/workspace.c:338
 msgid "OK"
 msgstr "OK"
 
-#: ../src/appicon.c:383 ../src/dock.c:229
+#: ../src/appicon.c:666 ../src/dock.c:279
+#, fuzzy
+msgid "application"
+msgstr "Anwendung töten"
+
+#: ../src/appicon.c:669 ../src/dock.c:284
 msgid ""
 " will be forcibly closed.\n"
 "Any unsaved changes will be lost.\n"
@@ -49,366 +65,405 @@ msgstr ""
 "Alle ungespeicherten Änderungen gehen dabei verloren.\n"
 "Bitte bestätigen."
 
-#: ../src/appicon.c:390 ../src/dock.c:247 ../src/winmenu.c:119
+#: ../src/appicon.c:676 ../src/dock.c:302 ../src/winmenu.c:322
 msgid "Kill Application"
 msgstr "Anwendung töten"
 
-#: ../src/appicon.c:391 ../src/dock.c:248 ../src/winmenu.c:122
+#: ../src/appicon.c:677 ../src/dock.c:303 ../src/winmenu.c:325
 msgid "Yes"
 msgstr "Ja"
 
-#: ../src/appicon.c:391 ../src/dock.c:248 ../src/winmenu.c:122
+#: ../src/appicon.c:677 ../src/dock.c:303 ../src/winmenu.c:325
 msgid "No"
 msgstr "Nein"
 
-#: ../src/appicon.c:419 ../src/dock.c:1070 ../src/dock.c:3255
+#: ../src/appicon.c:702 ../src/dock.c:1477 ../src/dock.c:1479
+#: ../src/dock.c:5319
 msgid "Unhide Here"
 msgstr "Hier wiederherstellen"
 
-#: ../src/appicon.c:420 ../src/appicon.c:443 ../src/dock.c:1072
-#: ../src/dock.c:1074 ../src/dock.c:3267 ../src/winmenu.c:431
+#. can be: Bring Here
+#: ../src/appicon.c:703 ../src/appicon.c:727 ../src/dock.c:1481
+#: ../src/dock.c:1483 ../src/dock.c:5331 ../src/winmenu.c:95
 msgid "Hide"
 msgstr "Verstecken"
 
-#: ../src/appicon.c:421
+#: ../src/appicon.c:704 ../src/dock.c:1475 ../src/winmenu.c:104
+msgid "Launch"
+msgstr "Ausführen"
+
+#: ../src/appicon.c:705
 msgid "Set Icon..."
 msgstr "Symbol wählen..."
 
-#: ../src/appicon.c:422 ../src/dock.c:1078 ../src/rootmenu.c:233
-#: ../src/winmenu.c:477
+#: ../src/appicon.c:706 ../src/dock.c:1487 ../src/dock.c:1489
+#: ../src/dock.c:5349 ../src/rootmenu.c:187 ../src/winmenu.c:106
 msgid "Kill"
 msgstr "Beenden"
 
-#: ../src/appicon.c:441 ../src/dock.c:3265
+#: ../src/appicon.c:725 ../src/dock.c:5329
 msgid "Unhide"
 msgstr "Wiederherstellen"
 
-#: ../src/application.c:379
-#, c-format
-msgid "recreating missing icon '%s'"
-msgstr "fehlendes Symbol '%s' wird wiederhergestellt"
+#: ../src/appmenu.c:85 ../src/appmenu.c:95 ../src/appmenu.c:117
+#, fuzzy, c-format
+msgid "appmenu: out of memory creating menu for window %lx"
+msgstr "zuwenig Speicher beim Lesen der Bitmap \"%s\""
 
-#: ../src/defaults.c:736 ../src/defaults.c:933
+#: ../src/appmenu.c:145
+#, c-format
+msgid "appmenu: unknown version of WMMenu in window %lx: %s"
+msgstr ""
+
+#. a header line alone is not a menu, the old reader
+#. * walked one past the list here
+#: ../src/appmenu.c:152 ../src/appmenu.c:172
+#, c-format
+msgid "appmenu: bad menu entry \"%s\" in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:158
+#, c-format
+msgid "appmenu: too many menu entries (%d) in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:175
+#, c-format
+msgid "appmenu: bad menu entry in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:179
+#, c-format
+msgid "appmenu: menu command size exceeded in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:183
+#, c-format
+msgid "appmenu: menu nesting too deep in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:187
+#, c-format
+msgid "appmenu: unparsable menu in window %lx"
+msgstr ""
+
+#: ../src/cmdexpand.c:69
+#, c-format
+msgid "out of memory during expansion of \"%s\""
+msgstr "zuwenig Speicher bei der Expansion von \"%s\""
+
+#: ../src/cmdexpand.c:122 ../src/cmdexpand.c:139 ../src/cmdexpand.c:156
+#: ../src/cmdexpand.c:183 ../src/cmdexpand.c:213
+#, fuzzy, c-format
+msgid "out of memory during expansion of '%s' for command \"%s\""
+msgstr "zuwenig Speicher bei der Expansion von \"%s\""
+
+#: ../src/cmdexpand.c:202
+msgid "selection not available"
+msgstr "keine Auswahl verfügbar"
+
+#: ../src/config_schema.c:94
+#, fuzzy, c-format
+msgid "unknown titlebar button role \"%s\""
+msgstr "unbekannter interner Mauszeiger \"%s\""
+
+#: ../src/config_schema.c:99
+#, c-format
+msgid "duplicate titlebar button role \"%s\""
+msgstr ""
+
+#: ../src/cursor_find.c:76
+msgid "find mouse: the XShape extension is not available"
+msgstr ""
+
+#: ../src/cursor_find.c:83
+msgid "find mouse: XShape 1.1 is required for a click-through ring"
+msgstr ""
+
+#: ../src/cursor_find.c:91
+msgid "find mouse: this build has no XShape support"
+msgstr ""
+
+#: ../src/cursor_hide.c:423
+msgid "auto hide cursor: XFixes 4.0 and XInput2 2.0 are required"
+msgstr ""
+
+#: ../src/defaults.c:167
 #, c-format
 msgid "Domain %s (%s) of global defaults database is corrupted!"
 msgstr "Domäne %s (%s) in globaler Standarddatenbank ist fehlerhaft!"
 
-#: ../src/defaults.c:740
+#: ../src/defaults.c:171
 #, c-format
 msgid "could not load domain %s from global defaults database"
 msgstr "Domäne %s aus globaler Standarddatenbank konnte nicht geladen werden"
 
-#: ../src/defaults.c:830 ../src/defaults.c:844
+#: ../src/defaults.c:216 ../src/defaults.c:230
 #, c-format
 msgid "invalid global menu file %s"
 msgstr "Ungültige Datei %s für globales Menü"
 
-#: ../src/defaults.c:869 ../src/startup.c:671 ../src/startup.c:688
-#: ../src/startup.c:694
-#, c-format
-msgid "could not read domain \"%s\" from defaults database"
-msgstr "Dömane \"%s\" aus der Standarddatenbank konnte nicht gelesen werden"
-
-#: ../src/defaults.c:910 ../src/defaults.c:1014 ../src/defaults.c:1053
-#: ../src/defaults.c:1106
+#: ../src/defaults.c:265 ../src/defaults.c:308 ../src/defaults.c:396
 #, c-format
 msgid "Domain %s (%s) of defaults database is corrupted!"
 msgstr "Domäne %s (%s) aus der Standarddatenbank ist fehlerhaft!"
 
-#: ../src/defaults.c:923 ../src/defaults.c:1034 ../src/defaults.c:1089
-#: ../src/defaults.c:1116
+#: ../src/defaults.c:268 ../src/defaults.c:301 ../src/defaults.c:406
 #, c-format
 msgid "could not load domain %s from user defaults database"
 msgstr "Domäne %s aus Benutzer-Standarddatenbank konnte nicht geladen werden"
 
-#: ../src/defaults.c:952
-#, c-format
-msgid "could not load domain %s from global defaults database (%s)"
-msgstr ""
-"Dömane %s konnte nicht aus globaler Standarddatenbank (%s) gelesen werden"
-
-#: ../src/defaults.c:1079 ../src/screen.c:372
-#, c-format
-msgid "could not load logo image for panels: %s"
-msgstr "Panel-Logo konnte nicht geladen werden: %s"
-
-#. --------------------------- Local -----------------------
-#: ../src/defaults.c:1304 ../src/defaults.c:1423 ../src/defaults.c:1532
-#: ../src/defaults.c:1989 ../src/defaults.c:2005 ../src/defaults.c:2046
-#: ../src/defaults.c:2091 ../src/defaults.c:2498 ../src/wdefaults.c:543
-#: ../src/wdefaults.c:572
-#, c-format
-msgid "Wrong option format for key \"%s\". Should be %s."
-msgstr "Falsches Optionsformat für Schlüssel \"%s\". %s erwartet."
-
-#: ../src/defaults.c:1306 ../src/defaults.c:1375 ../src/defaults.c:1400
-#: ../src/defaults.c:1427 ../src/defaults.c:1439 ../src/defaults.c:1453
-#: ../src/defaults.c:1467 ../src/defaults.c:1536 ../src/defaults.c:1548
-#: ../src/defaults.c:1993 ../src/defaults.c:2010 ../src/defaults.c:2022
-#: ../src/defaults.c:2051 ../src/defaults.c:2067 ../src/defaults.c:2096
-#: ../src/defaults.c:2175 ../src/defaults.c:2503 ../src/defaults.c:2514
-#, c-format
-msgid "using default \"%s\" instead"
-msgstr "benutze Standardeinstellung \"%s\" anstatt"
-
-#: ../src/defaults.c:1332
-#, c-format
-msgid "wrong option value for key \"%s\". Should be one of %s"
-msgstr "falscher Eigenschaftenwert für Schlüssel \"%s\". Wert aus %s erwartet"
-
-#: ../src/defaults.c:1371
-#, c-format
-msgid "can't convert \"%s\" to boolean for key \"%s\""
-msgstr "\"%s\" konnte nicht in Boolean für Schlüssel \"%s\" konvertiert werden"
-
-#: ../src/defaults.c:1398
-#, c-format
-msgid "can't convert \"%s\" to integer for key \"%s\""
-msgstr "\"%s\" konnte nicht in Integer für Schlüssel \"%s\" konvertiert werden"
-
-#: ../src/defaults.c:1435
-#, c-format
-msgid "Incorrect number of elements in array for key \"%s\"."
-msgstr "Falsche Anzahl von Argumenten für Schlüssel \"%s\""
-
-#: ../src/defaults.c:1449
-#, c-format
-msgid "Wrong value for key \"%s\". Should be Coordinate."
-msgstr "Falscher Wert für Schlüssel \"%s\". Koordinaten erwartet."
-
-#: ../src/defaults.c:1463
-#, c-format
-msgid "can't convert array to integers for \"%s\"."
-msgstr "Feld konnte nicht in Integer für \"%s\" konvertiert werden."
-
-#: ../src/defaults.c:1651 ../src/defaults.c:1681 ../src/defaults.c:1697
-#: ../src/defaults.c:1726 ../src/defaults.c:1748 ../src/defaults.c:1799
-#: ../src/defaults.c:1838 ../src/defaults.c:1875 ../src/defaults.c:1891
+#: ../src/defaults.c:700
 #, c-format
 msgid "\"%s\" is not a valid color name"
 msgstr "\"%s\" ist kein gültiger Farbname"
 
-#: ../src/defaults.c:1663 ../src/defaults.c:1714
+#: ../src/defaults.c:751 ../src/defaults.c:774
 msgid "bad number of arguments in gradient specification"
 msgstr "falsche Anzahl von Argumenten in Farbverlaufsbeschreibung"
 
-#: ../src/defaults.c:1772
+#: ../src/defaults.c:812
 msgid "too few arguments in multicolor gradient specification"
 msgstr "zuwenig Argumente in Mehrfarbverlaufsbeschreibung"
 
-#: ../src/defaults.c:1864
+#: ../src/defaults.c:881
 msgid "bad number of arguments in textured gradient specification"
 msgstr "falsche Anzahl von Argumenten in Texturverlaufsbeschreibung"
 
-#: ../src/defaults.c:1907
+#: ../src/defaults.c:898
 #, c-format
 msgid "bad opacity value for tgradient texture \"%s\". Should be [0..255]"
 msgstr "falscher Transparenzwert für Textur \"%s\". [0..255] erwartet."
 
-#: ../src/defaults.c:1966
-#, c-format
-msgid "could not initialize library %s"
-msgstr "Bibliothek %s konnte nicht initialisiert werden"
-
-#: ../src/defaults.c:1969
-#, c-format
-msgid "could not find function %s::%s"
-msgstr "Funktion %s::%s konnte nicht gefunden werden"
-
-#: ../src/defaults.c:1976
+#: ../src/defaults.c:915
 #, c-format
 msgid "invalid texture type %s"
 msgstr "ungültiger Texturtyp %s"
 
-#: ../src/defaults.c:2018
-#, c-format
-msgid "Error in texture specification for key \"%s\""
-msgstr "fehlerhafte Texturbeschreibung für Schlüssel \"%s\""
-
-#: ../src/defaults.c:2063
-msgid "Wrong type for workspace background. Should be a texture type."
-msgstr "Falscher Typ für Arbeitsflächen-Hintergrund. Textur erwartet."
-
-#: ../src/defaults.c:2109
-#, c-format
-msgid "Wrong type for background of workspace %i. Should be a texture."
-msgstr "Falscher Typ für Arbeitsflächen-Hintergrund %i. Textur erwartet."
-
-#: ../src/defaults.c:2148
-msgid "could not load any usable font!!!"
-msgstr "keine brauchbaren Schriften konnten geladen werden!!!"
-
-#: ../src/defaults.c:2171
-#, c-format
-msgid "could not get color for key \"%s\""
-msgstr "Farbe für Schlüssel \"%s\" konnte nicht ermittelt werden"
-
-#: ../src/defaults.c:2223 ../src/rootmenu.c:447
+#: ../src/defaults.c:937 ../src/rootmenu.c:581
 #, fuzzy, c-format
 msgid "%s: invalid key modifier \"%s\""
 msgstr "%s: ungültiger Schlüsselmodifikator \"%s\""
 
-#: ../src/defaults.c:2235
-#, c-format
-msgid "%s:invalid kbd shortcut specification \"%s\""
+#: ../src/defaults.c:946
+#, fuzzy, c-format
+msgid "%s: invalid kbd shortcut specification \"%s\""
 msgstr "%s: ungültiges Tastaturkürzel \"%s\""
 
-#: ../src/defaults.c:2241
-#, c-format
-msgid "%s:invalid key in shortcut \"%s\""
+#: ../src/defaults.c:952
+#, fuzzy, c-format
+msgid "%s: invalid key in shortcut \"%s\""
 msgstr "%s: ungültige Taste in Kürzel \"%s\""
 
-#: ../src/defaults.c:2263
-#, c-format
-msgid "%s: modifier key %s is not valid"
-msgstr "%s: ungültige Tastenmodifikator %s"
+#: ../src/defaults.c:973
+#, fuzzy, c-format
+msgid "%s: kbd shortcut specification is too long"
+msgstr "%s: ungültiges Tastaturkürzel \"%s\""
 
-#: ../src/defaults.c:2370
+#: ../src/defaults.c:1098
 #, c-format
 msgid "failed to open bitmap file \"%s\""
 msgstr "Bitmap-Datei \"%s\" konnte nicht geladen werden"
 
-#: ../src/defaults.c:2373
+#: ../src/defaults.c:1101
 #, c-format
 msgid "\"%s\" is not a valid bitmap file"
 msgstr "\"%s\" ist keine gültige Bitmap-Datei"
 
-#: ../src/defaults.c:2376
+#: ../src/defaults.c:1104
 #, c-format
 msgid "out of memory reading bitmap file \"%s\""
 msgstr "zuwenig Speicher beim Lesen der Bitmap \"%s\""
 
-#: ../src/defaults.c:2414 ../src/defaults.c:2447
+#: ../src/defaults.c:1141 ../src/defaults.c:1178
 msgid "bad number of arguments in cursor specification"
 msgstr "falsche Anzahl von Argumente in Mauszeigerbeschreibung"
 
-#: ../src/defaults.c:2430
+#: ../src/defaults.c:1157
+#, fuzzy, c-format
+msgid "could not load cursor \"%s\""
+msgstr "Farbe \"%s\" konnte nicht erzeugt werden"
+
+#: ../src/defaults.c:1165
 #, c-format
 msgid "unknown builtin cursor name \"%s\""
 msgstr "unbekannter interner Mauszeiger \"%s\""
 
-#: ../src/defaults.c:2457 ../src/defaults.c:2469
+#: ../src/defaults.c:1188 ../src/defaults.c:1200
 #, c-format
 msgid "could not find cursor bitmap file \"%s\""
 msgstr "Bitmap-Datei \"%s\" konnte nicht geladen werden"
 
-#: ../src/defaults.c:2510
+#: ../src/defaults.c:1243 ../src/defaults.c:1316 ../src/wconfigmodel.c:686
+#: ../src/wdefaults.c:152
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be %s."
+msgstr "Falsches Optionsformat für Schlüssel \"%s\". %s erwartet."
+
+#: ../src/defaults.c:1325
+#, c-format
+msgid "Error in texture specification for key \"%s\""
+msgstr "fehlerhafte Texturbeschreibung für Schlüssel \"%s\""
+
+#: ../src/defaults.c:1329 ../src/defaults.c:1388 ../src/defaults.c:1499
+#: ../src/defaults.c:1589 ../src/defaults.c:1698 ../src/defaults.c:2487
+#: ../src/wconfigmodel.c:160
+#, c-format
+msgid "using default \"%s\" instead"
+msgstr "benutze Standardeinstellung \"%s\" anstatt"
+
+#: ../src/defaults.c:1395
+msgid "could not load any usable font!!!"
+msgstr "keine brauchbaren Schriften konnten geladen werden!!!"
+
+#: ../src/defaults.c:1398
+#, fuzzy, c-format
+msgid "could not load font for key \"%s\""
+msgstr "Farbe für Schlüssel \"%s\" konnte nicht ermittelt werden"
+
+#: ../src/defaults.c:1495
+#, c-format
+msgid "could not get color for key \"%s\""
+msgstr "Farbe für Schlüssel \"%s\" konnte nicht ermittelt werden"
+
+#: ../src/defaults.c:1585
 #, c-format
 msgid "Error in cursor specification for key \"%s\""
 msgstr "Fehler in Mauszeigerbeschreibung für Schlüssel \"%s\""
 
-#: ../src/defaults.c:2585
+#: ../src/defaults.c:1608 ../src/defaults.c:1627
+#, c-format
+msgid "%s: modifier key %s is not valid"
+msgstr "%s: ungültige Tastenmodifikator %s"
+
+#: ../src/defaults.c:1646 ../src/wconfigmodel.c:698
+msgid "Wrong type for workspace background. Should be a texture type."
+msgstr "Falscher Typ für Arbeitsflächen-Hintergrund. Textur erwartet."
+
+#: ../src/defaults.c:1655 ../src/wconfigmodel.c:706
+#, c-format
+msgid "Wrong type for background of workspace %i. Should be a texture."
+msgstr "Falscher Typ für Arbeitsflächen-Hintergrund %i. Textur erwartet."
+
+#: ../src/defaults.c:1662
+#, fuzzy, c-format
+msgid "Invalid background target for key \"%s\""
+msgstr "Falsche Anzahl von Argumente für Option \"%s\""
+
+#: ../src/defaults.c:1726
 msgid "could not render texture for icon background"
 msgstr "Textur für Symbolhintergrund konnte nicht angezeigt werden"
 
-#: ../src/defaults.c:3121 ../src/defaults.c:3190
-#, c-format
-msgid "Invalid arguments for option \"%s\""
-msgstr "Falsche Argument für Option \"%s\""
+#: ../src/defaults.c:2215
+#, fuzzy
+msgid "could not execute wmsetbg"
+msgstr "%s konnte nicht ausgeführt werden"
 
-#: ../src/defaults.c:3127 ../src/defaults.c:3196
+#: ../src/defaults.c:2567 ../src/defaults.c:2621
 #, c-format
 msgid "Could not find image \"%s\" for option \"%s\""
 msgstr "Bild \"%s\" aus Eigenschaft \"%s\" konnte nicht gefunden werden"
 
-#: ../src/defaults.c:3132 ../src/defaults.c:3204
+#: ../src/defaults.c:2572 ../src/defaults.c:2629
 #, c-format
 msgid "Could not load image \"%s\" for option \"%s\""
 msgstr "Bild \"%s\"aus Eigenschaft \"%s\" konnte nicht geladen werden"
 
-#: ../src/defaults.c:3142
+#: ../src/defaults.c:2584
 msgid "Invalid split sizes for switch panel back image."
 msgstr "Ungültige Unterteilungsangaben für switch panel-Hintergrundbild."
 
-#: ../src/defaults.c:3211
+#: ../src/defaults.c:2641
 #, c-format
-msgid "Invalid number of arguments for option \"%s\""
-msgstr "Falsche Anzahl von Argumente für Option \"%s\""
+msgid "Value for option \"%s\" must be an array of 7 strings"
+msgstr ""
 
-#: ../src/dialog.c:128
+#: ../src/defaults.c:2662
+#, c-format
+msgid "Value for option \"%s\" must be an array of 9 strings"
+msgstr ""
+
+#: ../src/defaults.c:2674
+#, fuzzy, c-format
+msgid "Invalid argument for option \"%s\" item %zu, cannot be empty"
+msgstr "Falsche Argument für Option \"%s\""
+
+#: ../src/defaults.c:2689
+#, c-format
+msgid "Value for option \"%s\" must be an array of 4 strings"
+msgstr ""
+
+#: ../src/dialog.c:126
 msgid "Save workspace state"
 msgstr "Sitzung speichern"
 
-#: ../src/dialog.c:410 ../src/dialog.c:471 ../src/dialog.c:982
-#: ../src/dock.c:507 ../src/dockedapp.c:385 ../src/rootmenu.c:186
-#: ../src/rootmenu.c:233
+#: ../src/dialog.c:177 ../src/dialog_icon.c:569 ../src/dialog_run.c:2060
+#: ../src/dock.c:548 ../src/dock.c:6431 ../src/dockedapp.c:402
+#: ../src/misc.c:588 ../src/rootmenu.c:187
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: ../src/dialog.c:563
-msgid "Could not open directory \"%s\":\n%s"
-msgstr "Verzeichnis konnte nicht geöffnet werden \"%s\":\n%s"
+#: ../src/dialog.c:292
+msgid "no os-release file on the system"
+msgstr ""
 
-#: ../src/dialog.c:613
-msgid "Could not load image file "
-msgstr "Bilddatei konnte nicht geöffnet werden"
-
-#: ../src/dialog.c:909
-msgid "Directories"
-msgstr "Verzeichnisse"
-
-#: ../src/dialog.c:918
-msgid "Icons"
-msgstr "Symbole"
-
-#: ../src/dialog.c:951
-msgid "Preview"
-msgstr "Vorschau"
-
-#: ../src/dialog.c:964
-msgid "File Name:"
-msgstr "Dateiname:"
-
-#: ../src/dialog.c:988
-msgid "Choose File"
-msgstr "Datei auswählen"
-
-#: ../src/dialog.c:1007 ../src/dialog.c:1009
-msgid "Icon Chooser"
-msgstr "Symbol-Wähler"
-
-#: ../src/dialog.c:1192
+#: ../src/dialog.c:443
 msgid "Window Manager for X"
 msgstr "Windowmanager für X"
 
-#: ../src/dialog.c:1194
+#: ../src/dialog.c:445
 #, c-format
 msgid "Version %s"
 msgstr "Version %s"
 
-#: ../src/dialog.c:1215
+#: ../src/dialog.c:471 ../src/dialog.c:475
+#, c-format
+msgid "Running on: %s (%s)\n"
+msgstr ""
+
+#: ../src/dialog.c:479
 #, c-format
 msgid "Using visual 0x%x: %s %ibpp "
 msgstr "Benutze Visual 0x%x %s %ibpp "
 
-#: ../src/dialog.c:1222
+#: ../src/dialog.c:485
 msgid "(32 thousand colors)\n"
 msgstr "(32.000 Farben)\n"
 
-#: ../src/dialog.c:1225
+#: ../src/dialog.c:488
 msgid "(64 thousand colors)\n"
 msgstr "(64.000 Farben)\n"
 
-#: ../src/dialog.c:1229
+#: ../src/dialog.c:492
 msgid "(16 million colors)\n"
 msgstr "(16 Millionen Farben)\n"
 
-#: ../src/dialog.c:1232
+#: ../src/dialog.c:496
+#, fuzzy
+msgid "(1 billion colors)\n"
+msgstr "(16 Millionen Farben)\n"
+
+#: ../src/dialog.c:499
 #, c-format
 msgid "(%d colors)\n"
 msgstr "(%d Farben)\n"
 
-#: ../src/dialog.c:1241
+#: ../src/dialog.c:508
 #, c-format
-msgid "Total allocated memory: %i kB. Total memory in use: %i kB.\n"
+msgid "Total memory allocated: %lu kB (in use: %lu kB, %lu free chunks)\n"
+msgstr ""
+
+#: ../src/dialog.c:510
+#, fuzzy, c-format
+msgid "Total memory allocated: %lu kB (in use: %lu kB)\n"
 msgstr ""
 "Gesamter belegter Speicher: %i kB. Gesamter benutzter Speicher: %i kB.\n"
 
-#: ../src/dialog.c:1283
+#: ../src/dialog.c:527
 msgid "Image formats: "
 msgstr "Grafikformate: "
 
-#: ../src/dialog.c:1255
+#: ../src/dialog.c:540
 msgid ""
 "\n"
 "Additional support for: "
@@ -416,27 +471,25 @@ msgstr ""
 "\n"
 "Zusätzliche Unterstützung für: "
 
-#: ../src/dialog.c:1270
-msgid " and "
-msgstr " und "
-
-#: ../src/dialog.c:1280
+#: ../src/dialog.c:548
 msgid "\n"
 msgstr ""
 
-#: ../src/dialog.c:1282
-msgid "Solaris "
+#: ../src/dialog.c:550
+#, c-format
+msgid "%d head(s) found"
 msgstr ""
 
-#: ../src/dialog.c:1284
-msgid "Xinerama: "
+#: ../src/dialog.c:550
+#, c-format
+msgid "%d head found"
 msgstr ""
 
-#: ../src/dialog.c:1316
+#: ../src/dialog.c:598
 msgid "Info"
 msgstr "Info"
 
-#: ../src/dialog.c:1417
+#: ../src/dialog.c:681
 msgid ""
 "    Window Maker is free software; you can redistribute it and/or modify it "
 "under the terms of the GNU General Public License as published by the Free "
@@ -449,28 +502,34 @@ msgid ""
 "more details.\n"
 "\n"
 "    You should have received a copy of the GNU General Public License along "
-"with this program; if not, write to the Free Software Foundation, Inc., 51 "
-"Franklin Street, Fifth Floor, Boston, MA02110-1301 USA."
+"with this program; if not, see <https://www.gnu.org/licenses/>."
 msgstr ""
 
-#: ../src/dialog.c:1415
+#: ../src/dialog.c:705
 msgid "Legal"
 msgstr "Rechtliches"
 
-#: ../src/dialog.c:1558
+#: ../src/dialog.c:992
+#, fuzzy
+msgid "Keyboard Shortcuts"
+msgstr "Keine Tastatur-Kürzel abfangen"
+
+#: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."
 msgstr "Verbindung zum Absturz-Dialog konnte nicht erstellt werden. Abbruch."
 
-#: ../src/dialog.c:1584
+#: ../src/dialog_crash.c:177
 msgid "Fatal error"
 msgstr "Fataler Fehler"
 
-#: ../src/dialog.c:1594
+#: ../src/dialog_crash.c:187
 #, c-format
 msgid "Window Maker received signal %i."
 msgstr "Window Maker erhielt Signal %i"
 
-#: ../src/dialog.c:1602
+#. Comment for the PO file: the %s is an email address
+#: ../src/dialog_crash.c:195
+#, c-format
 msgid ""
 " This fatal error occurred probably due to a bug. Please fill the included "
 "BUGFORM and report it to %s."
@@ -478,65 +537,99 @@ msgstr ""
 " Dieser fatale Fehler trat möglicherweise wegen eines Bugs auf. Bitte füllen "
 "Sie die mitgelieferte BUGFORM aus und schicken Sie sie an %s."
 
-#: ../src/dialog.c:1609
+#: ../src/dialog_crash.c:204
 msgid "What do you want to do now?"
 msgstr "Was möchten Sie jetzt tun?"
 
-#: ../src/dialog.c:1615
+#: ../src/dialog_crash.c:210
 msgid "Select action"
 msgstr "Aktion auswählen"
 
-#: ../src/dialog.c:1616
+#: ../src/dialog_crash.c:211
 msgid "Abort and leave a core file"
 msgstr "Abbrechen und Core-Datei hinterlassen"
 
-#: ../src/dialog.c:1617
+#: ../src/dialog_crash.c:212
 msgid "Restart Window Maker"
 msgstr "Window Maker neustarten"
 
-#: ../src/dialog.c:1618
+#: ../src/dialog_crash.c:213
 msgid "Start alternate window manager"
 msgstr "Anderen Windowmanager starten"
 
-#: ../src/dialog.c:1783
+#: ../src/dialog_icon.c:111
+#, c-format
 msgid ""
-"Window Maker is part of the GNUstep project.\n"
-"The GNUstep project aims to create a free\n"
-"implementation of the OpenStep(tm) specification\n"
-"which is a object-oriented framework for\n"
-"creating advanced graphical, multi-platform\n"
-"applications. Additionally, a development and\n"
-"user desktop environment will be created on top\n"
-"of the framework. For more information about\n"
-"GNUstep, please visit: www.gnustep.org"
+"Could not open directory \"%s\":\n"
+"%s"
 msgstr ""
-"Window Maker ist Teil des GNUstep-Projektes.\n"
-"Das GNUstep-Projekt hat sich zum Ziel gesetzt,\n"
-"eine freie Implementierung von OpenStep(tm), einem\n"
-"objektorientierten Framework für grafische Multiplattform-\n"
-"anwendungen, zu erstellen. Dazu werden eine Ent-\n"
-"wicklungs- und Arbeitsumgebung mit dem Framework\n"
-"erstellt. Für weitere Informationen zu GNUstep besuchen\n"
-"sie bitte www.gnustep.org"
+"Verzeichnis konnte nicht geöffnet werden \"%s\":\n"
+"%s"
 
-#: ../src/dialog.c:1806
-msgid "About GNUstep"
-msgstr "Über GNUStep"
+#: ../src/dialog_icon.c:127
+#, c-format
+msgid "full path for file \"%s\" in \"%s\" is longer than %d bytes, skipped"
+msgstr ""
 
-#: ../src/dock.c:178
+#: ../src/dialog_icon.c:164
+msgid "Could not load image file "
+msgstr "Bilddatei konnte nicht geöffnet werden"
+
+#: ../src/dialog_icon.c:482
+msgid "Directories"
+msgstr "Verzeichnisse"
+
+#: ../src/dialog_icon.c:491
+msgid "Icons"
+msgstr "Symbole"
+
+#: ../src/dialog_icon.c:519
+msgid "List Mode"
+msgstr ""
+
+#: ../src/dialog_icon.c:524
+msgid "Names"
+msgstr ""
+
+#: ../src/dialog_icon.c:531
+msgid "Thumbs"
+msgstr ""
+
+#: ../src/dialog_icon.c:539
+msgid "Preview"
+msgstr "Vorschau"
+
+#: ../src/dialog_icon.c:551
+msgid "File Name:"
+msgstr "Dateiname:"
+
+#: ../src/dialog_icon.c:575
+msgid "Choose File"
+msgstr "Datei auswählen"
+
+#: ../src/dialog_icon.c:594
+msgid "Icon Chooser"
+msgstr "Symbol-Wähler"
+
+#: ../src/dialog_run.c:2061
+msgid "Search or enter command..."
+msgstr ""
+
+#: ../src/dock.c:229 ../src/menu.c:2257
 #, c-format
 msgid "Type the name for workspace %i:"
 msgstr "Geben Sie den Namen der Arbeitsfläche %i ein:"
 
-#: ../src/dock.c:179 ../src/dock.c:1037 ../src/dock.c:1039 ../src/dock.c:3174
+#: ../src/dock.c:230 ../src/dock.c:1441 ../src/dock.c:1443 ../src/dock.c:5230
+#: ../src/menu.c:2261
 msgid "Rename Workspace"
 msgstr "Arbeitsfläche umbenennen"
 
-#: ../src/dock.c:473 ../src/dock.c:480
+#: ../src/dock.c:488 ../src/dock.c:495 ../src/winspector.c:981
 msgid "Warning"
 msgstr "Warnung"
 
-#: ../src/dock.c:474
+#: ../src/dock.c:489
 msgid ""
 "Some icons cannot be made omnipresent. Please make sure that no other icon "
 "is docked in the same positions on the other workspaces and the Clip is not "
@@ -546,7 +639,7 @@ msgstr ""
 "sicher, dass kein anderes Symbol auf anderen Arbeitflächen an der gleichen "
 "Position andockt und der Clip in keiner Arbeitsfläche voll ist."
 
-#: ../src/dock.c:481
+#: ../src/dock.c:496
 msgid ""
 "Icon cannot be made omnipresent. Please make sure that no other icon is "
 "docked in the same position on the other workspaces and the Clip is not full "
@@ -556,506 +649,2205 @@ msgstr ""
 "kein anderes Symbol auf anderen Arbeitflächen an der gleichen Position klebt "
 "und der Clip in keiner Arbeitsfläche voll ist."
 
-#: ../src/dock.c:505
+#: ../src/dock.c:546
 msgid "Workspace Clip"
 msgstr "Arbeitsflächen-Clip"
 
-#: ../src/dock.c:506
+#: ../src/dock.c:546 ../src/dock.c:6429
+msgid "Drawer"
+msgstr ""
+
+#: ../src/dock.c:547
 msgid "All selected icons will be removed!"
 msgstr "Alle ausgewählten Symbole werden entfernt!"
 
-#: ../src/dock.c:556 ../src/dock.c:1050 ../src/dock.c:1052 ../src/dock.c:3210
+#. can be: Unselect all icons
+#: ../src/dock.c:593 ../src/dock.c:1455 ../src/dock.c:1457 ../src/dock.c:5268
 msgid "Keep Icon"
 msgstr "Symbol behalten"
 
-#: ../src/dock.c:557 ../src/dock.c:1966 ../src/dock.c:2096
+#: ../src/dock.c:594 ../src/dock.c:2822 ../src/dock.c:3026
 msgid "Type the command used to launch the application"
 msgstr "Geben Sie den Befehl zum Starten der Anwendung ein"
 
-#: ../src/dock.c:876
-#, c-format
-msgid "could not launch application %s\n"
+#: ../src/dock.c:1174
+#, fuzzy, c-format
+msgid "could not launch application %s"
 msgstr "Anwendung %s konnte nicht gestartet werden\n"
 
-#: ../src/dock.c:927
+#: ../src/dock.c:1222
 msgid "could not create workspace submenu for Clip menu"
 msgstr "Arbeitsflächen-Untermenü für Clip konnte nicht erstellt werden"
 
-#: ../src/dock.c:982
+#: ../src/dock.c:1287
 msgid "could not create options submenu for Clip menu"
 msgstr "Eigenschaften-Menü für Clip konnte nicht erstellt werden"
 
-#: ../src/dock.c:986 ../src/dock.c:1027
-msgid "Keep on Top"
-msgstr "Immer oben"
-
-#: ../src/dock.c:991
-msgid "Collapsed"
-msgstr "Zusammengefaltet"
-
-#: ../src/dock.c:996
-msgid "Auto Collapse"
-msgstr "Automatisch zusammenfalten"
-
-#: ../src/dock.c:1001
-msgid "Auto Raise"
-msgstr "Automatisch oben"
-
-#: ../src/dock.c:1006
+#: ../src/dock.c:1291
 msgid "Auto Attract Icons"
 msgstr "Symbole automatisch anziehen"
 
-#: ../src/dock.c:1032
+#: ../src/dock.c:1296
+msgid "Auto Collapse"
+msgstr "Automatisch zusammenfalten"
+
+#: ../src/dock.c:1301
+#, fuzzy
+msgid "Auto Compact"
+msgstr "Automatisch zusammenfalten"
+
+#: ../src/dock.c:1306 ../src/dock.c:1387
+msgid "Auto Raise"
+msgstr "Automatisch oben"
+
+#: ../src/dock.c:1311
+msgid "Collapsed"
+msgstr "Zusammengefaltet"
+
+#: ../src/dock.c:1316 ../src/dock.c:1392
+msgid "Keep on Top"
+msgstr "Immer oben"
+
+#: ../src/dock.c:1378
+#, fuzzy
+msgid "could not create options submenu for Dock menu"
+msgstr "Eigenschaften-Menü für Clip konnte nicht erstellt werden"
+
+#: ../src/dock.c:1382
+#, fuzzy
+msgid "Auto Hide"
+msgstr "Automatisch oben"
+
+#: ../src/dock.c:1417
+#, fuzzy
+msgid "Dock Options"
+msgstr "Optionen"
+
+#: ../src/dock.c:1423
+msgid "Add a Drawer"
+msgstr ""
+
+#: ../src/dock.c:1427
 msgid "Clip Options"
 msgstr "Clip-Optionen"
 
-#: ../src/dock.c:1041
+#. if (type == WM_DRAWER)
+#: ../src/dock.c:1429
+#, fuzzy
+msgid "Drawer Options"
+msgstr "Erweiterte Optionen"
+
+#: ../src/dock.c:1446
 msgid "Selected"
 msgstr "Ausgewählt"
 
-#: ../src/dock.c:1046 ../src/dock.c:1048 ../src/dock.c:3201
+#: ../src/dock.c:1451 ../src/dock.c:1453 ../src/dock.c:5258
 msgid "Select All Icons"
 msgstr "Alle Symbole auswählen"
 
-#: ../src/dock.c:1054 ../src/dock.c:1056 ../src/dock.c:3218
+#: ../src/dock.c:1460 ../src/dock.c:1462 ../src/dock.c:5279
 msgid "Move Icon To"
 msgstr "Verschiebe Symbol nach..."
 
-#: ../src/dock.c:1061 ../src/dock.c:1063 ../src/dock.c:3229
+#: ../src/dock.c:1468 ../src/dock.c:1470 ../src/dock.c:5293
 msgid "Remove Icon"
 msgstr "Entferne Symbol"
 
-#: ../src/dock.c:1065
+#. can be: Remove Icons
+#: ../src/dock.c:1472
 msgid "Attract Icons"
 msgstr "Symbole anziehen"
 
-#: ../src/dock.c:1068
-msgid "Launch"
-msgstr "Ausführen"
-
-#: ../src/dock.c:1076
+#. can be: Unhide
+#: ../src/dock.c:1485
 msgid "Settings..."
 msgstr "Einstellungen..."
 
-#: ../src/dock.c:1405 ../src/dock.c:1505
+#: ../src/dock.c:1918 ../src/dock.c:2018
 #, c-format
 msgid "bad value in docked icon state info %s"
 msgstr "falscher Wert für Statusinfo %s des angedockten Symbols"
 
-#: ../src/dock.c:1512
-#, c-format
-msgid "bad value in docked icon position %i,%i"
-msgstr "falscher Wert für Position eines angedockten Symbols: %i,%i"
-
-#: ../src/dock.c:1531
+#: ../src/dock.c:2046
 #, c-format
 msgid "bad value in dock state info:%s"
 msgstr "falscher Wert in Dock-Statusinfo: %s"
 
-#: ../src/dock.c:1765
-msgid "there are too many icons stored in dock. Ignoring what doesn't fit"
-msgstr "zu viele Symbole im Dock, überzählige werden ignoriert"
+#: ../src/dock.c:2130
+#, c-format
+msgid "unknown dock edge \"%s\" in state info, keeping the current one"
+msgstr ""
 
 #. icon->forced_dock = 1;
-#: ../src/dock.c:1965 ../src/dock.c:2095
+#: ../src/dock.c:2821 ../src/dock.c:3025
 msgid "Dock Icon"
 msgstr "Dock-Symbol"
 
-#: ../src/dock.c:3096
+#: ../src/dock.c:5156
 #, c-format
 msgid "Could not execute command \"%s\""
 msgstr "Befehl \"%s\" konnte nicht ausgeführt werden"
 
-#: ../src/dock.c:3180
+#: ../src/dock.c:5236
 msgid "Toggle Omnipresent"
 msgstr "Haftend ein/aus"
 
-#: ../src/dock.c:3185 ../src/winmenu.c:387 ../src/winspector.c:1291
+#: ../src/dock.c:5241 ../src/winmenu.c:135 ../src/winspector.c:123
 msgid "Omnipresent"
 msgstr "Haftend"
 
-#: ../src/dock.c:3199
+#: ../src/dock.c:5256
 msgid "Unselect All Icons"
 msgstr "Alle Symbole abwählen"
 
-#: ../src/dock.c:3208
+#: ../src/dock.c:5266
 msgid "Keep Icons"
 msgstr "Symbole behalten"
 
-#: ../src/dock.c:3216
+#: ../src/dock.c:5277
 msgid "Move Icons To"
 msgstr "Verschiebe Symbole nach"
 
-#: ../src/dock.c:3227
+#: ../src/dock.c:5291
 msgid "Remove Icons"
 msgstr "Symbole entfernen"
 
-#: ../src/dock.c:3257
+#: ../src/dock.c:5321
 msgid "Bring Here"
 msgstr "Hierher holen"
 
-#: ../src/dockedapp.c:135
+#: ../src/dock.c:5345
+msgid "Remove Drawer"
+msgstr ""
+
+#: ../src/dock.c:6430
+msgid "All icons in this drawer will be detached!"
+msgstr ""
+
+#: ../src/dockedapp.c:64
 #, c-format
 msgid "could not find icon %s, used in a docked application"
 msgstr "Symbol %s für gedockte Anwendung konnte nicht gefunden"
 
-#: ../src/dockedapp.c:208
+#: ../src/dockedapp.c:154
 #, c-format
 msgid "Could not open specified icon file: %s"
 msgstr "Symboldatei %s konnte nicht geöffnet werden"
 
-#: ../src/dockedapp.c:210
+#: ../src/dockedapp.c:156
 msgid "Ignore"
 msgstr "Ignorieren"
 
-#: ../src/dockedapp.c:302
+#: ../src/dockedapp.c:268
+msgid "Click to choose an icon"
+msgstr ""
+
+#: ../src/dockedapp.c:319
 msgid "Start when Window Maker is started"
 msgstr "Autostart"
 
-#: ../src/dockedapp.c:307
+#: ../src/dockedapp.c:324
 msgid "Lock (prevent accidental removal)"
 msgstr "Festhalten (kein versehentliches Entfernen)"
 
-#: ../src/dockedapp.c:311
+#: ../src/dockedapp.c:328
 msgid "Application path and arguments"
 msgstr "Anwendungspfad und -argumente"
 
-#: ../src/dockedapp.c:322
+#: ../src/dockedapp.c:339
 msgid "Command for middle-click launch"
 msgstr "Befehl für Klick mit mittlerer Maustaste"
 
-#: ../src/dockedapp.c:334
+#: ../src/dockedapp.c:351
 #, c-format
 msgid "%s will be replaced with current selection"
 msgstr "%s wird durch die aktuelle Auswahl ersetzt"
 
-#: ../src/dockedapp.c:338
-msgid "Command for files dropped with DND"
+#: ../src/dockedapp.c:355
+#, fuzzy
+msgid "Command for dragged and dropped files"
 msgstr "Befehl für per DND-Operationen"
 
-#: ../src/dockedapp.c:350
+#: ../src/dockedapp.c:367
 #, c-format
 msgid "%d will be replaced with the file name"
 msgstr "%d wird durch den Dateinamen ersetzt"
 
-#: ../src/dockedapp.c:353
-msgid "DND support was not compiled in"
+#: ../src/dockedapp.c:370
+#, fuzzy
+msgid "XDnD support was not compiled in"
 msgstr "keine einkompilierte DND-Unterstützung"
 
-#: ../src/dockedapp.c:358
+#: ../src/dockedapp.c:378
 msgid "Icon Image"
 msgstr "Symbol"
 
-#: ../src/dockedapp.c:369 ../src/winspector.c:1429
+#: ../src/dockedapp.c:389 ../src/winspector.c:1708
 msgid "Browse..."
 msgstr "Suchen..."
 
-#: ../src/dockedapp.c:427
+#: ../src/dockedapp.c:465
 msgid "Docked Application Settings"
 msgstr "Einstellungen für gedockte Anwendungen"
 
-#: ../src/framewin.c:598 ../src/framewin.c:690 ../src/menu.c:413
-#: ../src/texture.c:551
+#: ../src/event.c:526
+#, fuzzy
+msgid "Inotify: Reading config files in defaults database."
+msgstr "Dömane \"%s\" aus der Standarddatenbank konnte nicht gelesen werden"
+
+#: ../src/event.c:584
+#, c-format
+msgid "read problem when trying to get INotify event: %s"
+msgstr ""
+
+#: ../src/event.c:609
+msgid ""
+"the defaults database has been deleted! Restart Window Maker to create the "
+"database with the default settings"
+msgstr ""
+
+#: ../src/event.c:614
+msgid ""
+"the unit containing the defaults database has been unmounted. Setting --"
+"static mode. Any changes will not be saved."
+msgstr ""
+
+#: ../src/event_input.c:555
+#, c-format
+msgid "invalid action \"%s\" for button %ld in ExtraMouseButtons"
+msgstr ""
+
+#: ../src/event_root.c:100
+msgid "Got Reconfigure command over the deprecated X channel, use wmakermsg"
+msgstr ""
+
+#: ../src/event_root.c:103
+#, c-format
+msgid "Got unknown command %s over the deprecated X channel"
+msgstr ""
+
+#: ../src/event_root.c:360
+msgid "another window manager is replacing us!"
+msgstr ""
+
+#: ../src/framewin.c:1178 ../src/framewin.c:1297 ../src/menu.c:637
+#: ../src/texture.c:414
 #, c-format
 msgid "could not render texture: %s"
 msgstr "Textur %s konnte nicht angezeigt werden"
 
-#: ../src/framewin.c:621 ../src/framewin.c:631 ../src/framewin.c:647
-#: ../src/framewin.c:658 ../src/framewin.c:665 ../src/framewin.c:672
-#: ../src/icon.c:327 ../src/menu.c:440
+#: ../src/framewin.c:1197 ../src/framewin.c:1209 ../src/framewin.c:1221
+#: ../src/framewin.c:1229 ../src/framewin.c:1235 ../src/icon.c:383
+#: ../src/menu.c:664
 #, c-format
 msgid "error rendering image:%s"
 msgstr "Fehler beim Anzeigen des Bildes: %s"
 
-#: ../src/framewin.c:718
+#: ../src/framewin.c:1325
 #, c-format
 msgid "error rendering image: %s"
 msgstr "Fehler beim Anzeigen des Bildes: %s"
 
-#: ../src/icon.c:219 ../src/wdefaults.c:423
-#, c-format
-msgid "error loading image file \"%s\": %s"
-msgstr "Fehler beim Laden der Bilddatei \"%s\": %s"
+#: ../src/keybind_descriptions.h:42 ../src/keybind_descriptions.h:43
+#: ../src/keybind_descriptions.h:44 ../src/keybind_descriptions.h:45
+#: ../src/keybind_descriptions.h:46 ../src/keybind_descriptions.h:47
+#: ../src/keybind_descriptions.h:48
+msgid "Virtual Desktop"
+msgstr ""
 
-#: ../src/icon.c:458 ../src/icon.c:467
-#, c-format
-msgid "could not create directory %s"
-msgstr "Vezeichnis %s konnte nicht erstellt werden"
+#: ../src/keybind_descriptions.h:42
+msgid "Move VirtualDesktop to next left edge"
+msgstr ""
 
-#: ../src/icon.c:699
-#, c-format
-msgid "could not find default icon \"%s\""
-msgstr "Standardsymbol \"%s\" konnte nicht gefunden werden"
+#: ../src/keybind_descriptions.h:42
+msgid "VirtualEdgeLeftKey"
+msgstr ""
 
-#: ../src/icon.c:705
-#, c-format
-msgid "could not load default icon \"%s\":%s"
-msgstr "Standardsymbol \"%s\" (%s) konnte nicht geöffnet werden"
+#: ../src/keybind_descriptions.h:43
+msgid "Move VirtualDesktop to next right edge"
+msgstr ""
 
-#: ../src/main.c:301
+#: ../src/keybind_descriptions.h:43
+msgid "VirtualEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:44
+msgid "Move VirtualDesktop to next top edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:44
+msgid "VirtualEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:45
+msgid "Move VirtualDesktop to next bottom edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:45
+msgid "VirtualEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:46
+msgid "Move VirtualDesktop to its origin"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:46
+msgid "VirtualDesktopHomeKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:47
+msgid "Center the focused window in the VirtualDesktop"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:47
+msgid "VirtualDesktopCenterKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:48
+msgid "Pin the focused window to the VirtualDesktop viewport"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:48
+msgid "VirtualDesktopPinKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:55 ../src/keybind_descriptions.h:56
+#: ../src/keybind_descriptions.h:220 ../src/keybind_descriptions.h:221
+#: ../src/keybind_descriptions.h:222 ../src/keybind_descriptions.h:223
+#: ../src/keybind_descriptions.h:224
+msgid "Session & Misc"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:55
+msgid "Toggle keyboard language"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:55
+msgid "ToggleKbdModeKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:56
+msgid "Pick accented and special characters"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:56
+msgid "AccentPickerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:62 ../src/keybind_descriptions.h:63
+#: ../src/keybind_descriptions.h:64
+msgid "Menus"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:62
+#, fuzzy
+msgid "Open applications menu"
+msgstr "Kein Anwendungssymbol"
+
+#: ../src/keybind_descriptions.h:62
+msgid "RootMenuKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:63
+msgid "Open window list menu"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:63
+#, fuzzy
+msgid "WindowListKey"
+msgstr "Fenster-Liste"
+
+#: ../src/keybind_descriptions.h:64
+msgid "Open window commands menu"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:64
+#, fuzzy
+msgid "WindowMenuKey"
+msgstr "Fenster"
+
+#: ../src/keybind_descriptions.h:66 ../src/keybind_descriptions.h:67
+#: ../src/keybind_descriptions.h:68 ../src/keybind_descriptions.h:69
+#: ../src/keybind_descriptions.h:70 ../src/keybind_descriptions.h:71
+#: ../src/keybind_descriptions.h:72
+#, fuzzy
+msgid "Dock & Screen"
+msgstr "Dock-Symbol"
+
+#: ../src/keybind_descriptions.h:66
+msgid "Raise/Lower Dock"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:66
+msgid "DockRaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:67
+msgid "Raise/Lower Clip"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:67
+msgid "ClipRaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:68
+msgid "Switch to next screen/monitor"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:68
+msgid "ScreenSwitchKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:69
+#, fuzzy
+msgid "Capture the entire screen"
+msgstr "Immer innerhalb des Bildschirmes"
+
+#: ../src/keybind_descriptions.h:69
+msgid "ScreenCaptureKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:70
+#, fuzzy
+msgid "Capture a window"
+msgstr "Standards für alle Fenster"
+
+#: ../src/keybind_descriptions.h:70
+msgid "WindowCaptureKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:71
+msgid "Capture a portion of the screen"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:71
+msgid "PartialCaptureKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:72
+msgid "Find the mouse pointer"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:72
+msgid "FindMouseKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:74 ../src/keybind_descriptions.h:75
+#: ../src/keybind_descriptions.h:76 ../src/keybind_descriptions.h:77
+#: ../src/keybind_descriptions.h:78 ../src/keybind_descriptions.h:79
+#: ../src/keybind_descriptions.h:80 ../src/keybind_descriptions.h:81
+#: ../src/keybind_descriptions.h:82 ../src/keybind_descriptions.h:83
+#: ../src/keybind_descriptions.h:84 ../src/keybind_descriptions.h:85
+#: ../src/keybind_descriptions.h:86 ../src/keybind_descriptions.h:87
+#: ../src/keybind_descriptions.h:88 ../src/keybind_descriptions.h:89
+#: ../src/keybind_descriptions.h:90 ../src/keybind_descriptions.h:91
+#: ../src/keybind_descriptions.h:92 ../src/keybind_descriptions.h:93
+#: ../src/keybind_descriptions.h:94 ../src/keybind_descriptions.h:95
+#: ../src/keybind_descriptions.h:96 ../src/keybind_descriptions.h:97
+#: ../src/keybind_descriptions.h:98 ../src/keybind_descriptions.h:99
+#: ../src/keybind_descriptions.h:100 ../src/keybind_descriptions.h:101
+#: ../src/keybind_descriptions.h:102 ../src/keybind_descriptions.h:103
+#: ../src/keybind_descriptions.h:104 ../src/keybind_descriptions.h:105
+#: ../src/keybind_descriptions.h:106 ../src/keybind_descriptions.h:107
+#: ../src/keybind_descriptions.h:108 ../src/keybind_descriptions.h:109
+#: ../src/keybind_descriptions.h:110 ../src/keybind_descriptions.h:111
+#: ../src/keybind_descriptions.h:112 ../src/keybind_descriptions.h:113
+#: ../src/keybind_descriptions.h:114 ../src/keybind_descriptions.h:115
+#: ../src/keybind_descriptions.h:116 ../src/keybind_descriptions.h:117
+#: ../src/keybind_descriptions.h:118 ../src/keybind_descriptions.h:119
+#: ../src/keybind_descriptions.h:120 ../src/keybind_descriptions.h:121
+#: ../src/keybind_descriptions.h:122 ../src/keybind_descriptions.h:123
+#: ../src/keybind_descriptions.h:124 ../src/keybind_descriptions.h:125
+#: ../src/switchmenu.c:166
+msgid "Windows"
+msgstr "Fenster"
+
+#: ../src/keybind_descriptions.h:74
+#, fuzzy
+msgid "Miniaturize active window"
+msgstr "Minimieren"
+
+#: ../src/keybind_descriptions.h:74
+#, fuzzy
+msgid "MiniaturizeKey"
+msgstr "Minimieren"
+
+#: ../src/keybind_descriptions.h:75
+#, fuzzy
+msgid "Miniaturize all windows"
+msgstr "Minimieren"
+
+#: ../src/keybind_descriptions.h:75
+#, fuzzy
+msgid "MiniaturizeAllKey"
+msgstr "Minimieren"
+
+#: ../src/keybind_descriptions.h:76
+#, fuzzy
+msgid "Miniaturize other windows"
+msgstr "Minimieren"
+
+#: ../src/keybind_descriptions.h:76
+#, fuzzy
+msgid "MiniaturizeOthersKey"
+msgstr "Minimieren"
+
+#: ../src/keybind_descriptions.h:77
+#, fuzzy
+msgid "Hide active application"
+msgstr "Anwendungssymbol ignorieren"
+
+#: ../src/keybind_descriptions.h:77
+#, fuzzy
+msgid "HideKey"
+msgstr "Verstecken"
+
+#: ../src/keybind_descriptions.h:78
+#, fuzzy
+msgid "Hide other applications"
+msgstr "Anwendung %s konnte nicht gestartet werden\n"
+
+#: ../src/keybind_descriptions.h:78
+#, fuzzy
+msgid "HideOthersKey"
+msgstr "Ignoriere 'Andere verstecken'"
+
+#: ../src/keybind_descriptions.h:79
+msgid "Toggle show desktop (minimize/restore all)"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:79
+msgid "ShowDesktopKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:80
+#, fuzzy
+msgid "Show all windows"
+msgstr "Standards für alle Fenster"
+
+#: ../src/keybind_descriptions.h:80
+msgid "ShowAllKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:81
+#, fuzzy
+msgid "Arrange icons"
+msgstr "Symbole anziehen"
+
+#: ../src/keybind_descriptions.h:81
+msgid "ArrangeIconsKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:82
+msgid "Move/Resize active window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:82
+msgid "MoveResizeKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:83
+#, fuzzy
+msgid "Close active window"
+msgstr "Fenster auswählen"
+
+#: ../src/keybind_descriptions.h:83
+#, fuzzy
+msgid "CloseKey"
+msgstr "Schließen"
+
+#: ../src/keybind_descriptions.h:84
+#, fuzzy
+msgid "Restore active window geometry"
+msgstr "Window Maker neustarten"
+
+#: ../src/keybind_descriptions.h:84
+msgid "RestoreGeometryKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:85
+msgid "Maximize active window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:85
+#, fuzzy
+msgid "MaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:86
+msgid "Maximize active window vertically"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:86
+#, fuzzy
+msgid "VMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:87
+msgid "Maximize active window horizontally"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:87
+#, fuzzy
+msgid "HMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:88
+msgid "Maximize active window left half"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:88
+#, fuzzy
+msgid "LHMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:89
+msgid "Maximize active window right half"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:89
+#, fuzzy
+msgid "RHMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:90
+msgid "Maximize active window top half"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:90
+#, fuzzy
+msgid "THMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:91
+msgid "Maximize active window bottom half"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:91
+#, fuzzy
+msgid "BHMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:92
+msgid "Maximize active window top left corner"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:92
+#, fuzzy
+msgid "TLCMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:93
+msgid "Maximize active window top right corner"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:93
+#, fuzzy
+msgid "TRCMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:94
+msgid "Maximize active window bottom left corner"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:94
+#, fuzzy
+msgid "BLCMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:95
+msgid "Maximize active window bottom right corner"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:95
+#, fuzzy
+msgid "BRCMaximizeKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:96
+#, fuzzy
+msgid "Tile active window"
+msgstr "Fenster auswählen"
+
+#: ../src/keybind_descriptions.h:96
+#, fuzzy
+msgid "MaximusKey"
+msgstr "Maximieren"
+
+#: ../src/keybind_descriptions.h:97
+msgid "Move active window to left edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:97
+msgid "MoveToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:98
+msgid "Move active window to right edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:98
+msgid "MoveToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:99
+msgid "Move active window to top edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:99
+msgid "MoveToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:100
+msgid "Move active window to bottom edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:100
+msgid "MoveToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:101
+msgid "Move active window to left screen edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:101
+msgid "MoveToEdgeLeftNoSnapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:102
+msgid "Move active window to right screen edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:102
+msgid "MoveToEdgeRightNoSnapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:103
+msgid "Move active window to top screen edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:103
+msgid "MoveToEdgeUpNoSnapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:104
+msgid "Move active window to bottom screen edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:104
+msgid "MoveToEdgeDownNoSnapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:105
+msgid "Grow active window to left edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:105
+msgid "GrowToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:106
+msgid "Grow active window to right edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:106
+msgid "GrowToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:107
+msgid "Grow active window to top edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:107
+msgid "GrowToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:108
+msgid "Grow active window to bottom edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:108
+msgid "GrowToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:109
+msgid "Shrink active window from left edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:109
+msgid "ShrinkToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:110
+msgid "Shrink active window from right edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:110
+msgid "ShrinkToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:111
+msgid "Shrink active window from top edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:111
+msgid "ShrinkToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:112
+msgid "Shrink active window from bottom edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:112
+msgid "ShrinkToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:113
+#, fuzzy
+msgid "Toggle fullscreen for active window"
+msgstr "Standards für alle Fenster"
+
+#: ../src/keybind_descriptions.h:113
+msgid "ToggleFullscreenKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:114
+#, fuzzy
+msgid "Center active window"
+msgstr "Fenster auswählen"
+
+#: ../src/keybind_descriptions.h:114
+msgid "CenterKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:115
+msgid "Toggle window on top status"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:115
+#, fuzzy
+msgid "KeepOnTopKey"
+msgstr "Immer oben"
+
+#: ../src/keybind_descriptions.h:116
+msgid "Toggle window at bottom status"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:116
+#, fuzzy
+msgid "KeepAtBottomKey"
+msgstr "Immer unten"
+
+#: ../src/keybind_descriptions.h:117
+#, fuzzy
+msgid "Toggle window omnipresent status"
+msgstr "Haftend ein/aus"
+
+#: ../src/keybind_descriptions.h:117
+#, fuzzy
+msgid "OmnipresentKey"
+msgstr "Haftend"
+
+#: ../src/keybind_descriptions.h:118
+#, fuzzy
+msgid "Raise active window"
+msgstr "Fenster auswählen"
+
+#: ../src/keybind_descriptions.h:118
+msgid "RaiseKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:119
+#, fuzzy
+msgid "Lower active window"
+msgstr "Fenster auswählen"
+
+#: ../src/keybind_descriptions.h:119
+msgid "LowerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:120
+msgid "Raise/Lower window under mouse pointer"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:120
+msgid "RaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:121
+#, fuzzy
+msgid "Shade active window"
+msgstr "Fenster auswählen"
+
+#: ../src/keybind_descriptions.h:121
+#, fuzzy
+msgid "ShadeKey"
+msgstr "Aufrollen"
+
+#: ../src/keybind_descriptions.h:122
+#, fuzzy
+msgid "Select active window"
+msgstr "Fenster auswählen"
+
+#: ../src/keybind_descriptions.h:122
+#, fuzzy
+msgid "SelectKey"
+msgstr "Ausgewählt"
+
+#: ../src/keybind_descriptions.h:123
+msgid "Launch new instance of application"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:123
+msgid "WindowRelaunchKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:124
+msgid "Move to right/bottom/left/top head"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:124
+msgid "MoveTo12to6Head"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:125
+msgid "Move to left/top/right/bottom head"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:125
+msgid "MoveTo6to12Head"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:127 ../src/keybind_descriptions.h:128
+#: ../src/keybind_descriptions.h:129 ../src/keybind_descriptions.h:130
+#: ../src/keybind_descriptions.h:131 ../src/keybind_descriptions.h:132
+#: ../src/keybind_descriptions.h:133 ../src/keybind_descriptions.h:134
+#: ../src/keybind_descriptions.h:135 ../src/keybind_descriptions.h:136
+#, fuzzy
+msgid "Window Shortcuts"
+msgstr "Fenstereigenschaften"
+
+#: ../src/keybind_descriptions.h:127
+msgid "Shortcut for window 1"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:127
+msgid "WindowShortcut1Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:128
+msgid "Shortcut for window 2"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:128
+msgid "WindowShortcut2Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:129
+msgid "Shortcut for window 3"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:129
+msgid "WindowShortcut3Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:130
+msgid "Shortcut for window 4"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:130
+msgid "WindowShortcut4Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:131
+msgid "Shortcut for window 5"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:131
+msgid "WindowShortcut5Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:132
+msgid "Shortcut for window 6"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:132
+msgid "WindowShortcut6Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:133
+msgid "Shortcut for window 7"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:133
+msgid "WindowShortcut7Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:134
+msgid "Shortcut for window 8"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:134
+msgid "WindowShortcut8Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:135
+msgid "Shortcut for window 9"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:135
+msgid "WindowShortcut9Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:136
+msgid "Shortcut for window 10"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:136
+msgid "WindowShortcut10Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:138 ../src/keybind_descriptions.h:139
+#: ../src/keybind_descriptions.h:140 ../src/keybind_descriptions.h:141
+#: ../src/keybind_descriptions.h:142 ../src/keybind_descriptions.h:143
+#: ../src/keybind_descriptions.h:144 ../src/keybind_descriptions.h:145
+#: ../src/keybind_descriptions.h:146 ../src/keybind_descriptions.h:147
+#: ../src/keybind_descriptions.h:148 ../src/keybind_descriptions.h:149
+#: ../src/keybind_descriptions.h:150 ../src/keybind_descriptions.h:151
+msgid "Focus & Groups"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:138
+#, fuzzy
+msgid "Focus next window"
+msgstr "Fenster auswählen"
+
+#: ../src/keybind_descriptions.h:138
+msgid "FocusNextKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:139
+msgid "Focus previous window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:139
+msgid "FocusPrevKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:140
+msgid "Focus the window to the left"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:140
+msgid "FocusWindowLeftKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:141
+msgid "Focus the window to the right"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:141
+msgid "FocusWindowRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:142
+msgid "Focus the window above"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:142
+msgid "FocusWindowUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:143
+msgid "Focus the window below"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:143
+msgid "FocusWindowDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:144
+msgid "Focus next window in group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:144
+msgid "GroupWindowNextKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:145
+msgid "Focus previous window in group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:145
+msgid "GroupWindowPrevKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:146
+#, fuzzy
+msgid "Switch to next application group"
+msgstr "Geteiltes Anwendungssymbol"
+
+#: ../src/keybind_descriptions.h:146
+msgid "GroupNextKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:147
+#, fuzzy
+msgid "Switch to previous application group"
+msgstr "Geteiltes Anwendungssymbol"
+
+#: ../src/keybind_descriptions.h:147
+msgid "GroupPrevKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:148
+msgid "Switch to next tab in group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:148
+msgid "GroupTabNextKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:149
+msgid "Switch to previous tab in group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:149
+msgid "GroupTabPrevKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:150
+msgid "Attach window as tab"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:150
+msgid "GroupTabAttachKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:151
+msgid "Detach tab from group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:151
+msgid "GroupTabDetachKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:153 ../src/keybind_descriptions.h:154
+#: ../src/keybind_descriptions.h:155 ../src/keybind_descriptions.h:156
+#: ../src/keybind_descriptions.h:157 ../src/keybind_descriptions.h:158
+#: ../src/keybind_descriptions.h:159 ../src/keybind_descriptions.h:160
+#: ../src/keybind_descriptions.h:161 ../src/keybind_descriptions.h:162
+#: ../src/keybind_descriptions.h:163 ../src/keybind_descriptions.h:164
+#: ../src/keybind_descriptions.h:165 ../src/keybind_descriptions.h:166
+#: ../src/keybind_descriptions.h:167 ../src/keybind_descriptions.h:168
+#: ../src/keybind_descriptions.h:169 ../src/keybind_descriptions.h:170
+#: ../src/keybind_descriptions.h:171 ../src/keybind_descriptions.h:172
+#: ../src/keybind_descriptions.h:173 ../src/keybind_descriptions.h:174
+#: ../src/keybind_descriptions.h:175 ../src/keybind_descriptions.h:176
+#: ../src/keybind_descriptions.h:177 ../src/keybind_descriptions.h:178
+#: ../src/keybind_descriptions.h:179 ../src/keybind_descriptions.h:180
+#: ../src/keybind_descriptions.h:181 ../src/keybind_descriptions.h:182
+#: ../src/keybind_descriptions.h:183 ../src/keybind_descriptions.h:184
+#: ../src/keybind_descriptions.h:185 ../src/keybind_descriptions.h:186
+#: ../src/keybind_descriptions.h:187 ../src/keybind_descriptions.h:188
+#: ../src/keybind_descriptions.h:189 ../src/keybind_descriptions.h:190
+#: ../src/keybind_descriptions.h:191 ../src/keybind_descriptions.h:192
+#: ../src/keybind_descriptions.h:193 ../src/keybind_descriptions.h:194
+#: ../src/keybind_descriptions.h:195 ../src/keybind_descriptions.h:196
+#: ../src/keybind_descriptions.h:197 ../src/keybind_descriptions.h:198
+#: ../src/keybind_descriptions.h:199 ../src/keybind_descriptions.h:200
+#: ../src/keybind_descriptions.h:201 ../src/winmenu.c:98
+#: ../src/workspace.c:1809
+msgid "Workspaces"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:153
+#, fuzzy
+msgid "Open workspace pager"
+msgstr "Sitzung speichern"
+
+#: ../src/keybind_descriptions.h:153
+#, fuzzy
+msgid "WorkspaceMapKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:154
+msgid "Switch to next workspace"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:154
+#, fuzzy
+msgid "NextWorkspaceKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:155
+msgid "Switch to previous workspace"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:155
+#, fuzzy
+msgid "PrevWorkspaceKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:156
+msgid "Switch to last used workspace"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:156
+#, fuzzy
+msgid "LastWorkspaceKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:157
+msgid "Switch to next ten workspaces"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:157
+msgid "NextWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:158
+msgid "Switch to previous ten workspaces"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:158
+msgid "PrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:159
+msgid "Switch to workspace on the left"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:159
+#, fuzzy
+msgid "LeftWorkspaceKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:160
+msgid "Switch to workspace on the right"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:160
+#, fuzzy
+msgid "RightWorkspaceKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:161
+#, fuzzy
+msgid "Switch to workspace above"
+msgstr "Sitzung speichern"
+
+#: ../src/keybind_descriptions.h:161
+#, fuzzy
+msgid "UpWorkspaceKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:162
+msgid "Switch to workspace below"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:162
+#, fuzzy
+msgid "DownWorkspaceKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:163
+msgid "Switch to workspace 1"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:163
+#, fuzzy
+msgid "Workspace1Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:164
+msgid "Switch to workspace 2"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:164
+#, fuzzy
+msgid "Workspace2Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:165
+msgid "Switch to workspace 3"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:165
+#, fuzzy
+msgid "Workspace3Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:166
+msgid "Switch to workspace 4"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:166
+#, fuzzy
+msgid "Workspace4Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:167
+msgid "Switch to workspace 5"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:167
+#, fuzzy
+msgid "Workspace5Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:168
+msgid "Switch to workspace 6"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:168
+#, fuzzy
+msgid "Workspace6Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:169
+msgid "Switch to workspace 7"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:169
+#, fuzzy
+msgid "Workspace7Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:170
+msgid "Switch to workspace 8"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:170
+#, fuzzy
+msgid "Workspace8Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:171
+msgid "Switch to workspace 9"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:171
+#, fuzzy
+msgid "Workspace9Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:172
+msgid "Switch to workspace 10"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:172
+#, fuzzy
+msgid "Workspace10Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:173
+#, fuzzy
+msgid "Move window to next workspace"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:173
+msgid "MoveToNextWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:174
+#, fuzzy
+msgid "Move window to previous workspace"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:174
+msgid "MoveToPrevWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:175
+#, fuzzy
+msgid "Move window to last used workspace"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:175
+msgid "MoveToLastWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:176
+#, fuzzy
+msgid "Move window to next ten workspaces"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:176
+msgid "MoveToNextWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:177
+#, fuzzy
+msgid "Move window to previous ten workspaces"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:177
+msgid "MoveToPrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:178
+msgid "Move window to workspace on the left"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:178
+msgid "MoveToLeftWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:179
+msgid "Move window to workspace on the right"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:179
+msgid "MoveToRightWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:180
+#, fuzzy
+msgid "Move window to workspace above"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:180
+#, fuzzy
+msgid "MoveToUpWorkspaceKey"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:181
+#, fuzzy
+msgid "Move window to workspace below"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:181
+msgid "MoveToDownWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:182
+#, fuzzy
+msgid "Move window to workspace 1"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:182
+#, fuzzy
+msgid "MoveToWorkspace1Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:183
+#, fuzzy
+msgid "Move window to workspace 2"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:183
+#, fuzzy
+msgid "MoveToWorkspace2Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:184
+#, fuzzy
+msgid "Move window to workspace 3"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:184
+#, fuzzy
+msgid "MoveToWorkspace3Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:185
+#, fuzzy
+msgid "Move window to workspace 4"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:185
+#, fuzzy
+msgid "MoveToWorkspace4Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:186
+#, fuzzy
+msgid "Move window to workspace 5"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:186
+#, fuzzy
+msgid "MoveToWorkspace5Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:187
+#, fuzzy
+msgid "Move window to workspace 6"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:187
+#, fuzzy
+msgid "MoveToWorkspace6Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:188
+#, fuzzy
+msgid "Move window to workspace 7"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:188
+#, fuzzy
+msgid "MoveToWorkspace7Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:189
+#, fuzzy
+msgid "Move window to workspace 8"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:189
+#, fuzzy
+msgid "MoveToWorkspace8Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:190
+#, fuzzy
+msgid "Move window to workspace 9"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:190
+#, fuzzy
+msgid "MoveToWorkspace9Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:191
+#, fuzzy
+msgid "Move window to workspace 10"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:191
+#, fuzzy
+msgid "MoveToWorkspace10Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:192
+#, fuzzy
+msgid "Toggle window on workspace 1"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:192
+#, fuzzy
+msgid "ToggleWorkspace1Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:193
+#, fuzzy
+msgid "Toggle window on workspace 2"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:193
+#, fuzzy
+msgid "ToggleWorkspace2Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:194
+#, fuzzy
+msgid "Toggle window on workspace 3"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:194
+#, fuzzy
+msgid "ToggleWorkspace3Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:195
+#, fuzzy
+msgid "Toggle window on workspace 4"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:195
+#, fuzzy
+msgid "ToggleWorkspace4Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:196
+#, fuzzy
+msgid "Toggle window on workspace 5"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:196
+#, fuzzy
+msgid "ToggleWorkspace5Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:197
+#, fuzzy
+msgid "Toggle window on workspace 6"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:197
+#, fuzzy
+msgid "ToggleWorkspace6Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:198
+#, fuzzy
+msgid "Toggle window on workspace 7"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:198
+#, fuzzy
+msgid "ToggleWorkspace7Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:199
+#, fuzzy
+msgid "Toggle window on workspace 8"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:199
+#, fuzzy
+msgid "ToggleWorkspace8Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:200
+#, fuzzy
+msgid "Toggle window on workspace 9"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:200
+#, fuzzy
+msgid "ToggleWorkspace9Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:201
+msgid "Toggle window on workspace 10"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:201
+#, fuzzy
+msgid "ToggleWorkspace10Key"
+msgstr "Arbeitsflächen"
+
+#: ../src/keybind_descriptions.h:203 ../src/keybind_descriptions.h:204
+#: ../src/keybind_descriptions.h:205 ../src/keybind_descriptions.h:206
+#: ../src/keybind_descriptions.h:207 ../src/keybind_descriptions.h:208
+#: ../src/keybind_descriptions.h:209 ../src/keybind_descriptions.h:210
+#: ../src/keybind_descriptions.h:211 ../src/keybind_descriptions.h:212
+msgid "Tiling & Layout"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:203
+#, fuzzy
+msgid "Cycle workspace tiling layout"
+msgstr "Sitzung speichern"
+
+#: ../src/keybind_descriptions.h:203
+msgid "LayoutCycleKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:204
+msgid "Cycle workspace tiling layout back"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:204
+msgid "LayoutCycleBackKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:205
+msgid "Swap tiling layout axis"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:205
+msgid "LayoutAxisKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:206
+#, fuzzy
+msgid "Set workspace layout to float"
+msgstr "Sitzung speichern"
+
+#: ../src/keybind_descriptions.h:206
+msgid "LayoutFloatKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:207
+msgid "Increase layout master count"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:207
+msgid "MasterCountIncKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:208
+msgid "Decrease layout master count"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:208
+msgid "MasterCountDecKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:209
+msgid "Increase layout master ratio"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:209
+msgid "MasterRatioIncKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:210
+msgid "Decrease layout master ratio"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:210
+msgid "MasterRatioDecKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:211
+msgid "Toggle tiling for active window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:211
+msgid "TilingToggleKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:212
+#, fuzzy
+msgid "Swap active window into master"
+msgstr "Anderen Windowmanager starten"
+
+#: ../src/keybind_descriptions.h:212
+msgid "TilingSwapMasterKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:214 ../src/keybind_descriptions.h:215
+#: ../src/keybind_descriptions.h:216 ../src/keybind_descriptions.h:217
+#: ../src/keybind_descriptions.h:218
+#, fuzzy
+msgid "Window Marks"
+msgstr "Fenster"
+
+#: ../src/keybind_descriptions.h:214
+#, fuzzy
+msgid "Mark window: set mark"
+msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
+
+#: ../src/keybind_descriptions.h:214
+msgid "MarkSetKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:215
+msgid "Mark window: unset mark"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:215
+msgid "MarkUnsetKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:216
+msgid "Mark window: bring marked window here"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:216
+msgid "MarkBringKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:217
+msgid "Mark window: jump to marked window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:217
+msgid "MarkJumpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:218
+msgid "Mark window: swap with marked window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:218
+msgid "MarkSwapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:220
+#, fuzzy
+msgid "Find application"
+msgstr "Anwendung töten"
+
+#: ../src/keybind_descriptions.h:220
+msgid "RunKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:221
+#, fuzzy
+msgid "Show keyboard shortcuts"
+msgstr "Keine Tastatur-Kürzel abfangen"
+
+#: ../src/keybind_descriptions.h:221
+msgid "ShowKeybindsKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:222
+#, fuzzy
+msgid "Exit Window Maker"
+msgstr "Window Maker neustarten"
+
+#: ../src/keybind_descriptions.h:222
+#, fuzzy
+msgid "ExitKey"
+msgstr "Beenden"
+
+#: ../src/keybind_descriptions.h:223
+#, fuzzy
+msgid "Lock screen"
+msgstr "Dock-Symbol"
+
+#: ../src/keybind_descriptions.h:223
+msgid "LockScreenKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:224
+msgid "Open clipboard history"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:224
+msgid "ClipboardKey"
+msgstr ""
+
+#: ../src/keybind.c:873
+#, c-format
+msgid "exec %A(Find)"
+msgstr ""
+
+#: ../src/keybind.c:1146
+msgid "Other"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Float"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Tile"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Tile wide"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Grid"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Monocle"
+msgstr ""
+
+#: ../src/main.c:284
 msgid "failed to restart Window Maker."
 msgstr "Window Maker-Neustart schlug fehl"
 
-#: ../src/main.c:304
+#: ../src/main.c:287
 #, c-format
 msgid "could not exec %s"
 msgstr "%s konnte nicht ausgeführt werden"
 
-#: ../src/main.c:342
+#: ../src/main.c:309
+#, c-format
+msgid "the display name has an unexpected syntax: \"%s\""
+msgstr ""
+
+#: ../src/main.c:320
+#, c-format
+msgid "the display name is too long: \"%s\""
+msgstr ""
+
+#: ../src/main.c:345
 msgid "Could not execute command: "
 msgstr "Befehl konnte nicht ausgeführt werden: "
 
-#: ../src/main.c:414
+#: ../src/main.c:512
 #, c-format
 msgid "%s aborted.\n"
 msgstr "%s wurde abgebrochen.\n"
 
-#: ../src/main.c:423
+#: ../src/main.c:521
 #, c-format
 msgid "Usage: %s [options]\n"
 msgstr "Benutzung: %s [Optionen]\n"
 
-#: ../src/main.c:424
+#: ../src/main.c:522
 msgid "The Window Maker window manager for the X window system"
 msgstr "Der Window Maker-Windowmanager für das X-Window System"
 
-#: ../src/main.c:426
+#: ../src/main.c:524
 msgid " -display host:dpy\tdisplay to use"
 msgstr " -display host:dpy\tverwendetes Display"
 
-#: ../src/main.c:428
-msgid " --no-cpp \t\tdisable preprocessing of configuration files"
-msgstr " --no-cpp \t\tkein Präprozessieren der Konfigurationsdateien"
+#: ../src/main.c:526
+msgid " --replace\t\treplace running window manager"
+msgstr ""
 
-#: ../src/main.c:430
+#: ../src/main.c:528
 msgid " --no-dock\t\tdo not open the application Dock"
 msgstr " --no-dock\t\tAnwendungsdock nicht öffnen"
 
-#: ../src/main.c:431
+#: ../src/main.c:529
 msgid " --no-clip\t\tdo not open the workspace Clip"
 msgstr " --no-clip\t\tArbeitsflächen-Clip nicht öffnen"
 
-#: ../src/main.c:432
+#: ../src/main.c:530
 msgid " --no-autolaunch\tdo not autolaunch applications"
 msgstr " --no-autolaunch\tkein Autostart von Anwendungen"
 
-#: ../src/main.c:433
+#: ../src/main.c:531
+msgid " --no-drawer\t\tdisable drawers in the dock"
+msgstr ""
+
+#: ../src/main.c:532
 msgid " --dont-restore\t\tdo not restore saved session"
 msgstr " --dont-restore\t\tgespeicherte Sitzung nicht wiederherstellen"
 
-#: ../src/main.c:435
+#: ../src/main.c:533
+msgid " --clientid id\t\tsession management client ID"
+msgstr ""
+
+#: ../src/main.c:535
 msgid " --locale locale\tlocale to use"
 msgstr " --locale locale\tzu benutzende Lokalisierung"
 
-#: ../src/main.c:437
-msgid ""
-" --create-stdcmap\tcreate the standard colormap hint in PseudoColor visuals"
-msgstr ""
-" --create-stdcmap\terstelle Hinweise für Standardfarben-Tabelle mit "
-"Pseudofarben"
-
-#: ../src/main.c:438
+#: ../src/main.c:537
 msgid " --visual-id visualid\tvisual id of visual to use"
 msgstr " --visual-id visualid\tID des zu benutzenden Visuals"
 
-#: ../src/main.c:439
+#: ../src/main.c:538
 msgid " --static\t\tdo not update or save configurations"
 msgstr " --static\t\tKonfiguration nicht ändern oder speichern"
 
-#: ../src/main.c:441
-msgid " --synchronous\t\tturn on synchronous display mode"
-msgstr " --synchronous\t\tsnychronen Display-Modus einschalten"
+#: ../src/main.c:540
+#, fuzzy
+msgid " --no-polling\t\tdo not periodically check for configuration updates"
+msgstr " --static\t\tKonfiguration nicht ändern oder speichern"
 
-#: ../src/main.c:443
+#: ../src/main.c:542
+msgid " --global_defaults_path\tprint the path for default config and exit"
+msgstr ""
+
+#: ../src/main.c:543
+msgid " --get-socketpath\tprint the IPC socket path for $DISPLAY and exit"
+msgstr ""
+
+#: ../src/main.c:544
 msgid " --version\t\tprint version and exit"
 msgstr " --version\t\tVersion anzeigen und beenden"
 
-#: ../src/main.c:444
+#: ../src/main.c:545
 msgid " --help\t\t\tshow this message"
 msgstr " --help\t\t\tdiese Nachricht anzeigen"
 
-#: ../src/main.c:455
-#, c-format
-msgid ""
-"could not find user GNUstep directory (%s).\n"
-"Make sure you have installed Window Maker correctly and run wmaker.inst"
-msgstr ""
-"GNUstep-Verzeichnis (%s) konnte nicht gefunden werden.\n"
-"Stellen Sie sicher, dass sie Window Maker korrekt installiert und wmaker."
-"inst aufgerufen haben"
-
-#: ../src/main.c:459
-#, c-format
-msgid "could not find user GNUstep directory (%s)."
+#: ../src/main.c:555
+#, fuzzy, c-format
+msgid "could not find user configuration directory (%s)."
 msgstr "GNUstep-Verzeichnis (%s) konnte nicht gefunden werden."
 
-#: ../src/main.c:462
+#: ../src/main.c:558
+#, fuzzy
 msgid ""
-"There was an error while creating GNUstep directory, please make sure you "
-"have installed Window Maker correctly and run wmaker.inst"
+"There was an error while creating the configuration directory, please make "
+"sure you have installed Window Maker correctly and run wmaker.inst"
 msgstr ""
 "Während der Erstellung der GNUstep-Verzeichnisses ist ein Fehler "
 "aufgetreten, Stellen Sie sicher, dass sie Window Maker korrekt installiert "
 "und wmaker.inst aufgerufen haben"
 
-#: ../src/main.c:465
+#: ../src/main.c:561
 #, c-format
 msgid "%s directory created with default configuration."
 msgstr "Verzeichnis %s wurde mit Standardkonfiguration erstellt"
 
-#: ../src/main.c:483
+#: ../src/main.c:580
 msgid ""
 "could not initialise an inotify instance. Changes to the defaults database "
 "will require a restart to take effect. Check your kernel!"
 msgstr ""
 
-#: ../src/main.c:494
+#: ../src/main.c:591
 #, c-format
 msgid ""
-"could not add an inotify watch on path\n"
-".%s\n"
-"Changes to the defaults database will require a restart to take effect."
+"could not add an inotify watch on path %s. Changes to the defaults database "
+"will require a restart to take effect."
 msgstr ""
 
-#: ../src/main.c:516 ../src/main.c:521
+#: ../src/main.c:617
 #, c-format
 msgid "%s:could not execute initialization script"
 msgstr "%s:Initialisierungsskript konnte nicht ausgeführt werden"
 
-#: ../src/main.c:541 ../src/main.c:546
+#: ../src/main.c:631
 #, c-format
 msgid "%s:could not execute exit script"
 msgstr "%s: Beendigungsskript konnte nicht ausgeführt werden"
 
-#: ../src/main.c:621 ../src/main.c:709 ../src/main.c:716 ../src/main.c:723
+#: ../src/main.c:669 ../src/main.c:764 ../src/main.c:771 ../src/main.c:778
+#: ../src/main.c:788
 #, c-format
 msgid "too few arguments for %s"
 msgstr "zuwenig Argumente für %s"
 
-#: ../src/main.c:727
+#: ../src/main.c:732
+#, c-format
+msgid "option \"%s\" is deprecated, please remove it from your script"
+msgstr ""
+
+#: ../src/main.c:782
 #, c-format
 msgid "bad value for visualid: \"%s\""
 msgstr "falscher Wert für Visual-ID: \"%s\""
 
-#: ../src/main.c:736
+#: ../src/main.c:798
+msgid ""
+"your version of Window Maker was compiled with INotify support, so \"--no-"
+"polling\" has no effect"
+msgstr ""
+
+#: ../src/main.c:804
 #, c-format
 msgid "%s: invalid argument '%s'\n"
 msgstr "%s: falsches Argument '%s'\n"
 
-#: ../src/main.c:737
+#: ../src/main.c:805
 #, c-format
 msgid "Try '%s --help' for more information\n"
 msgstr "Versuchen Sie '%s --help' für mehr Informationen\n"
 
-#: ../src/main.c:770
-msgid "X server does not support locale"
-msgstr "X-Server unterstützt gewählte Lokalisierung nicht"
-
-#: ../src/main.c:774
-msgid "cannot set locale modifiers"
-msgstr "Lokalisierungs-Modifikator konnte nicht gesetzt werden"
-
-#: ../src/main.c:790
+#: ../src/main.c:864 ../src/main.c:870
 #, c-format
 msgid "could not open display \"%s\""
 msgstr "Display \"%s\" konnte nicht geöffnet werden"
 
-#: ../src/menu.c:1177
-msgid "could not grab keyboard"
-msgstr "Tastatur konnte nicht abfangen werden"
-
-#: ../src/menu.c:2389
+#: ../src/menu.c:2851
 #, fuzzy, c-format
 msgid "bad value in menus state info: %s"
 msgstr "falsche Werte in Menü-Statusinfo: %s"
 
-#: ../src/misc.c:62
+#: ../src/misc.c:110
 #, c-format
-msgid "could not define value for %s for cpp"
-msgstr "Wert des Symbols %s für cpp konnte nicht definiert werden"
+msgid "can't convert \"%s\" to boolean"
+msgstr "\"%s\" konnte nicht in Boolean konvertiert werden"
 
-#: ../src/misc.c:87
-#, c-format
-msgid "could not get password entry for UID %i"
-msgstr "Passworteintrag für UID %i konnte nicht ermittelt werden"
-
-#: ../src/misc.c:111
-#, c-format
-msgid "your machine is misconfigured. HOSTNAME is set to %s"
-msgstr "Ihr System ist falsch konfiguriert. HOSTNAME wird auf %s gesetzt."
-
-#: ../src/misc.c:116
-#, c-format
-msgid "your machine is misconfigured. HOST is set to %s"
-msgstr "Ihr System ist falsch konfiguriert. HOST wird auf %s gesetzt."
-
-#: ../src/misc.c:598 ../src/misc.c:603
+#: ../src/misc.c:543
 msgid "Program Arguments"
 msgstr "Programmargumente"
 
-#: ../src/misc.c:599 ../src/misc.c:604
+#: ../src/misc.c:549
 msgid "Enter command arguments:"
 msgstr "Programmargumente eintragen"
 
-#: ../src/misc.c:648 ../src/misc.c:785
-#, c-format
-msgid "out of memory during expansion of \"%s\""
-msgstr "zuwenig Speicher bei der Expansion von \"%s\""
+#: ../src/misc.c:587 ../src/misc.c:588
+msgid "Exit"
+msgstr "Beenden"
 
-#: ../src/misc.c:701
-msgid "out of memory during expansion of \"%w\""
-msgstr "zuwenig Speicher bei der Expansion von \"%w\""
+#: ../src/misc.c:588
+msgid "Are you sure you want to quit Window Maker?"
+msgstr ""
 
-#: ../src/misc.c:718
-msgid "out of memory during expansion of \"%W\""
-msgstr "zuwenig Speicher bei der Expansion von \"%W\""
-
-#: ../src/misc.c:735
-#, c-format
-msgid "out of memory during expansion of \"%a\""
-msgstr "zuwenig Speicher bei der Expansion von \"%a\""
-
-#: ../src/misc.c:764
-#, c-format
-msgid "out of memory during expansion of \"%d\""
-msgstr "zuwenig Speicher bei der Expansion von \"%d\""
-
-#: ../src/misc.c:778
-msgid "selection not available"
-msgstr "keine Auswahl verfügbar"
-
-#: ../src/misc.c:820 ../src/misc.c:826
+#: ../src/misc.c:633 ../src/misc.c:639
 #, c-format
 msgid "bad window name value in %s state info"
 msgstr "falscher Fenstername in Statusinfo von %s"
 
-#: ../src/misc.c:1054
+#: ../src/misc.c:963 ../src/misc.c:978
+#, c-format
+msgid "%s failed, can't set workspace specific background image (%s)"
+msgstr ""
+
+#: ../src/misc.c:1005
+#, c-format
+msgid ""
+"could not set close-on-exec flag for bg_helper's communication file handle "
+"(%s)"
+msgstr ""
+
+#: ../src/misc.c:1033
+msgid "background image helper message is too long"
+msgstr ""
+
+#: ../src/misc.c:1051
 msgid "could not send message to background image helper"
 msgstr "Nachricht an Hintergrundbild-Anwendung konnte nicht gesendet werden"
 
-#: ../src/resources.c:42
+#: ../src/monitor.c:92
+#, fuzzy
+msgid "trying to start alternate window manager..."
+msgstr "Anderen Windowmanager starten"
+
+#: ../src/monitor.c:98
+#, fuzzy
+msgid "failed to start alternate window manager. Aborting."
+msgstr "Anderen Windowmanager starten"
+
+#: ../src/monitor.c:128
+#, fuzzy
+msgid "Error respawning Window Maker"
+msgstr "Window Maker neustarten"
+
+#: ../src/monitor.c:135
+msgid "Error during monitoring of Window Maker process."
+msgstr ""
+
+#: ../src/monitor.c:160
+#, c-format
+msgid "Window Maker exited due to a crash (signal %i) and will be restarted."
+msgstr ""
+
+#: ../src/moveres.c:1229
+#, fuzzy
+msgid "could not grab the keyboard for keyboard move/resize"
+msgstr "Tastatur konnte nicht abfangen werden"
+
+#.
+#. *  1st %s is a function name
+#. *  2nd %s is an email address
+#. *  3rd %s is the name of the operating system
+#.
+#: ../src/osdep_stub.c:43
+#, c-format
+msgid ""
+"%s is not implemented on this platform; tell %s you are running %s release "
+"%s version %s"
+msgstr ""
+
+#: ../src/accent_picker.c:582
+#, fuzzy
+msgid "accent picker: could not grab the keyboard"
+msgstr "Tastatur konnte nicht abfangen werden"
+
+#: ../src/accent_picker.c:915
+msgid "accent picker: ignoring invalid AccentPickerVariants entry"
+msgstr ""
+
+#: ../src/accent_picker.c:992
+msgid "accent picker: ignoring an unknown character set name"
+msgstr ""
+
+#: ../src/accent_picker.c:1041
+msgid "accent picker: invalid AccentPickerModifier, modifier mode disabled"
+msgstr ""
+
+#: ../src/accent_picker.c:1055
+#, c-format
+msgid "accent picker: %s may collide with application shortcuts"
+msgstr ""
+
+#: ../src/accent_picker.c:1070
+msgid "accent picker: modifier overlaps an existing key binding"
+msgstr ""
+
+#: ../src/resources.c:112
 #, c-format
 msgid "could not parse color \"%s\""
 msgstr "Farbe \"%s\" konnte nicht geparst werden"
 
-#: ../src/resources.c:46
+#: ../src/resources.c:117
 #, c-format
 msgid "could not allocate color \"%s\""
 msgstr "Farbe \"%s\" konnte nicht erzeugt werden"
 
-#: ../src/rootmenu.c:185 ../src/rootmenu.c:186
-msgid "Exit"
-msgstr "Beenden"
-
-#: ../src/rootmenu.c:186
-msgid "Exit window manager?"
-msgstr "Windowmanager beenden?"
-
-#: ../src/rootmenu.c:231
+#: ../src/rootmenu.c:185
 msgid "Kill X session"
 msgstr "Töte X-Sitzung"
 
-#: ../src/rootmenu.c:232
+#: ../src/rootmenu.c:186
 msgid ""
 "Kill Window System session?\n"
 "(all applications will be closed)"
@@ -1063,47 +2855,52 @@ msgstr ""
 "Windowsystem-Sitzung töten?\n"
 "(alle Anwendungen werden geschlossen)"
 
-#: ../src/rootmenu.c:460
-#, c-format
-msgid "%s:invalid kbd shortcut specification \"%s\" for entry %s"
+#: ../src/rootmenu.c:591
+#, fuzzy, c-format
+msgid "%s: invalid kbd shortcut specification \"%s\" for entry %s"
 msgstr "%s: ungültiges Tastaturkürzel \"%s\" für Eintrag %s"
 
-#: ../src/rootmenu.c:468
-#, c-format
-msgid "%s:invalid key in shortcut \"%s\" for entry %s"
+#: ../src/rootmenu.c:599
+#, fuzzy, c-format
+msgid "%s: invalid key in shortcut \"%s\" for entry %s"
 msgstr "%s: ungültige Taste in Kürzel \"%s\" für Eintrag %s"
 
-#: ../src/rootmenu.c:521
+#: ../src/rootmenu.c:658
 #, c-format
 msgid "%s: unmatched '\"' in menu file"
 msgstr "%s: fehlendes \" in Menüdatei"
 
-#: ../src/rootmenu.c:570
+#: ../src/rootmenu.c:707
 #, c-format
 msgid "%s: missing command"
 msgstr "%s: fehlender Befehl"
 
-#: ../src/rootmenu.c:600
+#: ../src/rootmenu.c:763
 #, c-format
 msgid "invalid OPEN_MENU specification: %s"
 msgstr "ungültige OPEN_MENU-Beschreibung: %s"
 
-#: ../src/rootmenu.c:649
+#: ../src/rootmenu.c:834
 #, c-format
 msgid "%s:could not stat menu"
 msgstr "%s: Menü konnte nicht erzeugt werden"
 
-#: ../src/rootmenu.c:657
+#: ../src/rootmenu.c:842
 #, c-format
 msgid "%s:could not stat menu:%s"
 msgstr "%s: Menü konnte nicht erzeugt werden: %s"
 
-#: ../src/rootmenu.c:673
+#: ../src/rootmenu.c:858
 #, c-format
 msgid "too many parameters in OPEN_MENU: %s"
 msgstr "zuviele Parameter in OPEN_MENU: %s"
 
-#: ../src/rootmenu.c:714
+#: ../src/rootmenu.c:896
+#, fuzzy, c-format
+msgid "invalid OPEN_PLMENU specification: %s"
+msgstr "ungültige OPEN_MENU-Beschreibung: %s"
+
+#: ../src/rootmenu.c:952
 msgid ""
 "There are more than one WORKSPACE_MENU commands in the applications menu. "
 "Only one is allowed."
@@ -1111,7 +2908,7 @@ msgstr ""
 "Im Anwendungsmenü ist mehr als ein WORKSPACE_MENU-Eintrag, aber nur einer "
 "ist erlaubt."
 
-#: ../src/rootmenu.c:745
+#: ../src/rootmenu.c:983
 msgid ""
 "There are more than one WINDOWS_MENU commands in the applications menu. Only "
 "one is allowed."
@@ -1119,113 +2916,124 @@ msgstr ""
 "Im Anwendungsmenü ist mehr als ein WINDOWS_MENU-Eintrag, aber nur einer ist "
 "erlaubt."
 
-#: ../src/rootmenu.c:750
+#: ../src/rootmenu.c:988
 msgid "Window List"
 msgstr "Fenster-Liste"
 
-#: ../src/rootmenu.c:777 ../src/rootmenu.c:794 ../src/rootmenu.c:802
+#: ../src/rootmenu.c:1015 ../src/rootmenu.c:1032 ../src/rootmenu.c:1049
+#: ../src/rootmenu.c:1057
 #, c-format
 msgid "%s:missing parameter for menu command \"%s\""
 msgstr "%s: fehlender Parameter für Menübefehl \"%s\""
 
-#: ../src/rootmenu.c:866
+#: ../src/rootmenu.c:1128
 #, c-format
 msgid "%s:unknown command \"%s\" in menu config."
 msgstr "%s: unbekannter Befehl \"%s\" in Menükonfiguration"
 
-#: ../src/rootmenu.c:873
+#: ../src/rootmenu.c:1135
 #, c-format
 msgid "%s:can't add shortcut for entry \"%s\""
 msgstr "%s: Tastaturkürzel für Eintrag \"%s\" kann nicht hinzugefügt werden"
 
-#: ../src/rootmenu.c:1015
-#, c-format
-msgid "%s:maximal line size exceeded in menu config: %s"
-msgstr "%s: überlange Zeilen in Menükonfiguration: %s"
+#: ../src/rootmenu.c:1167
+msgid "maximum menu nesting depth exceeded"
+msgstr ""
 
-#: ../src/rootmenu.c:1036 ../src/rootmenu.c:1121 ../src/rootmenu.c:1218
-#, c-format
-msgid "%s:missing command in menu config: %s"
+#: ../src/rootmenu.c:1174 ../src/rootmenu.c:1220
+#, fuzzy
+msgid "missing command in menu config"
 msgstr "%s: fehlender Befehl in Menükonfiguration: %s"
 
-#: ../src/rootmenu.c:1063
-#, c-format
-msgid "%s:syntax error in menu file:END declaration missing"
+#: ../src/rootmenu.c:1202
+#, fuzzy
+msgid "syntax error in menu file: END declaration missing"
 msgstr "%s: Syntaxfehler in Menüdatei: END-Schlüsselwort fehlt."
 
-#: ../src/rootmenu.c:1089 ../src/rootmenu.c:1184
-msgid "could not make arguments for menu file preprocessor"
-msgstr "Argumente für Menüdatei-Präprozessort konnten nicht gesetzt werden"
+#: ../src/rootmenu.c:1234
+#, fuzzy
+msgid "invalid menu, no menu title given"
+msgstr "Ungültige Datei %s für globales Menü"
 
-#: ../src/rootmenu.c:1095 ../src/rootmenu.c:1191
-#, c-format
-msgid "%s:could not open/preprocess menu file"
-msgstr "%s: Menüdatei konnte nicht geöffnet/bearbeitet werden"
-
-#: ../src/rootmenu.c:1106 ../src/rootmenu.c:1203
+#: ../src/rootmenu.c:1251 ../src/rootmenu.c:1269 ../src/rootmenu.c:1277
+#: ../src/rootmenu.c:1282 ../src/rootmenu.c:1333 ../src/rootmenu.c:1364
 #, c-format
 msgid "could not open menu file \"%s\": %s"
 msgstr "Menüdatei \"%s\" konnte nicht geöffnet werden: %s"
 
-#: ../src/rootmenu.c:1132
-#, c-format
-msgid "%s:invalid menu file. MENU command is missing"
-msgstr "%s: ungültige Menüdatei: MENU-Befehl fehlt"
+#: ../src/rootmenu.c:1286 ../src/rootmenu.c:1291
+#, fuzzy, c-format
+msgid "could not read menu pipe \"%s\": %s"
+msgstr "Menüdatei \"%s\" konnte nicht geöffnet werden: %s"
 
-#: ../src/rootmenu.c:1140
-msgid "error reading preprocessed menu data"
-msgstr "Fehler beim Lesen der aufbereiteten Menüdaten"
+#: ../src/rootmenu.c:1334
+msgid "pipe command for PropertyList is too long"
+msgstr ""
 
-#: ../src/rootmenu.c:1229
-#, c-format
-msgid "%s:no title given for the root menu"
-msgstr "%s: kein Titel für das Stammenü"
+#: ../src/rootmenu.c:1365
+msgid "pipe command is too long"
+msgstr ""
 
-#: ../src/rootmenu.c:1310 ../src/rootmenu.c:1382 ../src/rootmenu.c:1421
+#: ../src/rootmenu.c:1486 ../src/rootmenu.c:1560 ../src/rootmenu.c:1605
+#: ../src/rootmenu.c:1617 ../src/rootmenu.c:1628
 #, c-format
 msgid "out of memory while constructing directory menu %s"
 msgstr "zuwenig Speicher beim Erstellen des Verzeichnismenüs %s"
 
-#: ../src/rootmenu.c:1319
+#: ../src/rootmenu.c:1497
 #, c-format
 msgid "%s:could not stat file \"%s\" in menu directory"
 msgstr "%s: Datei \"%s\" in Menü-Verzeichnis konnte nicht erstellt werden"
 
-#: ../src/rootmenu.c:1471
+#: ../src/rootmenu.c:1569
+#, c-format
+msgid "ignoring directory menu entry with '\"' in its path: %s/%s"
+msgstr ""
+
+#: ../src/rootmenu.c:1669
 msgid "Commands"
 msgstr "Befehle"
 
-#: ../src/rootmenu.c:1474
+#: ../src/rootmenu.c:1672
 msgid "Restart"
 msgstr "Neustart"
 
-#: ../src/rootmenu.c:1475
+#: ../src/rootmenu.c:1673
 msgid "Exit..."
 msgstr "Beenden..."
 
-#: ../src/rootmenu.c:1514
+#: ../src/rootmenu.c:1696
+#, c-format
+msgid "%s:maximum menu nesting depth exceeded"
+msgstr ""
+
+#: ../src/rootmenu.c:1720
 #, c-format
 msgid "could not find menu file \"%s\" referenced in WMRootMenu"
 msgstr "Menüdatei \"%s\" aus WMRootMenu konnte nicht gefunden werden"
 
-#: ../src/rootmenu.c:1520
+#: ../src/rootmenu.c:1726
 #, c-format
 msgid "could not access menu \"%s\" referenced in WMRootMenu"
 msgstr "auf Menüdatei \"%s\" aus WMRootMenu konnte nicht zugegriffen werden"
 
-#: ../src/rootmenu.c:1532
+#: ../src/rootmenu.c:1739
 #, c-format
 msgid ""
 "using default menu file \"%s\" as the menu referenced in WMRootMenu could "
 "not be found "
 msgstr "Standard-Menüdatei \"%s\" aus WMRootMenu konnte nicht gefunden werden "
 
-#: ../src/rootmenu.c:1555 ../src/rootmenu.c:1629
+#: ../src/rootmenu.c:1769 ../src/rootmenu.c:1829
 #, c-format
 msgid "%s:format error in root menu configuration \"%s\""
 msgstr "%s: Formatierungsfehler in Stammenü-Konfiguration \"%s\""
 
-#: ../src/rootmenu.c:1706
+#: ../src/rootmenu.c:1958
+msgid "the applications menu could not be loaded, using a fallback"
+msgstr ""
+
+#: ../src/rootmenu.c:1961
 msgid ""
 "The applications menu could not be loaded. Look at the console output for a "
 "detailed description of the errors."
@@ -1233,105 +3041,568 @@ msgstr ""
 "Das Anwendungsmenü konnte nicht geladen werden. Für detaillierte "
 "Fehlerbeschreibungen bitte die Konsolenausgabe ansehen."
 
-#: ../src/screen.c:644
-#, c-format
-msgid "could not initialize graphics library context: %s"
-msgstr "Kontext der Grafikbibliothek konnte nicht initialisiert werden: %s"
+#: ../src/screen.c:157
+#, fuzzy
+msgid "another window manager is running"
+msgstr "Es sieht aus, als ob schon ein anderer Windowmanager liefe."
 
-#: ../src/screen.c:670
+#: ../src/screen.c:158
+msgid "use the --replace flag to replace it"
+msgstr ""
+
+#: ../src/screen.c:194
+#, c-format
+msgid "waiting %ds for other window manager to exit"
+msgstr ""
+
+#: ../src/screen.c:207
+msgid "other window manager hasn't exited!"
+msgstr ""
+
+#: ../src/screen.c:215
+#, fuzzy
+msgid "replacing the other window manager"
+msgstr "Anderen Windowmanager starten"
+
+#: ../src/screen.c:264
+#, fuzzy, c-format
+msgid "could not find button pixmap \"%s\" in PixmapPath"
+msgstr "Bitmap-Datei \"%s\" konnte nicht geladen werden"
+
+#: ../src/screen.c:270
+#, fuzzy, c-format
+msgid "could not load button pixmap \"%s\": %s"
+msgstr "Textur-Pixmap \"%s\" konnte nicht gefunden werden: %s"
+
+#: ../src/screen.c:615
+#, c-format
+msgid "could not load logo image for panels: %s"
+msgstr "Panel-Logo konnte nicht geladen werden: %s"
+
+#: ../src/screen.c:778
+#, c-format
+msgid "can't create Context on screen %d, %s"
+msgstr ""
+
+#: ../src/screen.c:796
 msgid "could not initialize WINGs widget set"
 msgstr "WINGs-Widgets konnten nicht initialisiert werden"
 
-#: ../src/screen.c:971
+#: ../src/screen.c:1179
 #, c-format
 msgid "could not save session state in %s"
 msgstr "Sitzung konnte nicht in %s gespeichert werden"
 
-#: ../src/session.c:152 ../src/wdefaults.c:559 ../src/winspector.c:413
-#, c-format
-msgid "can't convert \"%s\" to boolean"
-msgstr "\"%s\" konnte nicht in Boolean konvertiert werden"
+#: ../src/screen.c:1460
+msgid "Unable to find a proper screenshot image format"
+msgstr ""
 
-#: ../src/stacking.c:76
+#: ../src/screen.c:1467
+#, fuzzy
+msgid "Unable to create screenshot directory"
+msgstr "Vezeichnis %s konnte nicht erstellt werden"
+
+#: ../src/screen.c:1481
+msgid ""
+"Unsafe screenshot filename template, it should not contain a path separator"
+msgstr ""
+
+#: ../src/screen.c:1499
+msgid "Could not generate a free screenshot filename"
+msgstr ""
+
+#: ../src/stacking.c:92
 msgid "could not get window list!!"
 msgstr "Konnte Fensterliste nicht erstellen!"
 
-#: ../src/startup.c:183
-#, c-format
-msgid "internal X error: %s\n"
+#: ../src/startup.c:129
+#, fuzzy, c-format
+msgid "internal X error: %s"
 msgstr "interner X-Fehler %s\n"
 
-#: ../src/startup.c:680
+#: ../src/startup.c:506 ../src/startup.c:532 ../src/startup.c:543
 #, c-format
-msgid "icon size is configured to %i, but it's too small. Using 16, instead\n"
+msgid "could not read domain \"%s\" from defaults database"
+msgstr "Dömane \"%s\" aus der Standarddatenbank konnte nicht gelesen werden"
+
+#: ../src/startup.c:524
+#, fuzzy, c-format
+msgid "icon size is configured to %i, but it's too small. Using 16 instead"
 msgstr ""
 "Symbolgröße ist eingestellt auf %i, dieser Wert ist zu klein. Neue Größe ist "
 "16\n"
 
-#: ../src/startup.c:707
+#: ../src/startup.c:621
+#, fuzzy
+msgid "RandR extension is not available"
+msgstr "keine Auswahl verfügbar"
+
+#: ../src/startup.c:623
+msgid "RandR version check failed, RandR disabled"
+msgstr ""
+
+#: ../src/startup.c:625
+#, c-format
+msgid "RandR version %u.%u found but RandR version >=1.5 required"
+msgstr ""
+
+#: ../src/startup.c:675
 msgid "XKB is not supported. KbdModeLock is automatically disabled."
 msgstr "XKB wird nicht unterstützt. KbdModeLock wird ausgeschaltet"
 
-#: ../src/startup.c:726
+#: ../src/startup.c:728
 msgid "it seems that there is already a window manager running"
 msgstr "Es sieht aus, als ob schon ein anderer Windowmanager liefe."
 
-#: ../src/startup.c:732
+#: ../src/startup.c:734
 #, c-format
 msgid "could not manage screen %i"
 msgstr "Konnte Bildschirm %i nicht ansprechen"
 
-#: ../src/startup.c:789
+#: ../src/startup.c:864
 msgid "could not manage any screen"
 msgstr "kein Bildschirm konnte angesprochen werden"
 
-#: ../src/switchmenu.c:132
-msgid "Windows"
-msgstr "Fenster"
+#: ../src/superfluous.c:362
+#, c-format
+msgid "Impossible direction: %d"
+msgstr ""
 
-#: ../src/texture.c:303 ../src/texture.c:341
+#: ../src/switchpanel.c:144
+#, c-format
+msgid "switch panel: monitor \"%s\" matches no output, using the pointer head"
+msgstr ""
+
+#: ../src/switchpanel.c:460
+msgid "switch panel: missing temporary tile"
+msgstr ""
+
+#: ../src/switchpanel.c:508
+msgid "switch panel: cannot scale an icon tile"
+msgstr ""
+
+#: ../src/switchpanel.c:513
+msgid "switch panel: cannot convert an icon tile"
+msgstr ""
+
+#: ../src/switchpanel.c:569
+#, c-format
+msgid "switch panel: cannot load icon \"%s\" within its resource budget"
+msgstr ""
+
+#: ../src/switchpanel.c:582 ../src/switchpanel.c:599
+msgid "switch panel: cannot scale an icon"
+msgstr ""
+
+#: ../src/switchpanel.c:1180 ../src/switchpanel.c:1196
+msgid "switch panel: sub-strip is out of range, skipping it"
+msgstr ""
+
+#: ../src/switchpanel.c:1186
+msgid "switch panel: sub-strip resources exceed the budget, skipping it"
+msgstr ""
+
+#: ../src/switchpanel.c:1305
+msgid "switch panel: cannot rebuild the panel background, keeping its size"
+msgstr ""
+
+#: ../src/switchpanel.c:1368
+msgid "switch panel: sub-strip height is out of range, skipping it"
+msgstr ""
+
+#: ../src/switchpanel.c:1408
+msgid "switch panel: sub-strip does not fit the panel, skipping it"
+msgstr ""
+
+#. the schema bounds this key, so cycle panel-less
+#: ../src/switchpanel.c:1561
+#, c-format
+msgid "switch panel: icon size %d is unusable, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1590
+#, c-format
+msgid ""
+"switch panel: the icon strip for %d windows exceeds the X width limit, "
+"cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1594
+msgid ""
+"switch panel: the panel geometry exceeds the image size limit, cycling "
+"without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1597
+msgid ""
+"switch panel: the panel geometry exceeds the window size limits, cycling "
+"without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1600
+#, c-format
+msgid ""
+"switch panel: cannot size a panel for %d windows, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1614
+msgid "switch panel: fallback geometry is unusable, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1628
+msgid ""
+"switch panel: the panel exceeds the switch panel resource budget, cycling "
+"without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1641
+msgid "switch panel: cannot allocate its images, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1653
+msgid "switch panel: panel geometry is unusable, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1726
+msgid "switch panel: cannot convert its background, cycling without a panel"
+msgstr ""
+
+#: ../src/texture.c:291
 #, c-format
 msgid "image file \"%s\" used as texture could not be found."
 msgstr "als Textur benutztes Bild \"%s\" konnte nicht gefunden werden"
 
-#: ../src/texture.c:308 ../src/texture.c:346
+#: ../src/texture.c:296
 #, c-format
 msgid "could not load texture pixmap \"%s\":%s"
 msgstr "Textur-Pixmap \"%s\" konnte nicht gefunden werden: %s"
 
-#: ../src/texture.c:403
-#, c-format
-msgid "library \"%s\" cound not be opened."
-msgstr "Bibliothek \"%s\" konnte nicht geöffnet werden."
-
-#: ../src/texture.c:412
-#, c-format
-msgid "function \"%s\" not found in library \"%s\""
-msgstr "Funktion \"%s\" ist nicht in Bibliothek \"%s\" enthalten"
-
-#: ../src/texture.c:419
-msgid "function textures not supported on this system, sorry."
-msgstr "Funktionstexturen werden von diesem System nicht unterstützt"
-
-#: ../src/texture.c:555
+#: ../src/texture.c:418
 msgid "could not allocate image buffer"
 msgstr "Bildpuffer konnte nicht erstellt werden"
 
-#: ../src/wdefaults.c:417
+#: ../src/wconfigmodel.c:83 ../src/wdefaults.c:189 ../src/wdefaults.c:294
 #, c-format
-msgid "could not find icon file \"%s\""
-msgstr "Symboldatei \"%s\" konnte nicht gefunden werden"
+msgid "unknown FrameInnerBorderSides token \"%s\""
+msgstr ""
 
-#: ../src/window.c:2774 ../src/window.c:2927
+#: ../src/wconfigmodel.c:171 ../src/wconfigmodel.c:358
+#: ../src/wconfigmodel.c:648
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be String."
+msgstr "Falsches Optionsformat für Schlüssel \"%s\". %s erwartet."
+
+#: ../src/wconfigmodel.c:214
+#, c-format
+msgid "can't convert \"%s\" to boolean for key \"%s\""
+msgstr "\"%s\" konnte nicht in Boolean für Schlüssel \"%s\" konvertiert werden"
+
+#: ../src/wconfigmodel.c:224
+#, c-format
+msgid "can't convert \"%s\" to integer for key \"%s\""
+msgstr "\"%s\" konnte nicht in Integer für Schlüssel \"%s\" konvertiert werden"
+
+#: ../src/wconfigmodel.c:229
+#, c-format
+msgid "integer value \"%s\" for key \"%s\" is outside [%d..%d]"
+msgstr ""
+
+#: ../src/wconfigmodel.c:268
+#, fuzzy, c-format
+msgid "wrong option value for key \"%s\"; got \"%s\", should be one of %s."
+msgstr "falscher Eigenschaftenwert für Schlüssel \"%s\". Wert aus %s erwartet"
+
+#: ../src/wconfigmodel.c:376
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be an array of paths."
+msgstr "Falsches Optionsformat für Schlüssel \"%s\". %s erwartet."
+
+#: ../src/wconfigmodel.c:383 ../src/wconfigmodel.c:432
+#: ../src/wconfigmodel.c:490
+#, c-format
+msgid "Incorrect number of elements in array for key \"%s\"."
+msgstr "Falsche Anzahl von Argumenten für Schlüssel \"%s\""
+
+#: ../src/wconfigmodel.c:393
+#, fuzzy, c-format
+msgid "Wrong value for key \"%s\". Should be an array of paths."
+msgstr "Falscher Wert für Schlüssel \"%s\". Koordinaten erwartet."
+
+#: ../src/wconfigmodel.c:427
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be Coordinate."
+msgstr "Falsches Optionsformat für Schlüssel \"%s\". %s erwartet."
+
+#: ../src/wconfigmodel.c:440
+#, c-format
+msgid "Wrong value for key \"%s\". Should be Coordinate."
+msgstr "Falscher Wert für Schlüssel \"%s\". Koordinaten erwartet."
+
+#: ../src/wconfigmodel.c:447
+#, c-format
+msgid "can't convert array to integers for \"%s\"."
+msgstr "Feld konnte nicht in Integer für \"%s\" konvertiert werden."
+
+#: ../src/wconfigmodel.c:479
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be an array of strings."
+msgstr "Falsches Optionsformat für Schlüssel \"%s\". %s erwartet."
+
+#: ../src/wconfigmodel.c:505
+#, fuzzy, c-format
+msgid "Wrong value for key \"%s\". Should be an array of strings."
+msgstr "Falscher Wert für Schlüssel \"%s\". Koordinaten erwartet."
+
+#: ../src/wconfigmodel.c:562 ../src/wconfigmodel.c:678
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be an array."
+msgstr "Falsches Optionsformat für Schlüssel \"%s\". %s erwartet."
+
+#: ../src/wconfigmodel.c:572
+#, c-format
+msgid "Invalid number of arguments for option \"%s\""
+msgstr "Falsche Anzahl von Argumente für Option \"%s\""
+
+#: ../src/wconfigmodel.c:578 ../src/wconfigmodel.c:587
+#: ../src/wconfigmodel.c:601 ../src/wconfigmodel.c:609
+#: ../src/wconfigmodel.c:621
+#, c-format
+msgid "Invalid arguments for option \"%s\""
+msgstr "Falsche Argument für Option \"%s\""
+
+#: ../src/wconfigmodel.c:634
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be Key spec."
+msgstr "Falsches Optionsformat für Schlüssel \"%s\". %s erwartet."
+
+#: ../src/wconfigmodel.c:654
+#, fuzzy, c-format
+msgid "Empty color for key \"%s\"."
+msgstr "Farbe für Schlüssel \"%s\" konnte nicht ermittelt werden"
+
+#: ../src/wconfigmodel.c:831
 msgid ""
-"the NumLock, ScrollLock or similar key seems to be turned on.\n"
-"Turn it off or some mouse actions and keyboard shortcuts will not work."
+"\"MinimizeAllKey\" was renamed to \"MiniaturizeAllKey\"; update your domain"
+msgstr ""
+
+#: ../src/wdefaults.c:1178
+#, c-format
+msgid "icon \"%s\" doesn't exist, check your config files"
+msgstr ""
+
+#: ../src/wdefaults.c:1212
+#, c-format
+msgid "error loading image file \"%s\": %s"
+msgstr "Fehler beim Laden der Bilddatei \"%s\": %s"
+
+#: ../src/wdefaults.c:1248
+#, c-format
+msgid "could not find default icon \"%s\""
+msgstr "Standardsymbol \"%s\" konnte nicht gefunden werden"
+
+#: ../src/window.c:4772 ../src/window.c:4956
+#, fuzzy
+msgid ""
+"The NumLock, ScrollLock or similar key seems to be turned on. Turn it off or "
+"some mouse actions and keyboard shortcuts will not work."
 msgstr ""
 "Es scheint, dass NumLock, ScrollLock oder ähnliche Tasten aktiviert sind.\n"
 "Schalten Sie diese aus, da sonst einige Mausaktionen oder Tastaturkürzel "
 "nicht funktionieren."
 
-#: ../src/winmenu.c:121
+#: ../src/winmenu.c:90
+msgid "Restore geometry"
+msgstr ""
+
+#: ../src/winmenu.c:91
+msgid "Region snap"
+msgstr ""
+
+#: ../src/winmenu.c:92
+msgid "Edge snap"
+msgstr ""
+
+#: ../src/winmenu.c:93 ../src/winmenu.c:807
+msgid "Miniaturize"
+msgstr "Minimieren"
+
+#: ../src/winmenu.c:94 ../src/winmenu.c:827
+msgid "Shade"
+msgstr "Aufrollen"
+
+#: ../src/winmenu.c:96
+msgid "Resize/Move"
+msgstr "Größe/ Position ändern"
+
+#: ../src/winmenu.c:97 ../src/winmenu.c:838
+msgid "Select"
+msgstr "Auswählen"
+
+#: ../src/winmenu.c:99
+msgid "Attributes..."
+msgstr "Eigenschaften"
+
+#: ../src/winmenu.c:100
+msgid "Options"
+msgstr "Optionen"
+
+#: ../src/winmenu.c:101
+msgid "Attach as Tab..."
+msgstr ""
+
+#: ../src/winmenu.c:102
+msgid "Detach Tab"
+msgstr ""
+
+#: ../src/winmenu.c:103
+msgid "Close Tab Group"
+msgstr ""
+
+#: ../src/winmenu.c:105
+msgid "Close"
+msgstr "Schließen"
+
+#: ../src/winmenu.c:129 ../src/winspector.c:129
+msgid "Auto-hide on unfocus"
+msgstr ""
+
+#: ../src/winmenu.c:130 ../src/winspector.c:126
+msgid "Auto-miniaturize on unfocus"
+msgstr ""
+
+#: ../src/winmenu.c:131
+msgid "Keep at bottom"
+msgstr "Immer unten"
+
+#: ../src/winmenu.c:132
+msgid "Keep on top"
+msgstr "Immer oben"
+
+#: ../src/winmenu.c:133
+msgid "Lock position"
+msgstr ""
+
+#: ../src/winmenu.c:134
+msgid "Lock size"
+msgstr ""
+
+#: ../src/winmenu.c:136
+msgid "Skip switch panel"
+msgstr ""
+
+#: ../src/winmenu.c:137
+#, fuzzy
+msgid "Skip window list"
+msgstr "Fenster-Liste"
+
+#: ../src/winmenu.c:151
+msgid "Maximize"
+msgstr "Maximieren"
+
+#: ../src/winmenu.c:152
+msgid "Fullscreen"
+msgstr ""
+
+#: ../src/winmenu.c:153
+msgid "Vertical"
+msgstr ""
+
+#: ../src/winmenu.c:154
+msgid "Horizontal"
+msgstr ""
+
+#: ../src/winmenu.c:155
+msgid "Central"
+msgstr ""
+
+#: ../src/winmenu.c:156
+msgid "Left half"
+msgstr ""
+
+#: ../src/winmenu.c:157
+msgid "Right half"
+msgstr ""
+
+#: ../src/winmenu.c:158
+msgid "Top half"
+msgstr ""
+
+#: ../src/winmenu.c:159
+msgid "Bottom half"
+msgstr ""
+
+#: ../src/winmenu.c:160
+msgid "Top left"
+msgstr ""
+
+#: ../src/winmenu.c:161
+msgid "Top right"
+msgstr ""
+
+#: ../src/winmenu.c:162
+msgid "Bottom left"
+msgstr ""
+
+#: ../src/winmenu.c:163
+msgid "Bottom right"
+msgstr ""
+
+#: ../src/winmenu.c:164 ../src/winmenu.c:632
+msgid "Tiled"
+msgstr ""
+
+#: ../src/winmenu.c:271
+#, fuzzy
+msgid "Move left"
+msgstr "Bewegen nach..."
+
+#: ../src/winmenu.c:272
+msgid "Move right"
+msgstr ""
+
+#: ../src/winmenu.c:273
+#, fuzzy
+msgid "Move up"
+msgstr "Bewegen nach..."
+
+#: ../src/winmenu.c:274
+#, fuzzy
+msgid "Move down"
+msgstr "Bewegen nach..."
+
+#: ../src/winmenu.c:275
+msgid "Grow left"
+msgstr ""
+
+#: ../src/winmenu.c:276
+msgid "Grow right"
+msgstr ""
+
+#: ../src/winmenu.c:277
+msgid "Grow up"
+msgstr ""
+
+#: ../src/winmenu.c:278
+msgid "Grow down"
+msgstr ""
+
+#: ../src/winmenu.c:279
+msgid "Shrink left"
+msgstr ""
+
+#: ../src/winmenu.c:280
+msgid "Shrink right"
+msgstr ""
+
+#: ../src/winmenu.c:281
+msgid "Shrink up"
+msgstr ""
+
+#: ../src/winmenu.c:282
+msgid "Shrink down"
+msgstr ""
+
+#: ../src/winmenu.c:324
 msgid ""
 "This will kill the application.\n"
 "Any unsaved changes will be lost.\n"
@@ -1341,159 +3612,38 @@ msgstr ""
 "dabei gehen alle ungespeicherten Daten verloren.\n"
 "Bitte bestätigen."
 
-#: ../src/winmenu.c:252 ../src/winmenu.c:261
-msgid "Set Shortcut"
+#: ../src/winmenu.c:494
+#, fuzzy, c-format
+msgid "Set Shortcut %i"
 msgstr "Setze Kürzel"
 
-#: ../src/winmenu.c:335 ../src/winmenu.c:375
+#: ../src/winmenu.c:630
+msgid "Untiled"
+msgstr ""
+
+#: ../src/winmenu.c:661 ../src/winmenu.c:686 ../src/winmenu.c:712
+#: ../src/winmenu.c:733
 msgid "could not create submenu for window menu"
 msgstr "Untermenü für Fenstermenü konnte nicht erstellt werden"
 
-#: ../src/winmenu.c:379
-msgid "Keep on top"
-msgstr "Immer oben"
-
-#: ../src/winmenu.c:383
-msgid "Keep at bottom"
-msgstr "Immer unten"
-
-#.
-#. * Warning: If you make some change that affects the order of the
-#. * entries, you must update the command #defines in the top of
-#. * this file.
-#.
-#: ../src/winmenu.c:407 ../src/winmenu.c:536
-msgid "Maximize"
-msgstr "Maximieren"
-
-#: ../src/winmenu.c:415 ../src/winmenu.c:520
-msgid "Miniaturize"
-msgstr "Minimieren"
-
-#: ../src/winmenu.c:423 ../src/winmenu.c:554
-msgid "Shade"
-msgstr "Aufrollen"
-
-#: ../src/winmenu.c:439
-msgid "Resize/Move"
-msgstr "Größe/ Position ändern"
-
-#: ../src/winmenu.c:447
-msgid "Select"
-msgstr "Auswählen"
-
-#: ../src/winmenu.c:455
-msgid "Move To"
-msgstr "Bewegen nach..."
-
-#: ../src/winmenu.c:460
-msgid "Attributes..."
-msgstr "Eigenschaften"
-
-#: ../src/winmenu.c:462
-msgid "Options"
-msgstr "Optionen"
-
-#.
-#. entry = wMenuAddCallback(menu, _("Select Shortcut"), NULL, NULL);
-#. wMenuEntrySetCascade(menu, entry, makeMakeShortcutMenu(scr));
-#.
-#: ../src/winmenu.c:470
-msgid "Close"
-msgstr "Schließen"
-
-#: ../src/winmenu.c:514
+#: ../src/winmenu.c:804
 msgid "Deminiaturize"
 msgstr "Wiederherstellen"
 
-#: ../src/winmenu.c:530
-msgid "Unmaximize"
-msgstr "Ursprüngliche Größe"
-
-#: ../src/winmenu.c:548
+#: ../src/winmenu.c:824
 msgid "Unshade"
 msgstr "Abrollen"
 
-#: ../src/winspector.c:353
-#, c-format
-msgid "Could not find icon \"%s\" specified for this window"
-msgstr "Symbol \"%s\" für dieses Fenster konnte nicht gefunden werden"
+#: ../src/winmenu.c:835
+#, fuzzy
+msgid "Deselect"
+msgstr "Auswählen"
 
-#: ../src/winspector.c:368
-#, c-format
-msgid "Could not open specified icon \"%s\":%s"
-msgstr "Symbol \"%s\" konnte nicht geöffnet werden: %s"
-
-#: ../src/winspector.c:1056
-#, c-format
-msgid "Inspecting  %s.%s"
-msgstr "Untersuchen von %s.%s"
-
-#: ../src/winspector.c:1079
-msgid "Click in the window you wish to inspect."
-msgstr "Klicken Sie auf das Fenster, das untersucht werden soll."
-
-#: ../src/winspector.c:1111
-msgid ""
-"The configuration will apply to all\n"
-"windows that have their WM_CLASS\n"
-"property set to the above selected\n"
-"name, when saved."
-msgstr ""
-"Beim Speichern wirkt sich diese\n"
-"Konfiguration auf alle Fenster aus,\n"
-"deren WM_CLASS-Eigenschaft den\n"
-"obigen Wert hat."
-
-#: ../src/winspector.c:1136
-msgid "Save"
-msgstr "Speichern"
-
-#: ../src/winspector.c:1144
-msgid "Apply"
-msgstr "Anwenden"
-
-#: ../src/winspector.c:1150
-msgid "Reload"
-msgstr "Neu laden"
-
-#: ../src/winspector.c:1159 ../src/winspector.c:1169
-msgid "Window Specification"
-msgstr "Fensterbeschreibung"
-
-#: ../src/winspector.c:1160
-msgid "Window Attributes"
-msgstr "Fenstereigenschaften"
-
-#: ../src/winspector.c:1161
-msgid "Advanced Options"
-msgstr "Erweiterte Optionen"
-
-#: ../src/winspector.c:1162
-msgid "Icon and Initial Workspace"
-msgstr "Symbol und Start-Arbeitsfläche"
-
-#: ../src/winspector.c:1163
-msgid "Application Specific"
-msgstr "Anwendungsspezifisches"
-
-#: ../src/winspector.c:1176
-msgid "Defaults for all windows"
-msgstr "Standards für alle Fenster"
-
-#: ../src/winspector.c:1229
-msgid "Select window"
-msgstr "Fenster auswählen"
-
-#: ../src/winspector.c:1242
-msgid "Attributes"
-msgstr "Eigenschaften"
-
-#: ../src/winspector.c:1253
+#: ../src/winspector.c:97
 msgid "Disable titlebar"
 msgstr "Keine Titelleiste"
 
-#: ../src/winspector.c:1255
+#: ../src/winspector.c:98
 msgid ""
 "Remove the titlebar of this window.\n"
 "To access the window commands menu of a window\n"
@@ -1505,43 +3655,43 @@ msgstr ""
 "Für das Fenstermenü drücken Sie bitte Strg+Esc\n"
 "bzw. die von Ihnen eingestellte Tastenkombination."
 
-#: ../src/winspector.c:1261
+#: ../src/winspector.c:104
 msgid "Disable resizebar"
 msgstr "Keine Leiste für Größenänderung"
 
-#: ../src/winspector.c:1263
+#: ../src/winspector.c:105
 msgid "Remove the resizebar of this window."
 msgstr "Entfernen der Leiste zum Ändern der Größe bei diesem Fenster."
 
-#: ../src/winspector.c:1266
+#: ../src/winspector.c:107
 msgid "Disable close button"
 msgstr "Keine Schließen-Schaltfläche"
 
-#: ../src/winspector.c:1268
+#: ../src/winspector.c:108
 msgid "Remove the `close window' button of this window."
 msgstr "Entfernen der 'Fenster schließen'-Schaltfläche für dieses Fensters"
 
-#: ../src/winspector.c:1271
+#: ../src/winspector.c:110
 msgid "Disable miniaturize button"
 msgstr "Keine Minimieren-Schaltfläche"
 
-#: ../src/winspector.c:1273
+#: ../src/winspector.c:111
 msgid "Remove the `miniaturize window' button of the window."
 msgstr "Entfernen der 'Fenster minimieren'-Schaltfläche für dieses Fenster"
 
-#: ../src/winspector.c:1276
+#: ../src/winspector.c:113
 msgid "Disable border"
 msgstr "Kein Rand"
 
-#: ../src/winspector.c:1278
+#: ../src/winspector.c:114
 msgid "Remove the 1 pixel black border around the window."
 msgstr "Entfernen des einen Pixel breiten schwarzen Randes um das Fenster."
 
-#: ../src/winspector.c:1281
+#: ../src/winspector.c:116
 msgid "Keep on top (floating)"
 msgstr "Immer oben"
 
-#: ../src/winspector.c:1283
+#: ../src/winspector.c:117
 msgid ""
 "Keep the window over other windows, not allowing\n"
 "them to cover it."
@@ -1549,43 +3699,53 @@ msgstr ""
 "Dieses Fenster immer oben halten, sodass es nicht\n"
 "von anderen Fenstern verdeckt wird"
 
-#: ../src/winspector.c:1286
+#: ../src/winspector.c:120
 msgid "Keep at bottom (sunken)"
 msgstr "Immer unten"
 
-#: ../src/winspector.c:1288
+#: ../src/winspector.c:121
 msgid "Keep the window under all other windows."
 msgstr "Dieses Fenster unter allen anderen Fenster platzieren"
 
-#: ../src/winspector.c:1293
+#: ../src/winspector.c:124
 msgid "Make window present in all workspaces."
 msgstr "Dieses Fenster auf allen Arbeitsflächen sichtbar machen"
 
-#: ../src/winspector.c:1296
+#: ../src/winspector.c:127
+#, fuzzy
+msgid "Miniaturize the window automatically when it loses focus."
+msgstr "Dieses Fenster beim Start automatisch maximieren"
+
+#: ../src/winspector.c:130
+#, fuzzy
+msgid "Hide the window automatically when it loses focus."
+msgstr "Dieses Fenster beim Start automatisch maximieren"
+
+#: ../src/winspector.c:132
 msgid "Start miniaturized"
 msgstr "Minimiert starten"
 
-#: ../src/winspector.c:1298
+#: ../src/winspector.c:133
 msgid ""
 "Make the window be automatically miniaturized when it's\n"
 "first shown."
 msgstr "Dieses Fenster beim Start automatisch minimieren"
 
-#: ../src/winspector.c:1301
+#: ../src/winspector.c:136
 msgid "Start maximized"
 msgstr "Maximiert starten"
 
-#: ../src/winspector.c:1303
+#: ../src/winspector.c:137
 msgid ""
 "Make the window be automatically maximized when it's\n"
 "first shown."
 msgstr "Dieses Fenster beim Start automatisch maximieren"
 
-#: ../src/winspector.c:1306
+#: ../src/winspector.c:140
 msgid "Full screen maximization"
 msgstr "Vollbild-Maximierung"
 
-#: ../src/winspector.c:1308
+#: ../src/winspector.c:141
 msgid ""
 "Make the window use the whole screen space when it's\n"
 "maximized. The titlebar and resizebar will be moved\n"
@@ -1595,15 +3755,23 @@ msgstr ""
 "ausdehnen, Titel- und Größenleiste befinden sich dann außerhalb\n"
 "des Bildschirms."
 
-#: ../src/winspector.c:1324
-msgid "Advanced"
-msgstr "Erweitert"
+#: ../src/winspector.c:145
+#, fuzzy
+msgid "Swallow child window"
+msgstr "Fenster auswählen"
 
-#: ../src/winspector.c:1341
+#: ../src/winspector.c:146
+msgid ""
+"When a child process of this window maps its own window,\n"
+"hide this one and place the child where it was. When the\n"
+"child closes, this window reappears."
+msgstr ""
+
+#: ../src/winspector.c:151
 msgid "Do not bind keyboard shortcuts"
 msgstr "Keine Tastatur-Kürzel abfangen"
 
-#: ../src/winspector.c:1343
+#: ../src/winspector.c:152
 msgid ""
 "Do not bind keyboard shortcuts from Window Maker\n"
 "when this window is focused. This will allow the\n"
@@ -1614,11 +3782,11 @@ msgstr ""
 "wenn dieses Fenster maximiert ist. Dadurch erhält dieses\n"
 "Fenster alle Tastendrücke."
 
-#: ../src/winspector.c:1349
+#: ../src/winspector.c:157
 msgid "Do not bind mouse clicks"
 msgstr "Kein Mausklicks abfangen"
 
-#: ../src/winspector.c:1351
+#: ../src/winspector.c:158
 #, fuzzy
 msgid ""
 "Do not bind mouse actions, such as `Alt'+drag\n"
@@ -1628,29 +3796,38 @@ msgstr ""
 "Für dieses Fenster keine Mausaktionen abfangen,\n"
 "zum Beispiel Alt+Ziehen."
 
-#: ../src/winspector.c:1355
+#: ../src/winspector.c:162
 msgid "Do not show in the window list"
 msgstr "Nicht in der Fensterliste zeigen"
 
-#: ../src/winspector.c:1357
+#: ../src/winspector.c:163
 msgid "Do not list the window in the window list menu."
 msgstr "Dieses Fenster nicht in der Fensterliste aufführen."
 
-#: ../src/winspector.c:1360
+#: ../src/winspector.c:165
+#, fuzzy
+msgid "Do not show in the switch panel"
+msgstr "Nicht in der Fensterliste zeigen"
+
+#: ../src/winspector.c:166
+msgid "Do not include in switch panel while cycling windows."
+msgstr ""
+
+#: ../src/winspector.c:168
 msgid "Do not let it take focus"
 msgstr "Keinen Fokus erlauben"
 
-#: ../src/winspector.c:1362
+#: ../src/winspector.c:169
 msgid ""
 "Do not let the window take keyboard focus when you\n"
 "click on it."
 msgstr "Diesem Fenster beim Klick nicht den Tastaturfokus geben."
 
-#: ../src/winspector.c:1365
+#: ../src/winspector.c:172
 msgid "Keep inside screen"
 msgstr "Immer innerhalb des Bildschirmes"
 
-#: ../src/winspector.c:1367
+#: ../src/winspector.c:173
 msgid ""
 "Do not allow the window to move itself completely\n"
 "outside the screen. For bug compatibility.\n"
@@ -1658,21 +3835,21 @@ msgstr ""
 "Diesem Fenster nicht erlauben, ganz aus dem Bildschirm\n"
 "bewegt zu werden.\n"
 
-#: ../src/winspector.c:1371
+#: ../src/winspector.c:176
 msgid "Ignore 'Hide Others'"
 msgstr "Ignoriere 'Andere verstecken'"
 
-#: ../src/winspector.c:1373
+#: ../src/winspector.c:177
 msgid ""
 "Do not hide the window when issuing the\n"
 "`HideOthers' command."
 msgstr "Beim 'Andere verstecken'-Befehl dieses Fenster auslassen."
 
-#: ../src/winspector.c:1376
+#: ../src/winspector.c:180
 msgid "Ignore 'Save Session'"
 msgstr "'Sitzung speichern' ignorieren"
 
-#: ../src/winspector.c:1378
+#: ../src/winspector.c:181
 msgid ""
 "Do not save the associated application in the\n"
 "session's state, so that it won't be restarted\n"
@@ -1683,11 +3860,11 @@ msgstr ""
 "im Sitzungszustand speichern, sodass sie beim\n"
 "Start von Window Maker nicht gestartet wird."
 
-#: ../src/winspector.c:1383
+#: ../src/winspector.c:186
 msgid "Emulate application icon"
 msgstr "Anwendungssymbol ignorieren"
 
-#: ../src/winspector.c:1385
+#: ../src/winspector.c:187
 msgid ""
 "Make this window act as an application that provides\n"
 "enough information to Window Maker for a dockable\n"
@@ -1697,68 +3874,84 @@ msgstr ""
 "es genügend Informationen für eine dockbare\n"
 "Anwendung an Window Maker liefern würde."
 
-#: ../src/winspector.c:1390
-msgid "Don't focus across workspaces"
+#: ../src/winspector.c:191
+#, fuzzy
+msgid "Focus across workspaces"
 msgstr "Kein Arbeitsflächenwechsel bei Fokus"
 
-#: ../src/winspector.c:1392
+#: ../src/winspector.c:192
+#, fuzzy
 msgid ""
-"Do not allow Window Maker to switch workspace to satisfy\n"
-"a focus request (useful e.g. in the case of a multiple-tab\n"
-"firefox opening in a different workspace)."
-msgstr "Window Maker nicht erlauben, die Arbeitsfläche zu wechseln,\n"
+"Allow Window Maker to switch workspace to satisfy\n"
+"a focus request (annoying)."
+msgstr ""
+"Window Maker nicht erlauben, die Arbeitsfläche zu wechseln,\n"
 "um einen Fokus Anforderung zu erfüllen (nützlich z.B. beim Öffnen\n"
 "einer Firefox Anwendung mit mehreren Tabs in einer anderer Arbeitfläche)."
 
-#: ../src/winspector.c:1398
+#: ../src/winspector.c:195
+#, fuzzy
+msgid "Do not let it be minimized"
+msgstr "Keinen Fokus erlauben"
+
+#: ../src/winspector.c:196
+#, fuzzy
+msgid ""
+"Do not let the window of this application be\n"
+"minimized.\n"
+msgstr "Dieses Fenster nicht in der Fensterliste aufführen."
+
+#: ../src/winspector.c:199
+msgid "Ignore decoration changes"
+msgstr ""
+
+#: ../src/winspector.c:200
+msgid ""
+"Ignore any request from the application to change\n"
+"window decorations (like hiding the titlebar).\n"
+msgstr ""
+
+#: ../src/winspector.c:203
+msgid "Do not allow tab grouping"
+msgstr ""
+
+#: ../src/winspector.c:204
+msgid ""
+"Refuse this window as either the dragged window or the\n"
+"drop target when attaching windows into a tab group."
+msgstr ""
+
+#: ../src/winspector.c:207
+msgid "Do not tile"
+msgstr ""
+
+#: ../src/winspector.c:208
+msgid ""
+"Exempt this window from the workspace tiling layout.\n"
+"It stays floating and the layout reflows around it."
+msgstr ""
+
+#: ../src/winspector.c:212
 msgid "Disable language button"
 msgstr "Keine Sprachen-Schaltfläche"
 
-#: ../src/winspector.c:1400
+#: ../src/winspector.c:213
 msgid "Remove the `toggle language' button of the window."
 msgstr "Entfern der 'Wechsle Sprache'-Schaltfläche bei diesem Fenster"
 
-#: ../src/winspector.c:1417
-msgid "Miniwindow Image"
-msgstr "Minifenster-Bild"
-
-#: ../src/winspector.c:1444
-msgid "Icon filename:"
-msgstr "Symboldateiname"
-
-#: ../src/winspector.c:1455
-msgid "Ignore client supplied icon"
-msgstr "Ignoriere zur Verfügung gestelltes Symbol"
-
-#: ../src/winspector.c:1461
-msgid "Initial Workspace"
-msgstr "Start-Arbeitsfläche"
-
-#: ../src/winspector.c:1463
-msgid "The workspace to place the window when it's first shown."
-msgstr "Die Arbeitsfläche, auf dem das Fenster beim Start erscheinen soll"
-
-#: ../src/winspector.c:1469
-msgid "Nowhere in particular"
-msgstr "Keine Angabe"
-
-#: ../src/winspector.c:1486
-msgid "Application Attributes"
-msgstr "Anwendungseigenschaften"
-
-#: ../src/winspector.c:1497
+#: ../src/winspector.c:217
 msgid "Start hidden"
 msgstr "Versteckt starten"
 
-#: ../src/winspector.c:1499
+#: ../src/winspector.c:218
 msgid "Automatically hide application when it's started."
 msgstr "Anwendung beim Start automatisch verstecken"
 
-#: ../src/winspector.c:1502
+#: ../src/winspector.c:220
 msgid "No application icon"
 msgstr "Kein Anwendungssymbol"
 
-#: ../src/winspector.c:1504
+#: ../src/winspector.c:221
 msgid ""
 "Disable the application icon for the application.\n"
 "Note that you won't be able to dock it anymore,\n"
@@ -1770,11 +3963,11 @@ msgstr ""
 "docken lässt und bereits gedockte Symbole nicht mehr korrekt\n"
 "arbeiten."
 
-#: ../src/winspector.c:1510
+#: ../src/winspector.c:226
 msgid "Shared application icon"
 msgstr "Geteiltes Anwendungssymbol"
 
-#: ../src/winspector.c:1512
+#: ../src/winspector.c:227
 msgid ""
 "Use a single shared application icon for all of\n"
 "the instances of this application.\n"
@@ -1782,23 +3975,297 @@ msgstr ""
 "Für alle Instanzen dieser Anwendung ein\n"
 "einziges Anwendungssymbol verwenden.\n"
 
-#: ../src/workspace.c:97 ../src/workspace.c:98 ../src/workspace.c:682
+#: ../src/winspector.c:545
+#, c-format
+msgid "Could not find icon \"%s\" specified for this window"
+msgstr "Symbol \"%s\" für dieses Fenster konnte nicht gefunden werden"
+
+#: ../src/winspector.c:568
+#, c-format
+msgid "Could not open specified icon \"%s\":%s"
+msgstr "Symbol \"%s\" konnte nicht geöffnet werden: %s"
+
+#: ../src/winspector.c:980
+#, c-format
+msgid ""
+"Ignore client supplied icon is set, but icon filename textbox is empty. "
+"Using client supplied icon"
+msgstr ""
+
+#: ../src/winspector.c:1193
+#, c-format
+msgid "Inspecting  %s.%s"
+msgstr "Untersuchen von %s.%s"
+
+#: ../src/winspector.c:1218
+msgid "Click in the window you wish to inspect."
+msgstr "Klicken Sie auf das Fenster, das untersucht werden soll."
+
+#: ../src/winspector.c:1244
+msgid ""
+"The configuration will apply to all\n"
+"windows that have their WM_CLASS\n"
+"property set to the above selected\n"
+"name, when saved."
+msgstr ""
+"Beim Speichern wirkt sich diese\n"
+"Konfiguration auf alle Fenster aus,\n"
+"deren WM_CLASS-Eigenschaft den\n"
+"obigen Wert hat."
+
+#: ../src/winspector.c:1267
+msgid "Save"
+msgstr "Speichern"
+
+#: ../src/winspector.c:1275
+msgid "Apply"
+msgstr "Anwenden"
+
+#: ../src/winspector.c:1281
+msgid "Reload"
+msgstr "Neu laden"
+
+#: ../src/winspector.c:1290 ../src/winspector.c:1300
+msgid "Window Specification"
+msgstr "Fensterbeschreibung"
+
+#: ../src/winspector.c:1291
+msgid "Window Attributes"
+msgstr "Fenstereigenschaften"
+
+#: ../src/winspector.c:1292
+msgid "Advanced Options"
+msgstr "Erweiterte Optionen"
+
+#: ../src/winspector.c:1293
+msgid "Icon and Initial Workspace"
+msgstr "Symbol und Start-Arbeitsfläche"
+
+#: ../src/winspector.c:1294
+msgid "Application Specific"
+msgstr "Anwendungsspezifisches"
+
+#: ../src/winspector.c:1307
+msgid "Defaults for all windows"
+msgstr "Standards für alle Fenster"
+
+#: ../src/winspector.c:1358
+msgid "Select window"
+msgstr "Fenster auswählen"
+
+#: ../src/winspector.c:1366
+msgid "Auto tab group by class"
+msgstr ""
+
+#: ../src/winspector.c:1368
+msgid ""
+"When a new window of this class is opened and a tab group\n"
+"on the current workspace already contains a member of the\n"
+"same class, attach the new window to that group automatically."
+msgstr ""
+
+#: ../src/winspector.c:1571
+msgid "Attributes"
+msgstr "Eigenschaften"
+
+#: ../src/winspector.c:1644
+msgid "Advanced"
+msgstr "Erweitert"
+
+#: ../src/winspector.c:1696
+#, fuzzy
+msgid "Application Icon"
+msgstr "Kein Anwendungssymbol"
+
+#: ../src/winspector.c:1713
+msgid "Icon filename:"
+msgstr "Symboldateiname"
+
+#: ../src/winspector.c:1726
+msgid "Ignore client supplied icon"
+msgstr "Ignoriere zur Verfügung gestelltes Symbol"
+
+#: ../src/winspector.c:1732
+#, fuzzy
+msgid "Initial Workspaces"
+msgstr "Start-Arbeitsfläche"
+
+#: ../src/winspector.c:1734
+#, fuzzy
+msgid ""
+"The workspace(s) to place the window when it's first shown. An empty "
+"selection means no opinion, use the normal rules."
+msgstr "Die Arbeitsfläche, auf dem das Fenster beim Start erscheinen soll"
+
+#: ../src/winspector.c:1742
+msgid "Nowhere in particular"
+msgstr "Keine Angabe"
+
+#: ../src/winspector.c:1765
+msgid "Application Attributes"
+msgstr "Anwendungseigenschaften"
+
+#: ../src/wmspec.c:2852
+msgid ""
+" is not responding.\n"
+"\n"
+"You can wait for it to continue or force it to quit, losing any unsaved "
+"changes."
+msgstr ""
+
+#: ../src/wmspec.c:2856
+#, fuzzy
+msgid "Application Not Responding"
+msgstr "Anwendungseigenschaften"
+
+#: ../src/wmspec.c:2857
+msgid "Force Quit"
+msgstr ""
+
+#: ../src/wmspec.c:2857
+msgid "Wait"
+msgstr ""
+
+#: ../src/wmspec.c:2876
+#, c-format
+msgid "could not signal process %d (%s), dropping its X connection instead"
+msgstr ""
+
+#: ../src/wmspec.c:2882
+#, c-format
+msgid "could not kill process %d (%s), dropping its X connection instead"
+msgstr ""
+
+#: ../src/workspace.c:280 ../src/workspace.c:1668
 #, c-format
 msgid "Workspace %i"
 msgstr "Arbeitsfläche: %i"
 
-#: ../src/workspace.c:726
-msgid "Workspaces"
-msgstr "Arbeitsflächen"
+#: ../src/workspace.c:336
+#, c-format
+msgid "Workspace \"%s\" in use; cannot delete"
+msgstr ""
 
-#: ../src/workspace.c:728
+#: ../src/workspace.c:1446
+#, c-format
+msgid "WorkspaceOutputs: unknown workspace \"%s\""
+msgstr ""
+
+#: ../src/workspace.c:1503
+#, c-format
+msgid "no workspace allowed on output \"%s\", created \"%s\""
+msgstr ""
+
+#: ../src/workspace.c:1520
+#, c-format
+msgid ""
+"no workspace allowed on output \"%s\" and at MAX_WORKSPACES, dropping "
+"WorkspaceOutputs pin on \"%s\""
+msgstr ""
+
+#: ../src/workspace.c:1776 ../src/workspace.c:1793
+msgid "Layout"
+msgstr ""
+
+#: ../src/workspace.c:1778
+#, fuzzy
+msgid "could not create Layout menu"
+msgstr "Arbeitsflächenmenü konnte nicht erstellt werden"
+
+#: ../src/workspace.c:1811
 msgid "could not create Workspace menu"
 msgstr "Arbeitsflächenmenü konnte nicht erstellt werden"
 
-#: ../src/workspace.c:735
+#: ../src/workspace.c:1818
 msgid "New"
 msgstr "Neu"
 
-#: ../src/workspace.c:736
+#: ../src/workspace.c:1819
 msgid "Destroy Last"
 msgstr "Letzten zerstören"
+
+#: ../src/workspace.c:1821
+msgid "Last Used"
+msgstr ""
+
+#: ../src/wxkb.c:119
+#, c-format
+msgid "Alt is bound to %s, which is nonsensical"
+msgstr ""
+
+#: ../src/wxkb.c:122
+#, c-format
+msgid "Meta is bound to %s, which is nonsensical"
+msgstr ""
+
+#: ../src/wxkb.c:125
+#, c-format
+msgid "Super is bound to %s, which is nonsensical"
+msgstr ""
+
+#: ../src/wxkb.c:128
+#, c-format
+msgid "Hyper is bound to %s, which is nonsensical"
+msgstr ""
+
+#: ../src/wxkb.c:215
+msgid "XKB extension is not supported by the X server"
+msgstr ""
+
+#: ../src/wxkb.c:229
+msgid "could not load the XKB keymap from the X server"
+msgstr ""
+
+#: ../src/wxkb.c:263
+msgid "could not reload the XKB keymap, key bindings keep the previous mapping"
+msgstr ""
+
+#: ../src/wxkb.c:489
+#, c-format
+msgid "Can't convert keymask 0x%04X to a shortcut label"
+msgstr ""
+
+#: ../src/wxkb.c:599
+msgid "XTest extension is not available, accent picker cannot inject text"
+msgstr ""
+
+#: ../src/wxkb.c:608
+msgid "XTest extension is not usable, accent picker cannot inject text"
+msgstr ""
+
+#: ../src/wxkb.c:773
+msgid "accent picker: no spare keycode for text injection"
+msgstr ""
+
+#: ../src/xdnd.c:208
+#, c-format
+msgid "wXDNDGetTypeList failed = %u"
+msgstr ""
+
+#: ../src/xsmp.c:105
+msgid "lost connection to the session manager"
+msgstr ""
+
+#: ../src/xsmp.c:313
+msgid "could not register ICE connection watch"
+msgstr ""
+
+#: ../src/xsmp.c:331
+#, fuzzy, c-format
+msgid "could not connect to the session manager: %s"
+msgstr "Sitzung konnte nicht in %s gespeichert werden"
+
+#: ../src/xsettings.c:330
+#, c-format
+msgid "another XSETTINGS manager is running on screen %d"
+msgstr ""
+
+#: ../src/xsettings.c:332
+#, c-format
+msgid "could not claim the XSETTINGS selection for screen %d"
+msgstr ""
+
+#: ../src/xsettings.c:372
+#, c-format
+msgid "another XSETTINGS manager is taking over screen %d"
+msgstr ""

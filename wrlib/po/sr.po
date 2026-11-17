@@ -7,10 +7,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: WindowMaker 0.96.0\n"
+"Project-Id-Version: WindowMaker 0.96.0-next\n"
 "Report-Msgid-Bugs-To: wmaker-dev@googlegroups.com\n"
-"POT-Creation-Date: 2023-11-02 19:43+0100\n"
-"PO-Revision-Date: 2023-11-02 19:48+0100\n"
+"POT-Creation-Date: 2026-11-16 21:59-0500\n"
+"PO-Revision-Date: 2026-11-16 22:16-0500\n"
 "Last-Translator: Страхиња Радић <sr@strahinja.org>\n"
 "Language-Team: Serbian <sr@li.org>\n"
 "Language: sr\n"
@@ -21,107 +21,94 @@ msgstr ""
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 "X-Generator: poe 1.6.0-2-ge0263e3\n"
 
-#: ../../wrlib/load.c:130
+#: ../../wrlib/load.c:213
 #, c-format
 msgid "wrlib: out of memory for image cache\n"
 msgstr "wrlib: недовољно меморије за кеш слика\n"
 
-#: ../../wrlib/xpixmap.c:160
+#: ../../wrlib/xpixmap.c:179
 #, c-format
 msgid "wrlib: invalid window or pixmap passed to RCreateImageFromDrawable\n"
 msgstr ""
 "wrlib: RCreateImageFromDrawable прослеђени неисправан прозор или пиксмапа\n"
 
-#: ../../wrlib/context.c:410
-#, c-format
-msgid "wrlib: no standard colormap found for visual 0x%lX\n"
-msgstr "wrlib: за visual 0x%lX није пронађена стандардна мапа боја\n"
-
-#: ../../wrlib/context.c:458 ../../wrlib/context.c:470
+#: ../../wrlib/context.c:68
 #, c-format
 msgid "wrlib: invalid value \"%s\" for %s\n"
 msgstr "wrlib: неисправна вредност „%s“ за %s\n"
 
-#: ../../wrlib/misc.c:207
+#: ../../wrlib/context.c:296
+#, c-format
+msgid ""
+"wrlib: visual 0x%X is not TrueColor, indexed-colour visuals are no longer "
+"supported\n"
+msgstr ""
+
+#: ../../wrlib/misc.c:224
 msgid "no error"
 msgstr "без грешке"
 
-#: ../../wrlib/misc.c:210
+#: ../../wrlib/misc.c:227
 msgid "could not open file"
 msgstr "не може се отворити датотека"
 
-#: ../../wrlib/misc.c:213
+#: ../../wrlib/misc.c:230
 msgid "error reading from file"
 msgstr "грешка приликом читања из датотеке"
 
-#: ../../wrlib/misc.c:216
+#: ../../wrlib/misc.c:233
 msgid "error writing to file"
 msgstr "грешка приликом уписивања у датотеку"
 
 #. Known codes as per libWebP 0.4.1
-#: ../../wrlib/misc.c:219 ../../wrlib/load_webp.c:46
+#: ../../wrlib/misc.c:236 ../../wrlib/load_webp.c:44
 msgid "out of memory"
 msgstr "недовољно меморије"
 
-#: ../../wrlib/misc.c:222
-msgid "out of color cells"
-msgstr "недовољно ћелија боја"
-
-#: ../../wrlib/misc.c:225
+#: ../../wrlib/misc.c:239
 msgid "invalid or corrupted image file"
 msgstr "неисправна или оштећена датотека слике"
 
-#: ../../wrlib/misc.c:228
+#: ../../wrlib/misc.c:242
 msgid "image format is not supported"
 msgstr "формат слике није подржан"
 
-#: ../../wrlib/misc.c:231
+#: ../../wrlib/misc.c:245
 msgid "file does not contain requested image index"
 msgstr "датотека не садржи захтевани индекс слике"
 
-#: ../../wrlib/misc.c:234
+#: ../../wrlib/misc.c:248
 msgid "request for an invalid Visual ID"
 msgstr "захтевва се неисправни Visual ID"
 
-#: ../../wrlib/misc.c:237
-msgid "failed to create X standard colormap"
-msgstr "не може се креирати стандардна X мапа боја"
+#: ../../wrlib/misc.c:251
+msgid "a TrueColor visual is required"
+msgstr ""
 
-#: ../../wrlib/misc.c:240
+#: ../../wrlib/misc.c:254
 msgid "internal X error"
 msgstr "интерна грешка X-а"
 
-#: ../../wrlib/misc.c:244
+#: ../../wrlib/misc.c:258
 msgid "internal error"
 msgstr "интерна грешка"
 
-#: ../../wrlib/xutil.c:115 ../../wrlib/xutil.c:122
+#: ../../wrlib/xutil.c:96 ../../wrlib/xutil.c:99
+#, fuzzy, c-format
+msgid "wrlib: error occurred while releasing shared segment, %s: %s\n"
+msgstr "wrlib: грешка приликом ослобађања XImage-а, %s: %s\n"
+
+#: ../../wrlib/xutil.c:170 ../../wrlib/xutil.c:177
 #, c-format
 msgid "wrlib: could not allocate shared memory segment, %s: %s\n"
 msgstr "wrlib: не може се алоцирати дељени сегмент меморије, %s: %s\n"
 
-#: ../../wrlib/xutil.c:125 ../../wrlib/xutil.c:145 ../../wrlib/xutil.c:147
-#, c-format
-msgid "wrlib: error occurred while aborting %s, %s\n"
-msgstr "wrlib: грешка приликом прекидања %s, %s\n"
-
-#: ../../wrlib/xutil.c:141
-#, c-format
-msgid "wrlib: could not attach shared memory segment to XImage\n"
+#: ../../wrlib/xutil.c:188
+#, fuzzy, c-format
+msgid "wrlib: could not attach shared memory segment to server (error %d)\n"
 msgstr "wrlib: не може се придружити меморијски сегмент XImage-у\n"
 
-#: ../../wrlib/xutil.c:169 ../../wrlib/xutil.c:171
-#, c-format
-msgid "wrlib: error occurred while releasing XImage, %s: %s\n"
-msgstr "wrlib: грешка приликом ослобађања XImage-а, %s: %s\n"
-
-#: ../../wrlib/load_ppm.c:57 ../../wrlib/load_ppm.c:64
-#: ../../wrlib/load_ppm.c:77
-#, c-format
-msgid "wrlib: EOF / read error reading a byte from PPM file \"%s\"\n"
-msgstr "wrlib: EOF / грешка приликом читања бајта из PPM датотеке \"%s\"\n"
-
-#: ../../wrlib/load_ppm.c:91
+#: ../../wrlib/load_ppm.c:96
 #, c-format
 msgid ""
 "wrlib: junk in PPM file \"%s\", expected an unsigned integer but got 0x%02X\n"
@@ -129,7 +116,7 @@ msgstr ""
 "wrlib: смеће у PPM датотеци „%s“, очекује се неозначен цео број, али је "
 "присутно 0x%02X\n"
 
-#: ../../wrlib/load_ppm.c:100 ../../wrlib/load_ppm.c:107
+#: ../../wrlib/load_ppm.c:106
 #, c-format
 msgid ""
 "wrlib: ASCII decimal integer in PPM file \"%s\" is too large to be "
@@ -137,46 +124,61 @@ msgid ""
 msgstr ""
 "wrlib: ASCII децимални цео број у PPM датотеци „%s“ је превелик за обраду\n"
 
-#: ../../wrlib/load_webp.c:47
+#: ../../wrlib/load_ppm.c:179
+#, fuzzy, c-format
+msgid "wrlib: invalid digit in plain PBM file \"%s\"\n"
+msgstr "wrlib: неисправна вредност „%s“ за %s\n"
+
+#: ../../wrlib/load_webp.c:45
 msgid "invalid parameter"
 msgstr "неисправан параметар"
 
-#: ../../wrlib/load_webp.c:48
+#: ../../wrlib/load_webp.c:46
 msgid "error in the bitstream"
 msgstr "грешка у потоку битова"
 
-#: ../../wrlib/load_webp.c:49
+#: ../../wrlib/load_webp.c:47
 msgid "feature is not supported"
 msgstr "одлика није подржана"
 
-#: ../../wrlib/load_webp.c:50
+#: ../../wrlib/load_webp.c:48
 msgid "operation suspended"
 msgstr "операција је заустављена"
 
-#: ../../wrlib/load_webp.c:51
+#: ../../wrlib/load_webp.c:49
 msgid "aborted by user"
 msgstr "кориснички прекид"
 
-#: ../../wrlib/load_webp.c:52
+#: ../../wrlib/load_webp.c:50
 msgid "not enough data"
 msgstr "недовољно података"
 
-#: ../../wrlib/load_webp.c:61
+#: ../../wrlib/load_webp.c:59
 #, c-format
 msgid "unknown status code %d"
 msgstr "непознат статусни код %d"
 
-#: ../../wrlib/load_webp.c:106
-#, c-format
-msgid "wrlib: could not get size of WebP file \"%s\", %s\n"
-msgstr "wrlib: не може се одредити величина WebP датотеке „%s“, %s\n"
-
-#: ../../wrlib/load_webp.c:133
+#: ../../wrlib/load_webp.c:92
 #, c-format
 msgid "wrlib: could not get features from WebP file \"%s\", %s\n"
 msgstr "wrlib: не могу се одредити одлике WebP датотеке „%s“, %s\n"
 
-#: ../../wrlib/load_webp.c:165
+#: ../../wrlib/load_webp.c:124
 #, c-format
 msgid "wrlib: failed to decode WebP from file \"%s\"\n"
 msgstr "wrlib: не може се декодирати WebP из датотеке „%s“\n"
+
+#: ../../wrlib/load_heif.c:73
+#, fuzzy, c-format
+msgid "wrlib: could not read HEIF file \"%s\": %s\n"
+msgstr "wrlib: не може се одредити величина WebP датотеке „%s“, %s\n"
+
+#: ../../wrlib/load_heif.c:102
+#, fuzzy, c-format
+msgid "wrlib: no image %d in HEIF file \"%s\": %s\n"
+msgstr "wrlib: не може се одредити величина WebP датотеке „%s“, %s\n"
+
+#: ../../wrlib/load_heif.c:124
+#, fuzzy, c-format
+msgid "wrlib: could not decode HEIF file \"%s\": %s\n"
+msgstr "wrlib: не може се одредити величина WebP датотеке „%s“, %s\n"

@@ -1,9 +1,9 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: WRaster\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 18:45-0400\n"
-"PO-Revision-Date: 2026-09-21 05:24+0200\n"
+"Project-Id-Version: WindowMaker 0.96.0-next\n"
+"Report-Msgid-Bugs-To: wmaker-dev@googlegroups.com\n"
+"POT-Creation-Date: 2026-11-16 21:59-0500\n"
+"PO-Revision-Date: 2026-11-16 22:16-0500\n"
 "Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
 "Language-Team: Georgian <(nothing)>\n"
 "Language: ka\n"
@@ -13,6 +13,25 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Poedit 3.9\n"
 
+#: ../../wrlib/load.c:213
+#, c-format
+msgid "wrlib: out of memory for image cache\n"
+msgstr "wrlib: გამოსახულებების კეშისთვის მეხსიერება საკმარისი არაა\n"
+
+#: ../../wrlib/xpixmap.c:179
+#, c-format
+msgid "wrlib: invalid window or pixmap passed to RCreateImageFromDrawable\n"
+msgstr ""
+"wrlib: ფუნქციისთვის RCreateImageFromDrawable გადაცემულია არასწორი ფანჯარა, "
+"ან pixman\n"
+
+#: ../../wrlib/context.c:68
+#, c-format
+msgid "wrlib: invalid value \"%s\" for %s\n"
+msgstr "wrlib: არასწორი მნიშვნელობა \"%s\" %s-ისთვის\n"
+
+#: ../../wrlib/context.c:296
+#, c-format
 msgid ""
 "wrlib: visual 0x%X is not TrueColor, indexed-colour visuals are no longer "
 "supported\n"
@@ -20,101 +39,74 @@ msgstr ""
 "wrlib: ვიზუალი 0x%X TrueColor არ არის, ინდექსირებული ფერების ვიზუალები აღარ "
 "არის მხარდაჭერილი\n"
 
-msgid "a TrueColor visual is required"
-msgstr "საჭიროა TrueColor ვიზუალი"
-
-msgid "wrlib: error occurred while releasing shared segment, %s: %s\n"
-msgstr "wrlib: შეცდომა გაზიარებული სეგმენტის გათავისუფლებისას, %s: %s\n"
-
-msgid "wrlib: could not attach shared memory segment to server (error %d)\n"
-msgstr ""
-"wrlib: გაზიარებული მეხსიერების სეგმენტის სერვერთან მიმაგრება შეუძლებელია "
-"(შეცდომა %d)\n"
-
-msgid "wrlib: could not read HEIF file \"%s\": %s\n"
-msgstr "wrlib: HEIF ფაილის \"%s\" წაკითხვა შეუძლებელია: %s\n"
-
-msgid "wrlib: no image %d in HEIF file \"%s\": %s\n"
-msgstr "wrlib: HEIF ფაილში \"%s\" გამოსახულება %d არ არსებობს: %s\n"
-
-msgid "wrlib: could not decode HEIF file \"%s\": %s\n"
-msgstr "wrlib: HEIF ფაილის \"%s\" დეკოდირება შეუძლებელია: %s\n"
-
-#: ../../wrlib/load.c:210
-#, c-format
-msgid "wrlib: out of memory for image cache\n"
-msgstr "wrlib: გამოსახულებების კეშისთვის მეხსიერება საკმარისი არაა\n"
-
-#: ../../wrlib/xpixmap.c:178
-#, c-format
-msgid "wrlib: invalid window or pixmap passed to RCreateImageFromDrawable\n"
-msgstr ""
-"wrlib: ფუნქციისთვის RCreateImageFromDrawable გადაცემულია არასწორი ფანჯარა, "
-"ან pixman\n"
-
-#: ../../wrlib/context.c:67
-#, c-format
-msgid "wrlib: invalid value \"%s\" for %s\n"
-msgstr "wrlib: არასწორი მნიშვნელობა \"%s\" %s-ისთვის\n"
-
-#: ../../wrlib/misc.c:223
+#: ../../wrlib/misc.c:224
 msgid "no error"
 msgstr "შეცდომის გარეშე"
 
-#: ../../wrlib/misc.c:226
+#: ../../wrlib/misc.c:227
 msgid "could not open file"
 msgstr "ფაილის გახსნა შეუძლებელია"
 
-#: ../../wrlib/misc.c:229
+#: ../../wrlib/misc.c:230
 msgid "error reading from file"
 msgstr "ფაილიდან წაკითხვის შეცდომა"
 
-#: ../../wrlib/misc.c:232
+#: ../../wrlib/misc.c:233
 msgid "error writing to file"
 msgstr "ფაილში ჩაწერის შეცდომა"
 
 #. Known codes as per libWebP 0.4.1
-#: ../../wrlib/misc.c:235 ../../wrlib/load_webp.c:44
+#: ../../wrlib/misc.c:236 ../../wrlib/load_webp.c:44
 msgid "out of memory"
 msgstr "არასაკმარისი მეხსიერება"
 
-#: ../../wrlib/misc.c:238
+#: ../../wrlib/misc.c:239
 msgid "invalid or corrupted image file"
 msgstr "არასწორი, ან დაზიანებული გამოსახულების ფაილი"
 
-#: ../../wrlib/misc.c:241
+#: ../../wrlib/misc.c:242
 msgid "image format is not supported"
 msgstr "გამოსახულების ფორმატი მხარდაჭერილი არაა"
 
-#: ../../wrlib/misc.c:244
+#: ../../wrlib/misc.c:245
 msgid "file does not contain requested image index"
 msgstr "ფაილი მოთხოვნილი გამოსახულების ინდექსს არ შეიცავს"
 
-#: ../../wrlib/misc.c:247
+#: ../../wrlib/misc.c:248
 msgid "request for an invalid Visual ID"
 msgstr "მოთხოვნა არასწორი ვიზუალის ID-ისთვის"
 
-#: ../../wrlib/misc.c:253
+#: ../../wrlib/misc.c:251
+msgid "a TrueColor visual is required"
+msgstr "საჭიროა TrueColor ვიზუალი"
+
+#: ../../wrlib/misc.c:254
 msgid "internal X error"
 msgstr "X-ის შიდა შეცდომა"
 
-#: ../../wrlib/misc.c:257
+#: ../../wrlib/misc.c:258
 msgid "internal error"
 msgstr "შიდა შეცდომა"
 
-#: ../../wrlib/xutil.c:169 ../../wrlib/xutil.c:176
+#: ../../wrlib/xutil.c:96 ../../wrlib/xutil.c:99
+#, c-format
+msgid "wrlib: error occurred while releasing shared segment, %s: %s\n"
+msgstr "wrlib: შეცდომა გაზიარებული სეგმენტის გათავისუფლებისას, %s: %s\n"
+
+#: ../../wrlib/xutil.c:170 ../../wrlib/xutil.c:177
 #, c-format
 msgid "wrlib: could not allocate shared memory segment, %s: %s\n"
 msgstr ""
 "wrlib: გაზიარებული მეხსიერების სეგმენტის, %s, გამოყოფა შეუძლებელია: %s\n"
 
-#: ../../wrlib/load_ppm.c:54 ../../wrlib/load_ppm.c:61
-#: ../../wrlib/load_ppm.c:76
+#: ../../wrlib/xutil.c:188
 #, c-format
-msgid "wrlib: EOF / read error reading a byte from PPM file \"%s\"\n"
-msgstr "wrlib: EOF / ბაიტის წაკითხვის შეცდომა PPM ფაილიდან \"%s\"\n"
+msgid "wrlib: could not attach shared memory segment to server (error %d)\n"
+msgstr ""
+"wrlib: გაზიარებული მეხსიერების სეგმენტის სერვერთან მიმაგრება შეუძლებელია "
+"(შეცდომა %d)\n"
 
-#: ../../wrlib/load_ppm.c:90
+#: ../../wrlib/load_ppm.c:96
 #, c-format
 msgid ""
 "wrlib: junk in PPM file \"%s\", expected an unsigned integer but got 0x%02X\n"
@@ -122,7 +114,7 @@ msgstr ""
 "wrlib: ნაგავი PPM ფაილში \"%s\", მოველოდი უნიშნო მთელ რიცხვს, მაგრამ მივიღე "
 "0x%02X\n"
 
-#: ../../wrlib/load_ppm.c:99 ../../wrlib/load_ppm.c:106
+#: ../../wrlib/load_ppm.c:106
 #, c-format
 msgid ""
 "wrlib: ASCII decimal integer in PPM file \"%s\" is too large to be "
@@ -130,6 +122,11 @@ msgid ""
 msgstr ""
 "wrlib: ASCII ათობითი მთელი რიცხვი PPM ფაილში \"%s\" დასამუშავებლად "
 "მეტისმეტად დიდია\n"
+
+#: ../../wrlib/load_ppm.c:179
+#, fuzzy, c-format
+msgid "wrlib: invalid digit in plain PBM file \"%s\"\n"
+msgstr "wrlib: HEIF ფაილში \"%s\" გამოსახულება %d არ არსებობს: %s\n"
 
 #: ../../wrlib/load_webp.c:45
 msgid "invalid parameter"
@@ -169,3 +166,18 @@ msgstr "wrlib: ვერ მივიღე თვისებები WebP ფ
 #, c-format
 msgid "wrlib: failed to decode WebP from file \"%s\"\n"
 msgstr "wrlib: WebP-ის გაშიფვრის შეცდომა ფაილიდან \"%s\"\n"
+
+#: ../../wrlib/load_heif.c:73
+#, c-format
+msgid "wrlib: could not read HEIF file \"%s\": %s\n"
+msgstr "wrlib: HEIF ფაილის \"%s\" წაკითხვა შეუძლებელია: %s\n"
+
+#: ../../wrlib/load_heif.c:102
+#, fuzzy, c-format
+msgid "wrlib: no image %d in HEIF file \"%s\": %s\n"
+msgstr "wrlib: HEIF ფაილში \"%s\" გამოსახულება %d არ არსებობს: %s\n"
+
+#: ../../wrlib/load_heif.c:124
+#, c-format
+msgid "wrlib: could not decode HEIF file \"%s\": %s\n"
+msgstr "wrlib: HEIF ფაილის \"%s\" დეკოდირება შეუძლებელია: %s\n"

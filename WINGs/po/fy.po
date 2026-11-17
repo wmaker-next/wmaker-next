@@ -5,10 +5,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: wmaker-0.95.7+\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2016-01-21 16:19+0100\n"
-"PO-Revision-Date: 2016-01-21 00:00+0000\n"
+"Project-Id-Version: WindowMaker 0.96.0-next\n"
+"Report-Msgid-Bugs-To: wmaker-dev@googlegroups.com\n"
+"POT-Creation-Date: 2026-11-16 21:59-0500\n"
+"PO-Revision-Date: 2026-11-16 22:16-0500\n"
 "Last-Translator: Alwin <translations@ziggo.nl>\n"
 "Language-Team: Western Frisian\n"
 "Language: fy\n"
@@ -16,63 +16,63 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../../WINGs/error.c:106
+#: ../../WINGs/error.c:110
 msgid "fatal: "
 msgstr "ûnwerstelber: "
 
-#: ../../WINGs/error.c:112
+#: ../../WINGs/error.c:116
 msgid "error: "
 msgstr "flater: "
 
-#: ../../WINGs/error.c:118
+#: ../../WINGs/error.c:122
 msgid "warning: "
 msgstr "warskôging: "
 
-#: ../../WINGs/findfile.c:63
+#: ../../WINGs/findfile.c:58
 #, c-format
 msgid "could not get password entry for UID %i"
 msgstr "koe accountgegevens foar UID %i net krije"
 
-#: ../../WINGs/findfile.c:93
+#: ../../WINGs/findfile.c:88
 #, c-format
 msgid "could not get password entry for user %s"
 msgstr "koe accountgegevens foar brûker %s net krije"
 
-#: ../../WINGs/findfile.c:212
+#: ../../WINGs/findfile.c:208
 #, c-format
 msgid "could not expand %s"
 msgstr "koe %s net útwurkje"
 
-#: ../../WINGs/findfile.c:441
+#: ../../WINGs/findfile.c:455
 #, c-format
 msgid "Could not open input file \"%s\": %s"
 msgstr "Koe ynfierbestân \"%s\" net iepenje: %s"
 
-#: ../../WINGs/findfile.c:457
+#: ../../WINGs/findfile.c:471
 #, c-format
 msgid "Could not create target file \"%s\": %s"
 msgstr "Koe doelbestân \"%s\" net oanmeitsje: %s"
 
-#: ../../WINGs/findfile.c:465
+#: ../../WINGs/findfile.c:479
 msgid "could not allocate memory for the copy buffer"
 msgstr "koe ûnthâld foar de kopybuffer net tawize"
 
-#: ../../WINGs/findfile.c:482
+#: ../../WINGs/findfile.c:496
 #, c-format
 msgid "could not read from file \"%s\": %s"
 msgstr "koe bestân \"%s\" net ynlêze: %s"
 
-#: ../../WINGs/findfile.c:497
+#: ../../WINGs/findfile.c:511
 #, c-format
 msgid "could not write data to file \"%s\": %s"
 msgstr "koe gjin data skriuwe nei bestân \"%s\": %s"
 
-#: ../../WINGs/findfile.c:509
+#: ../../WINGs/findfile.c:523
 #, c-format
 msgid "could not set permission 0%03o on file \"%s\": %s"
 msgstr "koe tastimming 0%03o net ynstelle op bestân \"%s\": %s"
 
-#: ../../WINGs/findfile.c:513
+#: ../../WINGs/findfile.c:527
 #, c-format
 msgid "could not close the file \"%s\": %s"
 msgstr "koe bestân \"%s\" net ôfslute: %s"
@@ -101,62 +101,62 @@ msgid "reached end of file while searching '*/' for comment started at line %d"
 msgstr ""
 "bestânsein berikt by sykjen nei '*/' foar kommentaar begûnen op rigel %d"
 
-#: ../../WINGs/menuparser.c:344
+#: ../../WINGs/menuparser.c:353
 msgid "missing closing double-quote before end-of-line"
 msgstr "ûntbrekkend slutend dûbeld oanhelteken foar rigelein"
 
-#: ../../WINGs/menuparser.c:362
+#: ../../WINGs/menuparser.c:375
 msgid "missing closing simple-quote before end-of-line"
 msgstr "ûntbrekkend slutend inkeld oanhelteken foar rigelein"
 
-#: ../../WINGs/menuparser.c:380
+#: ../../WINGs/menuparser.c:393
 msgid "too many nested macro expansions, breaking loop"
 msgstr "te folle neske makro-útwurkingen, syklus ôfbrutsen"
 
-#: ../../WINGs/menuparser.c:439
+#: ../../WINGs/menuparser.c:458
 #, c-format
 msgid "unknown directive '#%s'"
 msgstr "ûnbekende oanwizing '#%s'"
 
-#: ../../WINGs/menuparser.c:444
+#: ../../WINGs/menuparser.c:463
 #, c-format
 msgid "extra text after '#' command is ignored: \"%.16s...\""
 msgstr "ekstra tekst nei #-kommando wurdt negearre: \"%.16s...\""
 
-#: ../../WINGs/menuparser.c:459
+#: ../../WINGs/menuparser.c:479
 msgid "no file name found for #include"
 msgstr "gjin bestânsnamme fûn foar #include"
 
-#: ../../WINGs/menuparser.c:471
+#: ../../WINGs/menuparser.c:491
 msgid "file name must be enclosed in brackets or double-quotes for #define"
 msgstr ""
 "bestânsnamme moat omsletten wurde mei heakjes of dûbelde oanheltekens foar "
 "#define"
 
-#: ../../WINGs/menuparser.c:485
+#: ../../WINGs/menuparser.c:505
 #, c-format
 msgid "missing closing '%c' in filename specification"
 msgstr "ûntbrekkende slutende '%c' yn bestânsnammeopjefte"
 
-#: ../../WINGs/menuparser.c:503
+#: ../../WINGs/menuparser.c:523
 msgid "too many nested #include's"
 msgstr "te folle neske #include's"
 
-#: ../../WINGs/menuparser.c:568
+#: ../../WINGs/menuparser.c:556
 #, c-format
 msgid "could not find file \"%s\" for #include"
 msgstr "koe bestân \"%s\" net fine foar #include"
 
-#: ../../WINGs/menuparser.c:589
+#: ../../WINGs/menuparser.c:576
 #, c-format
 msgid "missing macro name argument to #%s"
 msgstr "ûntbrekkend makronamme-argumint by #%s"
 
-#: ../../WINGs/menuparser.c:600
+#: ../../WINGs/menuparser.c:587
 msgid "too many nested #if sequences"
 msgstr "te folle neske #if-rigen"
 
-#: ../../WINGs/menuparser.c:626 ../../WINGs/menuparser.c:643
+#: ../../WINGs/menuparser.c:613 ../../WINGs/menuparser.c:630
 #, c-format
 msgid "found #%s but has no matching #if"
 msgstr "#%s fûn, mar hat gjin bybehearrende #if"
@@ -165,17 +165,17 @@ msgstr "#%s fûn, mar hat gjin bybehearrende #if"
 msgid "no macro name found for #define"
 msgstr "gjin makronamme fûn foar #define"
 
-#: ../../WINGs/menuparser_macros.c:187
+#: ../../WINGs/menuparser_macros.c:188
 #, c-format
 msgid "premature end of file while reading arg-list for macro \"%s\""
 msgstr "foartidich bestânsein by ynlêzen arg.-list foar makro \"%s\""
 
-#: ../../WINGs/menuparser_macros.c:194
+#: ../../WINGs/menuparser_macros.c:195
 #, c-format
 msgid "too many parameters for macro \"%s\" definition"
 msgstr "te folle parameters foar bepaling makro \"%s\""
 
-#: ../../WINGs/menuparser_macros.c:209
+#: ../../WINGs/menuparser_macros.c:210
 #, c-format
 msgid ""
 "invalid character '%c' in arg-list for macro \"%s\" while expecting "
@@ -184,7 +184,7 @@ msgstr ""
 "ûnjildich letterteken '%c' yn arg.-list foar makro \"%s\", ferwachte "
 "parameternamme"
 
-#: ../../WINGs/menuparser_macros.c:220
+#: ../../WINGs/menuparser_macros.c:221
 #, c-format
 msgid ""
 "invalid character '%c' in arg-list for macro \"%s\" while expecting ',' or "
@@ -193,367 +193,417 @@ msgstr ""
 "ûnjildich letterteken '%c' yn arg.-list foar makro \"%s\", ferwachte ',' of "
 "')'"
 
-#: ../../WINGs/menuparser_macros.c:253
+#: ../../WINGs/menuparser_macros.c:254
 #, c-format
 msgid "macro \"%s\" already defined, ignoring redefinition"
 msgstr "makro \"%s\" al definiearre, negearret werdefiniearjen"
 
-#: ../../WINGs/menuparser_macros.c:346
+#: ../../WINGs/menuparser_macros.c:348
 #, c-format
 msgid "more content than supported for the macro \"%s\""
 msgstr "mear ynhâld as stipe foar makro \"%s\""
 
-#: ../../WINGs/menuparser_macros.c:455
+#: ../../WINGs/menuparser_macros.c:459
 #, c-format
 msgid "expansion for macro \"%s\" too big, line truncated"
 msgstr "útwurking foar makro \"%s\" te grut, rigel ynkoarte"
 
-#: ../../WINGs/menuparser_macros.c:467
+#: ../../WINGs/menuparser_macros.c:471
 #, c-format
 msgid "macro \"%s\" needs parenthesis for arguments"
 msgstr "makro \"%s\" hat heakjes nedich foar arguminten"
 
-#: ../../WINGs/menuparser_macros.c:498
+#: ../../WINGs/menuparser_macros.c:502
 msgid "missing closing quote or double-quote before end-of-line"
 msgstr "ûntbrekkend slutend of dûbeld oanhelteken foar rigelein"
 
-#: ../../WINGs/menuparser_macros.c:521
+#: ../../WINGs/menuparser_macros.c:525
 #, c-format
 msgid "too many arguments for macro \"%s\", expected only %d"
 msgstr "te folle arguminten foar makro \"%s\", ferwachte allinnich %d"
 
-#: ../../WINGs/menuparser_macros.c:530
+#: ../../WINGs/menuparser_macros.c:534
 #, c-format
 msgid "premature end of line while searching for arguments to macro \"%s\""
 msgstr "foartidich rigelein by sykjen nei arguminten by makro \"%s\""
 
-#: ../../WINGs/menuparser_macros.c:536
+#: ../../WINGs/menuparser_macros.c:540
 #, c-format
 msgid "not enough arguments for macro \"%s\", expected %d but got only %d"
 msgstr ""
 "ûnfoldwaande arguminten foar makro \"%s\", ferwachte %d, mar krige allinnich "
 "%d"
 
-#: ../../WINGs/menuparser_macros.c:541
+#: ../../WINGs/menuparser_macros.c:545
 #, c-format
 msgid "too much data in parameter list of macro \"%s\", truncated"
 msgstr "te folle data yn parameterlist fan makro \"%s\", ynkoarte"
 
-#: ../../WINGs/menuparser_macros.c:561
+#: ../../WINGs/menuparser_macros.c:565
 #, c-format
 msgid "size of value for macro '%s' is too big, truncated"
 msgstr "wearde foar makro '%s' is te lang, ynkoarte"
 
-#: ../../WINGs/menuparser_macros.c:642 ../../WINGs/menuparser_macros.c:668
+#: ../../WINGs/menuparser_macros.c:646 ../../WINGs/menuparser_macros.c:672
 #, c-format
 msgid "could not determine %s"
 msgstr "koe %s net fêststelle"
 
-#: ../../WINGs/proplist.c:78
+#: ../../WINGs/proplist.c:111
 #, c-format
 msgid "syntax error in %s %s, line %i: %s"
 msgstr "syntaksflater yn %s %s, rigel %i: %s"
 
-#: ../../WINGs/proplist.c:134
+#: ../../WINGs/proplist.c:167
 msgid "Only string or data is supported for a proplist dictionary key"
 msgstr ""
 
-#: ../../WINGs/proplist.c:167 ../../WINGs/proplist.c:217
-#: ../../WINGs/proplist.c:382 ../../WINGs/proplist.c:458
-#: ../../WINGs/proplist.c:1048 ../../WINGs/proplist.c:1098
-#: ../../WINGs/proplist.c:1246 ../../WINGs/proplist.c:1314
-#: ../../WINGs/proplist.c:1419 ../../WINGs/proplist.c:1463
+#: ../../WINGs/proplist.c:200 ../../WINGs/proplist.c:250
+#: ../../WINGs/proplist.c:521 ../../WINGs/proplist.c:584
+#: ../../WINGs/proplist.c:1214 ../../WINGs/proplist.c:1264
+#: ../../WINGs/proplist.c:1412 ../../WINGs/proplist.c:1492
+#: ../../WINGs/proplist.c:1614 ../../WINGs/proplist.c:1658
+#: ../../WINGs/proplist.c:1895
 msgid "Used proplist functions on non-WMPropLists objects"
 msgstr ""
 
-#: ../../WINGs/proplist.c:635
+#: ../../WINGs/proplist.c:793
 msgid "unterminated PropList string"
 msgstr ""
 
-#: ../../WINGs/proplist.c:673
+#: ../../WINGs/proplist.c:831
 msgid "unterminated PropList data"
 msgstr ""
 
-#: ../../WINGs/proplist.c:681
+#: ../../WINGs/proplist.c:839
 msgid "unterminated PropList data (missing hexdigit)"
 msgstr ""
 
-#: ../../WINGs/proplist.c:693 ../../WINGs/proplist.c:698
+#: ../../WINGs/proplist.c:851 ../../WINGs/proplist.c:856
 msgid "non hexdigit character in PropList data"
 msgstr ""
 
-#: ../../WINGs/proplist.c:730
+#: ../../WINGs/proplist.c:888
 msgid "unterminated PropList array"
 msgstr ""
 
-#: ../../WINGs/proplist.c:738
+#: ../../WINGs/proplist.c:896
 msgid "missing or unterminated PropList array"
 msgstr ""
 
-#: ../../WINGs/proplist.c:748
+#: ../../WINGs/proplist.c:906
 msgid "could not get PropList array element"
 msgstr ""
 
-#: ../../WINGs/proplist.c:775
+#: ../../WINGs/proplist.c:933
 msgid "unterminated PropList dictionary"
 msgstr ""
 
-#: ../../WINGs/proplist.c:792
+#: ../../WINGs/proplist.c:950
 msgid "missing PropList dictionary key"
 msgstr ""
 
-#: ../../WINGs/proplist.c:794
+#: ../../WINGs/proplist.c:952
 msgid "missing PropList dictionary entry key or unterminated dictionary"
 msgstr ""
 
-#: ../../WINGs/proplist.c:802
+#: ../../WINGs/proplist.c:960
 msgid "error parsing PropList dictionary key"
 msgstr ""
 
-#: ../../WINGs/proplist.c:810
+#: ../../WINGs/proplist.c:968
 msgid "missing = in PropList dictionary entry"
 msgstr ""
 
-#: ../../WINGs/proplist.c:818
+#: ../../WINGs/proplist.c:976
 msgid "error parsing PropList dictionary entry value"
 msgstr ""
 
-#: ../../WINGs/proplist.c:826
+#: ../../WINGs/proplist.c:984
 msgid "missing ; in PropList dictionary entry"
 msgstr ""
 
-#: ../../WINGs/proplist.c:885
+#: ../../WINGs/proplist.c:1010
+msgid "PropList nested too deeply"
+msgstr ""
+
+#: ../../WINGs/proplist.c:1049
 msgid ""
 "was expecting a string, data, array or dictionary. If it's a string, try "
 "enclosing it with \"."
 msgstr ""
 
-#: ../../WINGs/proplist.c:888
+#: ../../WINGs/proplist.c:1052
 msgid "Comments are not allowed inside WindowMaker owned domain files."
 msgstr "Kommentaar is net tastean binnen domeinbestannen fan WindowMaker."
 
-#: ../../WINGs/proplist.c:1483 ../../WINGs/proplist.c:1548
-#: ../../WINGs/proplist.c:1612
+#: ../../WINGs/proplist.c:1675
+#, c-format
+msgid "property list description larger than %d bytes, rejected"
+msgstr ""
+
+#: ../../WINGs/proplist.c:1687 ../../WINGs/proplist.c:1967
+#: ../../WINGs/proplist.c:2009
 msgid "extra data after end of property list"
 msgstr "ekstra data nei ein fan 'property list'"
 
-#: ../../WINGs/proplist.c:1523
+#: ../../WINGs/proplist.c:1935
 #, c-format
 msgid "could not get size for file '%s'"
 msgstr "koe grutte foar bestân '%s' net krije"
 
-#: ../../WINGs/proplist.c:1531
+#: ../../WINGs/proplist.c:1940
+#, c-format
+msgid "property list file '%s' exceeds %u bytes, refusing to load"
+msgstr ""
+
+#: ../../WINGs/proplist.c:1950
 #, c-format
 msgid "error reading from file '%s'"
 msgstr "flater by ynlêzen bestân '%s'"
 
-#: ../../WINGs/proplist.c:1578
+#: ../../WINGs/proplist.c:1994
 #, c-format
 msgid "%s:could not open menu file"
 msgstr "%s:koe menubestân net iepenje"
 
-#: ../../WINGs/proplist.c:1660
+#: ../../WINGs/proplist.c:1998
+#, c-format
+msgid ""
+"%s: pipe output exceeds %u bytes or child did not exit normally, truncating"
+msgstr ""
+
+#: ../../WINGs/proplist.c:2057
 #, c-format
 msgid "mkstemp (%s) failed"
 msgstr "oanmeitsjen unyk tydlik bestân (%s) mislearre"
 
-#: ../../WINGs/proplist.c:1670
+#: ../../WINGs/proplist.c:2068
 #, c-format
 msgid "mktemp (%s) failed"
 msgstr "oanmeitsjen tydlik bestân (%s) mislearre"
 
-#: ../../WINGs/proplist.c:1677
+#: ../../WINGs/proplist.c:2075
 #, c-format
 msgid "open (%s) failed"
 msgstr "iepenjen (%s) mislearre"
 
-#: ../../WINGs/proplist.c:1684
+#: ../../WINGs/proplist.c:2082
 #, c-format
 msgid "writing to file: %s failed"
 msgstr "skriuwen nei bestân: %s mislearre"
 
-#: ../../WINGs/proplist.c:1693
+#: ../../WINGs/proplist.c:2092
 #, c-format
 msgid "fclose (%s) failed"
 msgstr "ôfsluten stream (%s) mislearre"
 
-#: ../../WINGs/proplist.c:1701
+#: ../../WINGs/proplist.c:2100
 #, c-format
 msgid "rename ('%s' to '%s') failed"
 msgstr "omneamen ('%s' nei '%s') mislearre"
 
-#: ../../WINGs/proplist.c:1772
+#: ../../WINGs/proplist.c:2204
 #, c-format
-msgid "Could not create component %s"
+msgid "path too long for wmkdirhier: %s"
+msgstr ""
+
+#: ../../WINGs/proplist.c:2222
+#, fuzzy, c-format
+msgid "Could not create component %s: %s"
 msgstr "Koe komponint %s net oanmeitsje"
 
-#: ../../WINGs/userdefaults.c:72
+#: ../../WINGs/spawn.c:99 ../../WINGs/spawn.c:164
+#, fuzzy, c-format
+msgid "could not fork to run %s: %s"
+msgstr "koe lettertype net lade: %s."
+
+#: ../../WINGs/spawn.c:106 ../../WINGs/spawn.c:175
+#, fuzzy, c-format
+msgid "could not execute %s: %s"
+msgstr "koe bestân \"%s\" net ôfslute: %s"
+
+#: ../../WINGs/spawn.c:158
+#, fuzzy, c-format
+msgid "could not create pipe to run %s: %s"
+msgstr "Koe doelbestân \"%s\" net oanmeitsje: %s"
+
+#: ../../WINGs/userdefaults.c:112
 msgid "variable WMAKER_USER_ROOT defined with invalid path, not used"
 msgstr "fariabele WMAKER_USER_ROOT, definiearre mei ûnjildich paad, net brûkt"
 
+#: ../../WINGs/userdefaults.c:224 ../../WINGs/userdefaults.c:242
+#, c-format
+msgid "invalid defaults domain name: %s"
+msgstr ""
+
 #. something happened with the file. just overwrite it
-#: ../../WINGs/userdefaults.c:210 ../../WINGs/userdefaults.c:225
+#: ../../WINGs/userdefaults.c:339 ../../WINGs/userdefaults.c:356
 #, c-format
 msgid "cannot read domain from file '%s' when syncing"
 msgstr "kin domeinbestân '%s' net ynlêze by syngronisearjen"
 
-#: ../../WINGs/dragcommon.c:60
-#, c-format
-msgid "unknown XDND action %s"
+#: ../../WINGs/dragcommon.c:80
+#, fuzzy, c-format
+msgid "unknown XDND action %lu"
 msgstr "ûnbekende XDND-aksje %s"
 
-#: ../../WINGs/dragcommon.c:142
+#: ../../WINGs/dragcommon.c:143
 #, c-format
 msgid "target %lu for XDND message no longer exists"
 msgstr "doel %lu foar XDND-berjocht bestiet net mear"
 
-#: ../../WINGs/dragcommon.c:220
+#: ../../WINGs/dragcommon.c:216
 #, c-format
 msgid "unsupported version %i for XDND enter message"
 msgstr "net-stipe ferzje %i foar XDND-berjocht by binnen gean"
 
-#: ../../WINGs/dragsource.c:163
+#: ../../WINGs/dragsource.c:205
 msgid "XDND selection lost during drag operation..."
 msgstr "XDND-seleksje ferlern ûnder fersleephanneling..."
 
-#: ../../WINGs/dragsource.c:758
+#: ../../WINGs/dragsource.c:781
 msgid "could not get XDND version for target of drop"
 msgstr "koe XDND-ferzje net krije foar doel fan ferslepen"
 
-#: ../../WINGs/dragsource.c:774
+#: ../../WINGs/dragsource.c:797
 msgid "could not get ownership of XDND selection"
 msgstr "koe eigendom fan XDND-seleksje net krije"
 
-#: ../../WINGs/dragsource.c:1070
+#: ../../WINGs/dragsource.c:1112
 msgid "delay for drag destination response expired"
 msgstr "wachttiid foar antwurd fersleepbestimming ferstrutsen"
 
-#: ../../WINGs/wcolor.c:204 ../../WINGs/wcolor.c:214 ../../WINGs/wcolor.c:250
-#: ../../WINGs/wcolor.c:288
+#: ../../WINGs/wcolor.c:237 ../../WINGs/wcolor.c:323 ../../WINGs/wtabview.c:221
+#, fuzzy, c-format
+msgid "could not parse color \"%s\" for %s"
+msgstr "koe bestân \"%s\" net ynlêze: %s"
+
+#: ../../WINGs/wcolor.c:242 ../../WINGs/wcolor.c:253 ../../WINGs/wcolor.c:263
 #, c-format
 msgid "could not allocate %s color"
 msgstr "koe kleur %s net tawize"
 
-#: ../../WINGs/wcolor.c:204
+#: ../../WINGs/wcolor.c:253 ../../WINGs/wcolor.c:292 ../../WINGs/wcolor.c:302
 msgid "white"
 msgstr "wyt"
 
-#: ../../WINGs/wcolor.c:214
+#: ../../WINGs/wcolor.c:263
 msgid "black"
 msgstr "swart"
 
-#: ../../WINGs/wcolor.c:250
+#: ../../WINGs/wcolor.c:272
 msgid "gray"
 msgstr "griis"
 
-#: ../../WINGs/wcolor.c:288
+#: ../../WINGs/wcolor.c:282
 msgid "dark gray"
 msgstr "donkergriis"
 
-#: ../../WINGs/wcolorpanel.c:393
+#: ../../WINGs/wcolorpanel.c:488
 msgid "Colors"
 msgstr "Kleuren"
 
-#: ../../WINGs/wcolorpanel.c:568 ../../WINGs/wcolorpanel.c:2720
+#: ../../WINGs/wcolorpanel.c:657 ../../WINGs/wcolorpanel.c:3049
 msgid "Brightness"
 msgstr "Helderens"
 
-#: ../../WINGs/wcolorpanel.c:570 ../../WINGs/wcolorpanel.c:644
-#: ../../WINGs/wcolorpanel.c:675 ../../WINGs/wcolorpanel.c:706
-#: ../../WINGs/wcolorpanel.c:781 ../../WINGs/wcolorpanel.c:812
-#: ../../WINGs/wcolorpanel.c:844 ../../WINGs/wcolorpanel.c:877
-#: ../../WINGs/wcolorpanel.c:2016 ../../WINGs/wcolorpanel.c:2722
-#: ../../WINGs/wcolorpanel.c:2756 ../../WINGs/wcolorpanel.c:2790
+#: ../../WINGs/wcolorpanel.c:659 ../../WINGs/wcolorpanel.c:728
+#: ../../WINGs/wcolorpanel.c:754 ../../WINGs/wcolorpanel.c:780
+#: ../../WINGs/wcolorpanel.c:850 ../../WINGs/wcolorpanel.c:876
+#: ../../WINGs/wcolorpanel.c:903 ../../WINGs/wcolorpanel.c:931
+#: ../../WINGs/wcolorpanel.c:2331 ../../WINGs/wcolorpanel.c:3051
+#: ../../WINGs/wcolorpanel.c:3078 ../../WINGs/wcolorpanel.c:3106
 msgid "Color Panel: Could not allocate memory"
 msgstr "Kleurepaniel: Koe gjin ûnthâld tawize"
 
-#: ../../WINGs/wcolorpanel.c:642
+#: ../../WINGs/wcolorpanel.c:726
 msgid "Red"
 msgstr "Read"
 
-#: ../../WINGs/wcolorpanel.c:673
+#: ../../WINGs/wcolorpanel.c:752
 msgid "Green"
 msgstr "Grien"
 
-#: ../../WINGs/wcolorpanel.c:704
+#: ../../WINGs/wcolorpanel.c:778
 msgid "Blue"
 msgstr "Blau"
 
-#: ../../WINGs/wcolorpanel.c:718
+#: ../../WINGs/wcolorpanel.c:792
 msgid "Decimal"
 msgstr "Desimaal"
 
-#: ../../WINGs/wcolorpanel.c:726
+#: ../../WINGs/wcolorpanel.c:800
 msgid "Hexadecimal"
 msgstr "Heksadesimaal"
 
-#: ../../WINGs/wcolorpanel.c:779
+#: ../../WINGs/wcolorpanel.c:848
 msgid "Cyan"
 msgstr "Cyaan"
 
-#: ../../WINGs/wcolorpanel.c:810
+#: ../../WINGs/wcolorpanel.c:874
 msgid "Magenta"
 msgstr "Magenta"
 
-#: ../../WINGs/wcolorpanel.c:842
+#: ../../WINGs/wcolorpanel.c:901
 msgid "Yellow"
 msgstr "Giel"
 
-#: ../../WINGs/wcolorpanel.c:875
+#: ../../WINGs/wcolorpanel.c:929
 msgid "Black"
 msgstr "Swart"
 
-#: ../../WINGs/wcolorpanel.c:950
+#: ../../WINGs/wcolorpanel.c:1004
 msgid "Spectrum"
 msgstr "Spektrum"
 
-#: ../../WINGs/wcolorpanel.c:976
+#: ../../WINGs/wcolorpanel.c:1030
 msgid "Palette"
 msgstr "Palet"
 
-#: ../../WINGs/wcolorpanel.c:981
+#: ../../WINGs/wcolorpanel.c:1035
 msgid "New from File..."
 msgstr "Nij út bestân..."
 
-#: ../../WINGs/wcolorpanel.c:982 ../../WINGs/wcolorpanel.c:1027
-#: ../../WINGs/wcolorpanel.c:1042
+#: ../../WINGs/wcolorpanel.c:1036 ../../WINGs/wcolorpanel.c:1081
+#: ../../WINGs/wcolorpanel.c:1096
 msgid "Rename..."
 msgstr "Omneame..."
 
-#: ../../WINGs/wcolorpanel.c:983 ../../WINGs/wcolorpanel.c:1028
-#: ../../WINGs/wcolorpanel.c:1043 ../../WINGs/wcolorpanel.c:3180
+#: ../../WINGs/wcolorpanel.c:1037 ../../WINGs/wcolorpanel.c:1082
+#: ../../WINGs/wcolorpanel.c:1097 ../../WINGs/wcolorpanel.c:3517
 msgid "Remove"
 msgstr "Ferwiderje"
 
-#: ../../WINGs/wcolorpanel.c:984
+#: ../../WINGs/wcolorpanel.c:1038
 msgid "Copy"
 msgstr "Kopiearje"
 
-#: ../../WINGs/wcolorpanel.c:985
+#: ../../WINGs/wcolorpanel.c:1039
 msgid "New from Clipboard"
 msgstr "Nij fan klamboerd"
 
-#: ../../WINGs/wcolorpanel.c:1004
+#: ../../WINGs/wcolorpanel.c:1058
 msgid "X11-Colors"
 msgstr "X11-kleuren"
 
-#: ../../WINGs/wcolorpanel.c:1021
+#: ../../WINGs/wcolorpanel.c:1075
 msgid "Color"
 msgstr "Kleur"
 
-#: ../../WINGs/wcolorpanel.c:1026
+#: ../../WINGs/wcolorpanel.c:1080
 msgid "Add..."
 msgstr "Tafoegje..."
 
-#: ../../WINGs/wcolorpanel.c:1036
+#: ../../WINGs/wcolorpanel.c:1090
 msgid "List"
 msgstr "List"
 
-#: ../../WINGs/wcolorpanel.c:1041
+#: ../../WINGs/wcolorpanel.c:1095
 msgid "New..."
 msgstr "Nij..."
 
-#: ../../WINGs/wcolorpanel.c:1170
+#: ../../WINGs/wcolorpanel.c:1276
 #, c-format
 msgid ""
 "Color Panel: Could not create directory %s needed to store configurations"
@@ -561,76 +611,75 @@ msgstr ""
 "Kleurepaniel: Koe map %s, nedich om ynstellingen te bewarjen, net oanmeitsje"
 
 #. Delete the file, it doesn't belong here
-#: ../../WINGs/wcolorpanel.c:1176 ../../WINGs/wcolorpanel.c:3073
-#: ../../WINGs/wcolorpanel.c:3077
+#: ../../WINGs/wcolorpanel.c:1282 ../../WINGs/wcolorpanel.c:3410
+#: ../../WINGs/wcolorpanel.c:3414
 msgid "File Error"
 msgstr "Bestânsflater"
 
-#: ../../WINGs/wcolorpanel.c:1177
+#: ../../WINGs/wcolorpanel.c:1283
 msgid "Could not create ColorPanel configuration directory"
 msgstr "Koe ynstellingemap Kleurepaniel net oanmeitsje"
 
-#: ../../WINGs/wcolorpanel.c:1178 ../../WINGs/wcolorpanel.c:3074
-#: ../../WINGs/wcolorpanel.c:3079 ../../WINGs/wcolorpanel.c:3104
-#: ../../WINGs/wfilepanel.c:227 ../../WINGs/wfilepanel.c:596
-#: ../../WINGs/wfilepanel.c:611 ../../WINGs/wfilepanel.c:715
-#: ../../WINGs/wfilepanel.c:883 ../../WINGs/wfontpanel.c:532
+#: ../../WINGs/wcolorpanel.c:1284 ../../WINGs/wcolorpanel.c:3411
+#: ../../WINGs/wcolorpanel.c:3416 ../../WINGs/wcolorpanel.c:3441
+#: ../../WINGs/wfilepanel.c:250 ../../WINGs/wfilepanel.c:618
+#: ../../WINGs/wfilepanel.c:632 ../../WINGs/wfilepanel.c:735
+#: ../../WINGs/wfilepanel.c:924 ../../WINGs/wfontpanel.c:610
 msgid "OK"
 msgstr "OK"
 
-#: ../../WINGs/wcolorpanel.c:1184
+#: ../../WINGs/wcolorpanel.c:1289
 msgid "Color Panel: Could not find file"
 msgstr "Kleurepaniel: Koe bestân net fine"
 
-#: ../../WINGs/wcolorpanel.c:1380 ../../WINGs/wcolorpanel.c:1441
-#: ../../WINGs/wcolorpanel.c:1501
+#: ../../WINGs/wcolorpanel.c:1633 ../../WINGs/wcolorpanel.c:1752
 msgid "Color Panel: X failed request"
 msgstr "Kleurepaniel: X-oanfraach mislearre"
 
-#: ../../WINGs/wcolorpanel.c:2754
+#: ../../WINGs/wcolorpanel.c:3076
 msgid "Saturation"
 msgstr "Fersêding"
 
-#: ../../WINGs/wcolorpanel.c:2788
+#: ../../WINGs/wcolorpanel.c:3104
 msgid "Hue"
 msgstr "Tint"
 
-#: ../../WINGs/wcolorpanel.c:3012
+#: ../../WINGs/wcolorpanel.c:3343
 msgid "Open Palette"
 msgstr "Iepenje palet"
 
-#: ../../WINGs/wcolorpanel.c:3074
+#: ../../WINGs/wcolorpanel.c:3411
 msgid "Invalid file format !"
 msgstr "Unjildige bestânsfoarm!"
 
-#: ../../WINGs/wcolorpanel.c:3076
+#: ../../WINGs/wcolorpanel.c:3413
 #, c-format
 msgid "can't remove file %s"
 msgstr "kin bestân %s net ferwiderje"
 
-#: ../../WINGs/wcolorpanel.c:3078
+#: ../../WINGs/wcolorpanel.c:3415
 msgid "Couldn't remove file from Configuration Directory !"
 msgstr "Koe bestân net ferwiderje út ynstellingemap!"
 
-#: ../../WINGs/wcolorpanel.c:3103
+#: ../../WINGs/wcolorpanel.c:3440
 msgid "Rename"
 msgstr "Omneame"
 
-#: ../../WINGs/wcolorpanel.c:3103
+#: ../../WINGs/wcolorpanel.c:3440
 msgid "Rename palette to:"
 msgstr "Neam palet om nei:"
 
-#: ../../WINGs/wcolorpanel.c:3104 ../../WINGs/wfilepanel.c:236
-#: ../../WINGs/wfilepanel.c:611 ../../WINGs/wfilepanel.c:715
+#: ../../WINGs/wcolorpanel.c:3441 ../../WINGs/wfilepanel.c:259
+#: ../../WINGs/wfilepanel.c:632 ../../WINGs/wfilepanel.c:735
 msgid "Cancel"
 msgstr "Annulearje"
 
 #. Careful, this palette exists already
-#: ../../WINGs/wcolorpanel.c:3120 ../../WINGs/wfilepanel.c:715
+#: ../../WINGs/wcolorpanel.c:3457 ../../WINGs/wfilepanel.c:735
 msgid "Warning"
 msgstr "Warskôging"
 
-#: ../../WINGs/wcolorpanel.c:3121
+#: ../../WINGs/wcolorpanel.c:3458
 msgid ""
 "Palette already exists !\n"
 "\n"
@@ -640,24 +689,24 @@ msgstr ""
 "\n"
 "Oerskriuwe?"
 
-#: ../../WINGs/wcolorpanel.c:3121 ../../WINGs/wcolorpanel.c:3180
+#: ../../WINGs/wcolorpanel.c:3458 ../../WINGs/wcolorpanel.c:3517
 msgid "No"
 msgstr "Nee"
 
-#: ../../WINGs/wcolorpanel.c:3121 ../../WINGs/wcolorpanel.c:3180
+#: ../../WINGs/wcolorpanel.c:3458 ../../WINGs/wcolorpanel.c:3517
 msgid "Yes"
 msgstr "Ja"
 
-#: ../../WINGs/wcolorpanel.c:3152
+#: ../../WINGs/wcolorpanel.c:3489
 #, c-format
 msgid "Couldn't rename palette %s to %s"
 msgstr "Koe palet %s net omneame nei %s"
 
-#: ../../WINGs/wcolorpanel.c:3175
+#: ../../WINGs/wcolorpanel.c:3512
 msgid "This will permanently remove the palette "
 msgstr "Dit sil it palet "
 
-#: ../../WINGs/wcolorpanel.c:3177
+#: ../../WINGs/wcolorpanel.c:3514
 msgid ""
 ".\n"
 "\n"
@@ -667,146 +716,178 @@ msgstr ""
 "\n"
 "Binne jo wis dat jo dit palet ferwiderje wolle?"
 
-#: ../../WINGs/wcolorpanel.c:3199
+#: ../../WINGs/wcolorpanel.c:3536
 #, c-format
 msgid "Couldn't remove palette %s"
 msgstr "Koe palet %s net ferwiderje"
 
-#: ../../WINGs/wcolorpanel.c:3499
+#: ../../WINGs/wcolorpanel.c:3832
 msgid "Color Panel: Color unspecified"
 msgstr "Kleurepaniel: Kleur net opjûn"
 
-#: ../../WINGs/wfilepanel.c:216
+#: ../../WINGs/wfilepanel.c:239
 msgid "Name:"
 msgstr "Namme:"
 
-#: ../../WINGs/wfilepanel.c:306 ../../WINGs/wfilepanel.c:364
+#: ../../WINGs/wfilepanel.c:269
+msgid "Delete the selected file or directory"
+msgstr ""
+
+#: ../../WINGs/wfilepanel.c:278
+#, fuzzy
+msgid "Create a directory"
+msgstr "Map oanmeitsje"
+
+#: ../../WINGs/wfilepanel.c:287
+#, fuzzy
+msgid "Go to your home directory"
+msgstr "WINGs: Koe map %s net iepenje\n"
+
+#: ../../WINGs/wfilepanel.c:296
+msgid "Browse the floppy disk directory"
+msgstr ""
+
+#: ../../WINGs/wfilepanel.c:306
+msgid "Unmount (not implemented)"
+msgstr ""
+
+#: ../../WINGs/wfilepanel.c:334 ../../WINGs/wfilepanel.c:394
 msgid "Open"
 msgstr "Iepenje"
 
-#: ../../WINGs/wfilepanel.c:322 ../../WINGs/wfilepanel.c:370
+#: ../../WINGs/wfilepanel.c:350 ../../WINGs/wfilepanel.c:400
 msgid "Save"
 msgstr "Bewarje"
 
-#: ../../WINGs/wfilepanel.c:506
+#: ../../WINGs/wfilepanel.c:536
 #, c-format
 msgid "WINGs: could not open directory %s\n"
 msgstr "WINGs: Koe map %s net iepenje\n"
 
-#: ../../WINGs/wfilepanel.c:526
+#: ../../WINGs/wfilepanel.c:556
 #, c-format
 msgid "WINGs: could not stat %s\n"
 msgstr "WINGs: Koe status %s net fêststelle\n"
 
-#: ../../WINGs/wfilepanel.c:596 ../../WINGs/wfilepanel.c:883
-#: ../../WINGs/wfontpanel.c:531
+#: ../../WINGs/wfilepanel.c:618 ../../WINGs/wfilepanel.c:924
+#: ../../WINGs/wfontpanel.c:609
 msgid "Error"
 msgstr "Flater"
 
-#: ../../WINGs/wfilepanel.c:610
+#: ../../WINGs/wfilepanel.c:631
 msgid "Create Directory"
 msgstr "Map oanmeitsje"
 
-#: ../../WINGs/wfilepanel.c:611
+#: ../../WINGs/wfilepanel.c:632
 msgid "Enter directory name"
 msgstr "Fier mapnamme yn"
 
-#: ../../WINGs/wfilepanel.c:639
+#: ../../WINGs/wfilepanel.c:660
 #, c-format
 msgid "Can not create %s: %s"
 msgstr "Kin %s net oanmeitsje: %s"
 
-#: ../../WINGs/wfilepanel.c:705
+#: ../../WINGs/wfilepanel.c:725
 #, c-format
 msgid "Can not find %s: %s"
 msgstr "Kin %s net fine: %s"
 
-#: ../../WINGs/wfilepanel.c:711
+#: ../../WINGs/wfilepanel.c:731
 #, c-format
 msgid "Delete %s %s?"
 msgstr "%s %s ferwiderje?"
 
-#: ../../WINGs/wfilepanel.c:712
+#: ../../WINGs/wfilepanel.c:732
 msgid "directory"
 msgstr "Map"
 
-#: ../../WINGs/wfilepanel.c:712
+#: ../../WINGs/wfilepanel.c:732
 msgid "file"
 msgstr "Bestân"
 
-#: ../../WINGs/wfilepanel.c:719
+#: ../../WINGs/wfilepanel.c:739
 #, c-format
 msgid "Removing %s failed: %s"
 msgstr "Ferwiderjen %s mislearre: %s"
 
-#: ../../WINGs/wfilepanel.c:751
+#: ../../WINGs/wfilepanel.c:771 ../../WINGs/wfilepanel.c:778
 #, c-format
 msgid "An error occurred browsing '%s'."
 msgstr "Der trede in flater op by blêdzjen troch '%s'."
 
-#: ../../WINGs/wfilepanel.c:754
+#: ../../WINGs/wfilepanel.c:785 ../../WINGs/wfilepanel.c:791
 #, c-format
 msgid "'%s' is not a directory."
 msgstr "'%s' is gjin map."
 
-#: ../../WINGs/wfilepanel.c:883
+#: ../../WINGs/wfilepanel.c:924
 msgid "File does not exist."
 msgstr "Bestân bestiet net."
 
-#: ../../WINGs/wfont.c:43
+#: ../../WINGs/wfont.c:97
 #, c-format
 msgid "invalid font: %s. Trying '%s'"
 msgstr "ûnjildich lettertype: %s. Probearret '%s'"
 
-#: ../../WINGs/wfont.c:260 ../../WINGs/wfont.c:278
+#: ../../WINGs/wfont.c:197
+#, fuzzy, c-format
+msgid "could not load font spec: %s."
+msgstr "koe lettertype net lade: %s."
+
+#: ../../WINGs/wfont.c:204
+#, fuzzy, c-format
+msgid "could not load default font spec: %s."
+msgstr "koe lettertype net lade: %s."
+
+#: ../../WINGs/wfont.c:395 ../../WINGs/wfont.c:417
 #, c-format
 msgid "could not load font: %s."
 msgstr "koe lettertype net lade: %s."
 
 #. WMSetWidgetBackgroundColor(panel->win, WMWhiteColor(scr));
-#: ../../WINGs/wfontpanel.c:184
+#: ../../WINGs/wfontpanel.c:236
 msgid "Font Panel"
 msgstr "Lettertypen"
 
-#: ../../WINGs/wfontpanel.c:220
+#: ../../WINGs/wfontpanel.c:272
 msgid "The quick brown fox jumps over the lazy dog"
 msgstr "De rappe brune foks springt oer de loaie hûn"
 
-#: ../../WINGs/wfontpanel.c:226
+#: ../../WINGs/wfontpanel.c:278
 msgid "Family"
 msgstr "Famylje"
 
-#: ../../WINGs/wfontpanel.c:237
+#: ../../WINGs/wfontpanel.c:289
 msgid "Typeface"
 msgstr "Lettertype"
 
-#: ../../WINGs/wfontpanel.c:248
+#: ../../WINGs/wfontpanel.c:300
 msgid "Size"
 msgstr "Grutte"
 
-#: ../../WINGs/wfontpanel.c:267
+#: ../../WINGs/wfontpanel.c:319
 msgid "Set"
 msgstr "Ynstelle"
 
-#: ../../WINGs/wfontpanel.c:273
+#: ../../WINGs/wfontpanel.c:325
 msgid "Revert"
 msgstr "Werstelle"
 
-#: ../../WINGs/wfontpanel.c:532
+#: ../../WINGs/wfontpanel.c:610
 msgid "Could not init font config library\n"
 msgstr "Koe biblioteek 'lettertype ynstelle' net inisjalisearje\n"
 
-#: ../../WINGs/widgets.c:446
+#: ../../WINGs/widgets.c:594
 #, c-format
 msgid "WINGs: could not load widget images file: %s"
 msgstr "WINGs: Koe ôfbyldingebestân bestjoeringseleminten net lade: %s"
 
-#: ../../WINGs/widgets.c:542
+#: ../../WINGs/widgets.c:692
 #, c-format
 msgid "WINGs: could not open display %s"
 msgstr "WINGs: Koe skerm %s net iepenje"
 
-#: ../../WINGs/widgets.c:771
+#: ../../WINGs/widgets.c:874
 msgid ""
 "could not load any fonts. Make sure your font installation and locale "
 "settings are correct."
@@ -814,22 +895,34 @@ msgstr ""
 "koe gjin lettertypen lade. Soargje derfoar dat jo ynstallearre lettertypen "
 "en lokalisaasjeynstellingen korrekt binne."
 
-#: ../../WINGs/winputmethod.c:65
-msgid "could not add destroy callback for XIM input method"
+#: ../../WINGs/wlabel.c:279
+#, c-format
+msgid "malformed label markup: %s"
 msgstr ""
 
-#: ../../WINGs/wruler.c:175
+#: ../../WINGs/wmultiselectpopup.c:304
+msgid "All"
+msgstr ""
+
+#: ../../WINGs/wruler.c:159
 msgid "0   inches"
 msgstr "0   inch"
 
-#: ../../WINGs/wtextfield.c:494
-msgid "only left alignment is supported in textfields"
-msgstr "allinnich lofts rjochtsjen wurdt stipe yn tekstfjilden"
+#: ../../WINGs/wxkb.c:153
+msgid "the X server has no XKB extension, falling back to a best-effort keymap"
+msgstr ""
 
-#: ../../WINGs/wwindow.c:160
-msgid "window title conversion error... using STRING encoding"
-msgstr "finstertitelomsettingsflater... brûkt STRING-kodearring"
+#: ../../WINGs/wxkb.c:166 ../../WINGs/wxkb.c:178
+msgid "could not build a fallback keymap, text field input is unavailable"
+msgstr ""
 
-#: ../../WINGs/wwindow.c:181
-msgid "icon title conversion error... using STRING encoding"
-msgstr "ikoantitelomsettingsflater... brûkt STRING-kodearring"
+#: ../../WINGs/wxkb.c:175
+msgid ""
+"could not load the XKB keymap from the X server, falling back to a best-"
+"effort keymap"
+msgstr ""
+
+#: ../../WINGs/wxkb.c:289
+msgid ""
+"could not reload the XKB keymap, keyboard input keeps the previous mapping"
+msgstr ""

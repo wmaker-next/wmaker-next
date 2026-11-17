@@ -1,8 +1,9 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: WindowMaker 0.80.1\n"
-"POT-Creation-Date: 2002-02-15 15:50+0200\n"
-"PO-Revision-Date: 2005-09-06 08:56+0300\n"
+"Project-Id-Version: WindowMaker 0.96.0-next\n"
+"Report-Msgid-Bugs-To: wmaker-dev@googlegroups.com\n"
+"POT-Creation-Date: 2026-11-16 21:59-0500\n"
+"PO-Revision-Date: 2026-11-16 22:16-0500\n"
 "Last-Translator: Victor Forsyuk <victor@ksi-linux.com>\n"
 "Language-Team: KSI Linux Ukrainian <uk@ksi-linux.com>\n"
 "Language: uk\n"
@@ -10,25 +11,42 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../src/appicon.c:426 ../src/dialog.c:282 ../src/dock.c:3325
-#: ../src/dockedapp.c:230 ../src/main.c:273 ../src/rootmenu.c:1853
-#: ../src/winspector.c:389 ../src/winspector.c:406
+#: ../src/actions.c:1863
+#, c-format
+msgid "window \"%s\" has a severely broken WM_TRANSIENT_FOR hint"
+msgstr ""
+
+#: ../src/actions.c:1984
+#, c-format
+msgid "creation of mini-preview failed for window \"%s\""
+msgstr ""
+
+#: ../src/appicon.c:635 ../src/dialog_icon.c:113 ../src/dock.c:5158
+#: ../src/dockedapp.c:155 ../src/main.c:347 ../src/rootmenu.c:1960
+#: ../src/winspector.c:546 ../src/winspector.c:570 ../src/workspace.c:338
 msgid "Error"
 msgstr "Помилка"
 
-#: ../src/appicon.c:427
+#: ../src/appicon.c:636
 msgid "Could not open specified icon file"
 msgstr "Неможливо відкрити вказаний файл іконки"
 
-#: ../src/appicon.c:428 ../src/dialog.c:179 ../src/dialog.c:282
-#: ../src/dialog.c:729 ../src/dialog.c:1818 ../src/dock.c:526
-#: ../src/dock.c:534 ../src/dock.c:558 ../src/dock.c:3326
-#: ../src/dockedapp.c:231 ../src/dockedapp.c:426 ../src/main.c:273
-#: ../src/rootmenu.c:1857 ../src/winspector.c:390 ../src/winspector.c:407
+#: ../src/appicon.c:637 ../src/dialog.c:177 ../src/dialog_crash.c:223
+#: ../src/dialog_icon.c:113 ../src/dialog_icon.c:562 ../src/dialog_run.c:2060
+#: ../src/dock.c:493 ../src/dock.c:500 ../src/dock.c:548 ../src/dock.c:5158
+#: ../src/dock.c:6431 ../src/dockedapp.c:156 ../src/dockedapp.c:397
+#: ../src/main.c:347 ../src/rootmenu.c:1963 ../src/winspector.c:546
+#: ../src/winspector.c:570 ../src/winspector.c:981 ../src/workspace.c:338
 msgid "OK"
 msgstr "OK"
 
-#: ../src/appicon.c:456 ../src/dock.c:264
+#
+#: ../src/appicon.c:666 ../src/dock.c:279
+#, fuzzy
+msgid "application"
+msgstr "Примусове завершення"
+
+#: ../src/appicon.c:669 ../src/dock.c:284
 msgid ""
 " will be forcibly closed.\n"
 "Any unsaved changes will be lost.\n"
@@ -39,350 +57,416 @@ msgstr ""
 "Будь ласка, підтвердіть."
 
 #
-#: ../src/appicon.c:464 ../src/dock.c:283 ../src/winmenu.c:125
+#: ../src/appicon.c:676 ../src/dock.c:302 ../src/winmenu.c:322
 msgid "Kill Application"
 msgstr "Примусове завершення"
 
-#: ../src/appicon.c:465 ../src/dock.c:284 ../src/winmenu.c:127
+#: ../src/appicon.c:677 ../src/dock.c:303 ../src/winmenu.c:325
 msgid "Yes"
 msgstr "Так"
 
-#: ../src/appicon.c:465 ../src/dock.c:284 ../src/winmenu.c:127
+#: ../src/appicon.c:677 ../src/dock.c:303 ../src/winmenu.c:325
 msgid "No"
 msgstr "Ні"
 
-#: ../src/appicon.c:495 ../src/dock.c:1177 ../src/dock.c:3491
+#: ../src/appicon.c:702 ../src/dock.c:1477 ../src/dock.c:1479
+#: ../src/dock.c:5319
 msgid "Unhide Here"
 msgstr "Розкрити тут"
 
-#: ../src/appicon.c:496 ../src/appicon.c:521 ../src/dock.c:1179
-#: ../src/dock.c:1181 ../src/dock.c:3503 ../src/winmenu.c:465
+#. can be: Bring Here
+#: ../src/appicon.c:703 ../src/appicon.c:727 ../src/dock.c:1481
+#: ../src/dock.c:1483 ../src/dock.c:5331 ../src/winmenu.c:95
 msgid "Hide"
 msgstr "Приховати"
 
-#: ../src/appicon.c:497
+#: ../src/appicon.c:704 ../src/dock.c:1475 ../src/winmenu.c:104
+msgid "Launch"
+msgstr "Запуск"
+
+#: ../src/appicon.c:705
 msgid "Set Icon..."
 msgstr "Встановити іконку..."
 
-#: ../src/appicon.c:498 ../src/dock.c:1185 ../src/rootmenu.c:248
-#: ../src/rootmenu.c:264 ../src/winmenu.c:520
+#: ../src/appicon.c:706 ../src/dock.c:1487 ../src/dock.c:1489
+#: ../src/dock.c:5349 ../src/rootmenu.c:187 ../src/winmenu.c:106
 msgid "Kill"
 msgstr "Убити"
 
-#: ../src/appicon.c:519 ../src/dock.c:3501
+#: ../src/appicon.c:725 ../src/dock.c:5329
 msgid "Unhide"
 msgstr "Розкрити"
 
-#: ../src/application.c:398
+#: ../src/appmenu.c:85 ../src/appmenu.c:95 ../src/appmenu.c:117
+#, fuzzy, c-format
+msgid "appmenu: out of memory creating menu for window %lx"
+msgstr "вичерпана пам'ять під час читання растрового файлу \"%s\""
+
+#: ../src/appmenu.c:145
 #, c-format
-msgid "recreating missing icon '%s'"
+msgid "appmenu: unknown version of WMMenu in window %lx: %s"
 msgstr ""
 
-#: ../src/defaults.c:922 ../src/defaults.c:1011
+#. a header line alone is not a menu, the old reader
+#. * walked one past the list here
+#: ../src/appmenu.c:152 ../src/appmenu.c:172
+#, c-format
+msgid "appmenu: bad menu entry \"%s\" in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:158
+#, c-format
+msgid "appmenu: too many menu entries (%d) in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:175
+#, c-format
+msgid "appmenu: bad menu entry in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:179
+#, c-format
+msgid "appmenu: menu command size exceeded in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:183
+#, c-format
+msgid "appmenu: menu nesting too deep in window %lx"
+msgstr ""
+
+#: ../src/appmenu.c:187
+#, c-format
+msgid "appmenu: unparsable menu in window %lx"
+msgstr ""
+
+#: ../src/cmdexpand.c:69
+#, c-format
+msgid "out of memory during expansion of \"%s\""
+msgstr "вичерпана пам'ять під час розширення \"%s\""
+
+#: ../src/cmdexpand.c:122 ../src/cmdexpand.c:139 ../src/cmdexpand.c:156
+#: ../src/cmdexpand.c:183 ../src/cmdexpand.c:213
+#, fuzzy, c-format
+msgid "out of memory during expansion of '%s' for command \"%s\""
+msgstr "вичерпана пам'ять під час розширення \"%s\""
+
+#: ../src/cmdexpand.c:202
+msgid "selection not available"
+msgstr "недоступно виділення"
+
+#: ../src/config_schema.c:94
+#, c-format
+msgid "unknown titlebar button role \"%s\""
+msgstr ""
+
+#: ../src/config_schema.c:99
+#, c-format
+msgid "duplicate titlebar button role \"%s\""
+msgstr ""
+
+#: ../src/cursor_find.c:76
+msgid "find mouse: the XShape extension is not available"
+msgstr ""
+
+#: ../src/cursor_find.c:83
+msgid "find mouse: XShape 1.1 is required for a click-through ring"
+msgstr ""
+
+#: ../src/cursor_find.c:91
+msgid "find mouse: this build has no XShape support"
+msgstr ""
+
+#: ../src/cursor_hide.c:423
+msgid "auto hide cursor: XFixes 4.0 and XInput2 2.0 are required"
+msgstr ""
+
+#: ../src/defaults.c:167
 #, c-format
 msgid "Domain %s (%s) of global defaults database is corrupted!"
 msgstr "Домен %s (%s) в глобальній базі умовчань пошкоджений!"
 
-#: ../src/defaults.c:927
+#: ../src/defaults.c:171
 #, c-format
 msgid "could not load domain %s from global defaults database"
 msgstr "не вдалось завантажити домен %s з глобальної бази умовчань"
 
-#: ../src/defaults.c:949 ../src/startup.c:884 ../src/startup.c:902
-#: ../src/startup.c:908
-#, c-format
-msgid "could not read domain \"%s\" from defaults database"
-msgstr "не вдалось прочитати домен \"%s\" з бази даних умовчань"
+#: ../src/defaults.c:216 ../src/defaults.c:230
+#, fuzzy, c-format
+msgid "invalid global menu file %s"
+msgstr "не вдалось отримати файл меню '%s'"
 
-#: ../src/defaults.c:995 ../src/defaults.c:1099 ../src/defaults.c:1140
-#: ../src/defaults.c:1196
+#: ../src/defaults.c:265 ../src/defaults.c:308 ../src/defaults.c:396
 #, c-format
 msgid "Domain %s (%s) of defaults database is corrupted!"
 msgstr "Домен %s (%s) в базі даних умовчань пошкоджений!"
 
-#: ../src/defaults.c:1000 ../src/defaults.c:1119 ../src/defaults.c:1176
-#: ../src/defaults.c:1205 ../src/menureader.c:397
+#: ../src/defaults.c:268 ../src/defaults.c:301 ../src/defaults.c:406
 #, c-format
 msgid "could not load domain %s from user defaults database"
 msgstr "не вдалось завантажити домен \"%s\" з бази умовчань користувача"
 
-#: ../src/defaults.c:1030
-#, c-format
-msgid "could not load domain %s from global defaults database (%s)"
-msgstr "не вдалось завантажити домен %s з глобальної бази умовчань (%s)"
-
-#: ../src/defaults.c:1166 ../src/screen.c:458
-#, c-format
-msgid "could not load logo image for panels: %s"
-msgstr "не вдалось завантажити заставку для панелей: %s"
-
-#: ../src/defaults.c:1447
-#, c-format
-msgid "wrong option value for key \"%s\". Should be one of %s"
-msgstr "неправильне значення для ключа \"%s\". Має бути одне з %s."
-
-#: ../src/defaults.c:1492
-#, c-format
-msgid "can't convert \"%s\" to boolean for key \"%s\""
-msgstr "не вдалось перетворити \"%s\" в булівське значення для ключа \"%s\""
-
-#: ../src/defaults.c:1497 ../src/defaults.c:1529 ../src/defaults.c:1561
-#: ../src/defaults.c:1574 ../src/defaults.c:1589 ../src/defaults.c:1603
-#: ../src/defaults.c:1673 ../src/defaults.c:1685 ../src/defaults.c:2152
-#: ../src/defaults.c:2169 ../src/defaults.c:2182 ../src/defaults.c:2214
-#: ../src/defaults.c:2230 ../src/defaults.c:2261 ../src/defaults.c:2348
-#: ../src/defaults.c:2734 ../src/defaults.c:2745
-#, c-format
-msgid "using default \"%s\" instead"
-msgstr "використовуємо значення за умовчанням (%s)"
-
-#: ../src/defaults.c:1526
-#, c-format
-msgid "can't convert \"%s\" to integer for key \"%s\""
-msgstr "неможливо перетворити \"%s\" в ціле значення для ключа \"%s\""
-
-#: ../src/defaults.c:1556 ../src/defaults.c:1668 ../src/defaults.c:2147
-#: ../src/defaults.c:2164 ../src/defaults.c:2209 ../src/defaults.c:2256
-#: ../src/defaults.c:2729 ../src/wdefaults.c:571 ../src/wdefaults.c:607
-#, c-format
-msgid "Wrong option format for key \"%s\". Should be %s."
-msgstr "Неправильний формат параметра для ключа \"%s\". Має бути %s."
-
-#: ../src/defaults.c:1569
-#, c-format
-msgid "Incorrect number of elements in array for key \"%s\"."
-msgstr "Некоректна кількість елементів в масиві для ключа \"%s\"."
-
-#: ../src/defaults.c:1584
-#, c-format
-msgid "Wrong value for key \"%s\". Should be Coordinate."
-msgstr "Неправильне значення параметра для ключа \"%s\". Має бути Coordinate."
-
-#: ../src/defaults.c:1599
-#, c-format
-msgid "can't convert array to integers for \"%s\"."
-msgstr "не вдалось перетворити масив в цілі значення для \"%s\"."
-
-#: ../src/defaults.c:1797 ../src/defaults.c:1829 ../src/defaults.c:1845
-#: ../src/defaults.c:1874 ../src/defaults.c:1897 ../src/defaults.c:1950
-#: ../src/defaults.c:1990 ../src/defaults.c:2028 ../src/defaults.c:2044
+#: ../src/defaults.c:700
 #, c-format
 msgid "\"%s\" is not a valid color name"
 msgstr "\"%s\" не є відомою назвою кольору"
 
-#: ../src/defaults.c:1810 ../src/defaults.c:1862
+#: ../src/defaults.c:751 ../src/defaults.c:774
 msgid "bad number of arguments in gradient specification"
 msgstr "неправильна кількість аргументів у визначенні градієнта"
 
-#: ../src/defaults.c:1923
+#: ../src/defaults.c:812
 msgid "too few arguments in multicolor gradient specification"
 msgstr "надто мало аргументів у визначенні багатоколірного градієнта"
 
-#: ../src/defaults.c:2017
+#: ../src/defaults.c:881
 msgid "bad number of arguments in textured gradient specification"
 msgstr "неправильна кількість аргументів у визначенні градієнта з текстурою"
 
-#: ../src/defaults.c:2060
+#: ../src/defaults.c:898
 #, c-format
 msgid "bad opacity value for tgradient texture \"%s\". Should be [0..255]"
 msgstr ""
 "неправильне значення прозорості для t-градієнта з текстурою \"%s\"; має бути "
 "[0..255]"
 
-#: ../src/defaults.c:2120
-#, c-format
-msgid "could not initialize library %s"
-msgstr "не вдалось ініціалізувати бібліотеку %s"
-
-#: ../src/defaults.c:2123
-#, c-format
-msgid "could not find function %s::%s"
-msgstr "не вдалось знайти функцію %s::%s"
-
-#: ../src/defaults.c:2130
+#: ../src/defaults.c:915
 #, c-format
 msgid "invalid texture type %s"
 msgstr "неправильний тип текстури (%s)"
 
-#: ../src/defaults.c:2177
+#: ../src/defaults.c:937 ../src/rootmenu.c:581
+#, fuzzy, c-format
+msgid "%s: invalid key modifier \"%s\""
+msgstr "%s:неправильний модифікатор клавіші \"%s\""
+
+#
+#: ../src/defaults.c:946
+#, fuzzy, c-format
+msgid "%s: invalid kbd shortcut specification \"%s\""
+msgstr "%s:неправильне визначення комбінації клавіш \"%s\""
+
+#
+#: ../src/defaults.c:952
+#, fuzzy, c-format
+msgid "%s: invalid key in shortcut \"%s\""
+msgstr "%s:неправильна клавіша в комбінації \"%s\""
+
+#
+#: ../src/defaults.c:973
+#, fuzzy, c-format
+msgid "%s: kbd shortcut specification is too long"
+msgstr "%s:неправильне визначення комбінації клавіш \"%s\""
+
+#
+#: ../src/defaults.c:1098
+#, c-format
+msgid "failed to open bitmap file \"%s\""
+msgstr "не вдалось відкрити растровий файл \"%s\""
+
+#: ../src/defaults.c:1101
+#, c-format
+msgid "\"%s\" is not a valid bitmap file"
+msgstr "\"%s\" не є насправді растровим файлом"
+
+#: ../src/defaults.c:1104
+#, c-format
+msgid "out of memory reading bitmap file \"%s\""
+msgstr "вичерпана пам'ять під час читання растрового файлу \"%s\""
+
+#: ../src/defaults.c:1141 ../src/defaults.c:1178
+msgid "bad number of arguments in cursor specification"
+msgstr "неправильна кількість аргументів у визначенні курсора"
+
+#: ../src/defaults.c:1157
+#, fuzzy, c-format
+msgid "could not load cursor \"%s\""
+msgstr "не вдалось зарезервувати колір \"%s\""
+
+#: ../src/defaults.c:1165
+#, c-format
+msgid "unknown builtin cursor name \"%s\""
+msgstr ""
+
+#: ../src/defaults.c:1188 ../src/defaults.c:1200
+#, c-format
+msgid "could not find cursor bitmap file \"%s\""
+msgstr "не вдалось знайти растровий файл курсора \"%s\""
+
+#: ../src/defaults.c:1243 ../src/defaults.c:1316 ../src/wconfigmodel.c:686
+#: ../src/wdefaults.c:152
+#, c-format
+msgid "Wrong option format for key \"%s\". Should be %s."
+msgstr "Неправильний формат параметра для ключа \"%s\". Має бути %s."
+
+#: ../src/defaults.c:1325
 #, c-format
 msgid "Error in texture specification for key \"%s\""
 msgstr "Помилка у визначенні текстури для ключа \"%s\""
 
-#: ../src/defaults.c:2226
+#: ../src/defaults.c:1329 ../src/defaults.c:1388 ../src/defaults.c:1499
+#: ../src/defaults.c:1589 ../src/defaults.c:1698 ../src/defaults.c:2487
+#: ../src/wconfigmodel.c:160
+#, c-format
+msgid "using default \"%s\" instead"
+msgstr "використовуємо значення за умовчанням (%s)"
+
+#: ../src/defaults.c:1395
+msgid "could not load any usable font!!!"
+msgstr "не вдалось завантажити шрифт!!!"
+
+#: ../src/defaults.c:1398
+#, fuzzy, c-format
+msgid "could not load font for key \"%s\""
+msgstr "не вдалось визначити колір для ключа \"%s\""
+
+#: ../src/defaults.c:1495
+#, c-format
+msgid "could not get color for key \"%s\""
+msgstr "не вдалось визначити колір для ключа \"%s\""
+
+#: ../src/defaults.c:1585
+#, c-format
+msgid "Error in cursor specification for key \"%s\""
+msgstr "Помилка у визначенні курсора для ключа \"%s\""
+
+#: ../src/defaults.c:1608 ../src/defaults.c:1627
+#, c-format
+msgid "%s: modifier key %s is not valid"
+msgstr "%s: модифікатор %s неправильний"
+
+#: ../src/defaults.c:1646 ../src/wconfigmodel.c:698
 msgid "Wrong type for workspace background. Should be a texture type."
 msgstr ""
-"Неправильний тип для фону Робочого столу; має бути значення типу \"текстура"
-"\"."
+"Неправильний тип для фону Робочого столу; має бути значення типу "
+"\"текстура\"."
 
-#: ../src/defaults.c:2274
+#: ../src/defaults.c:1655 ../src/wconfigmodel.c:706
 #, c-format
 msgid "Wrong type for background of workspace %i. Should be a texture."
 msgstr ""
 "Неправильний тип для фону Рабочого столу %i; має бути значення типу "
 "\"текстура\"."
 
-#: ../src/defaults.c:2316
-msgid "could not load any usable font!!!"
-msgstr "не вдалось завантажити шрифт!!!"
-
-#: ../src/defaults.c:2343
-#, c-format
-msgid "could not get color for key \"%s\""
+#: ../src/defaults.c:1662
+#, fuzzy, c-format
+msgid "Invalid background target for key \"%s\""
 msgstr "не вдалось визначити колір для ключа \"%s\""
 
-#: ../src/defaults.c:2401 ../src/rootmenu.c:526
-#, c-format
-msgid "%s:invalid key modifier \"%s\""
-msgstr "%s:неправильний модифікатор клавіші \"%s\""
-
-#
-#: ../src/defaults.c:2413
-#, c-format
-msgid "%s:invalid kbd shortcut specification \"%s\""
-msgstr "%s:неправильне визначення комбінації клавіш \"%s\""
-
-#
-#: ../src/defaults.c:2420
-#, c-format
-msgid "%s:invalid key in shortcut \"%s\""
-msgstr "%s:неправильна клавіша в комбінації \"%s\""
-
-#: ../src/defaults.c:2445
-#, c-format
-msgid "%s: modifier key %s is not valid"
-msgstr "%s: модифікатор %s неправильний"
-
-#: ../src/defaults.c:2477
-#, c-format
-msgid "could not load image in option %s: %s"
-msgstr "не вдалось завантажити зображення для параметра %s: %s"
-
-#
-#: ../src/defaults.c:2594
-#, c-format
-msgid "failed to open bitmap file \"%s\""
-msgstr "не вдалось відкрити растровий файл \"%s\""
-
-#: ../src/defaults.c:2597
-#, c-format
-msgid "\"%s\" is not a valid bitmap file"
-msgstr "\"%s\" не є насправді растровим файлом"
-
-#: ../src/defaults.c:2600
-#, c-format
-msgid "out of memory reading bitmap file \"%s\""
-msgstr "вичерпана пам'ять під час читання растрового файлу \"%s\""
-
-#: ../src/defaults.c:2639 ../src/defaults.c:2672
-msgid "bad number of arguments in cursor specification"
-msgstr "неправильна кількість аргументів у визначенні курсора"
-
-#: ../src/defaults.c:2655
-#, c-format
-msgid "unknown builtin cursor name \"%s\""
-msgstr ""
-
-#: ../src/defaults.c:2682 ../src/defaults.c:2694
-#, c-format
-msgid "could not find cursor bitmap file \"%s\""
-msgstr "не вдалось знайти растровий файл курсора \"%s\""
-
-#: ../src/defaults.c:2741
-#, c-format
-msgid "Error in cursor specification for key \"%s\""
-msgstr "Помилка у визначенні курсора для ключа \"%s\""
-
-#: ../src/defaults.c:2826
+#: ../src/defaults.c:1726
 msgid "could not render texture for icon background"
 msgstr "не вдалось підготувати текстуру для фону іконки"
 
-#
-#: ../src/dialog.c:135
-msgid "Save workspace state"
-msgstr "Зберегти стан Робочого столу"
+#: ../src/defaults.c:2215
+#, fuzzy
+msgid "could not execute wmsetbg"
+msgstr "не вдалось виконати %s"
 
-#: ../src/dialog.c:179 ../src/dialog.c:736 ../src/dock.c:558
-#: ../src/dockedapp.c:431 ../src/rootmenu.c:198 ../src/rootmenu.c:248
-#: ../src/rootmenu.c:264
-msgid "Cancel"
-msgstr "Відміна"
+#: ../src/defaults.c:2567 ../src/defaults.c:2621
+#, fuzzy, c-format
+msgid "Could not find image \"%s\" for option \"%s\""
+msgstr "не вдалось завантажити зображення для параметра %s: %s"
 
-#
-#: ../src/dialog.c:277
-msgid "Could not open directory "
-msgstr "Неможливо відкрити каталог "
+#: ../src/defaults.c:2572 ../src/defaults.c:2629
+#, fuzzy, c-format
+msgid "Could not load image \"%s\" for option \"%s\""
+msgstr "не вдалось завантажити зображення для параметра %s: %s"
 
-#: ../src/dialog.c:332
-msgid "Could not load image file "
-msgstr "Неможливо завантажити файл зображення "
+#: ../src/defaults.c:2584
+msgid "Invalid split sizes for switch panel back image."
+msgstr ""
 
-#: ../src/dialog.c:663
-msgid "Directories"
-msgstr "Каталоги"
+#: ../src/defaults.c:2641
+#, c-format
+msgid "Value for option \"%s\" must be an array of 7 strings"
+msgstr ""
 
-#: ../src/dialog.c:672
-msgid "Icons"
-msgstr "Іконки"
+#: ../src/defaults.c:2662
+#, c-format
+msgid "Value for option \"%s\" must be an array of 9 strings"
+msgstr ""
 
-#: ../src/dialog.c:705
-msgid "Preview"
+#: ../src/defaults.c:2674
+#, c-format
+msgid "Invalid argument for option \"%s\" item %zu, cannot be empty"
+msgstr ""
+
+#: ../src/defaults.c:2689
+#, c-format
+msgid "Value for option \"%s\" must be an array of 4 strings"
 msgstr ""
 
 #
-#: ../src/dialog.c:718
-msgid "File Name:"
-msgstr "Ім'я файлу:"
+#: ../src/dialog.c:126
+msgid "Save workspace state"
+msgstr "Зберегти стан Робочого столу"
 
-#: ../src/dialog.c:742
-msgid "Choose File"
-msgstr "Виберіть файл"
+#: ../src/dialog.c:177 ../src/dialog_icon.c:569 ../src/dialog_run.c:2060
+#: ../src/dock.c:548 ../src/dock.c:6431 ../src/dockedapp.c:402
+#: ../src/misc.c:588 ../src/rootmenu.c:187
+msgid "Cancel"
+msgstr "Відміна"
 
-#: ../src/dialog.c:760 ../src/dialog.c:762
-msgid "Icon Chooser"
-msgstr "Вибір іконки"
+#: ../src/dialog.c:292
+msgid "no os-release file on the system"
+msgstr ""
 
-#: ../src/dialog.c:1241 ../src/dialog.c:1351
+#: ../src/dialog.c:443
+msgid "Window Manager for X"
+msgstr "Менеджер вікон для X"
+
+#: ../src/dialog.c:445
 #, c-format
 msgid "Version %s"
 msgstr "Версія %s"
 
-#: ../src/dialog.c:1348
-msgid "Window Manager for X"
-msgstr "Менеджер вікон для X"
+#: ../src/dialog.c:471 ../src/dialog.c:475
+#, c-format
+msgid "Running on: %s (%s)\n"
+msgstr ""
 
-#: ../src/dialog.c:1373
+#: ../src/dialog.c:479
 #, c-format
 msgid "Using visual 0x%x: %s %ibpp "
 msgstr ""
 
-#: ../src/dialog.c:1381
+#: ../src/dialog.c:485
 msgid "(32 thousand colors)\n"
 msgstr "(32 тисячі кольорів)\n"
 
-#: ../src/dialog.c:1384
+#: ../src/dialog.c:488
 msgid "(64 thousand colors)\n"
 msgstr "(64 тисячі кольорів)\n"
 
-#: ../src/dialog.c:1388
+#: ../src/dialog.c:492
 msgid "(16 million colors)\n"
 msgstr "(16 мільйонів кольорів)\n"
 
-#: ../src/dialog.c:1391
+#: ../src/dialog.c:496
+#, fuzzy
+msgid "(1 billion colors)\n"
+msgstr "(16 мільйонів кольорів)\n"
+
+#: ../src/dialog.c:499
 #, c-format
 msgid "(%d colors)\n"
 msgstr "(%d кольорів)\n"
 
-#: ../src/dialog.c:1401
+#: ../src/dialog.c:508
 #, c-format
-msgid "Total allocated memory: %i kB. Total memory in use: %i kB.\n"
+msgid "Total memory allocated: %lu kB (in use: %lu kB, %lu free chunks)\n"
+msgstr ""
+
+#: ../src/dialog.c:510
+#, fuzzy, c-format
+msgid "Total memory allocated: %lu kB (in use: %lu kB)\n"
 msgstr "Всього виділено пам'яті: %i kB. Всього використано пам'яті: %i kB.\n"
 
-#: ../src/dialog.c:1408
-msgid "Supported image formats: "
+#: ../src/dialog.c:527
+#, fuzzy
+msgid "Image formats: "
 msgstr "Підтримуються формати зображень: "
 
-#: ../src/dialog.c:1415
+#: ../src/dialog.c:540
 msgid ""
 "\n"
 "Additional support for: "
@@ -390,50 +474,39 @@ msgstr ""
 "\n"
 "Додаткова підтримка для: "
 
-#: ../src/dialog.c:1438
-msgid " and "
-msgstr " та "
-
-#: ../src/dialog.c:1448
-msgid ""
-"\n"
-"Sound disabled"
+#: ../src/dialog.c:548
+msgid "\n"
 msgstr ""
-"\n"
-"Підтримку звуку вимкнено"
 
-#: ../src/dialog.c:1450
-msgid ""
-"\n"
-"Sound enabled"
+#: ../src/dialog.c:550
+#, c-format
+msgid "%d head(s) found"
 msgstr ""
-"\n"
-"Підтримку звуку увімкнено"
 
-#: ../src/dialog.c:1476
+#: ../src/dialog.c:550
+#, c-format
+msgid "%d head found"
+msgstr ""
+
+#: ../src/dialog.c:598
 msgid "Info"
 msgstr "Інформація"
 
-#: ../src/dialog.c:1499
-msgid "Merry Christmas!"
-msgstr "Щасливого Різдва!"
-
-#: ../src/dialog.c:1569
+#: ../src/dialog.c:681
+#, fuzzy
 msgid ""
-"    Window Maker is free software; you can redistribute it and/or\n"
-"modify it under the terms of the GNU General Public License as\n"
-"published by the Free Software Foundation; either version 2 of the\n"
-"License, or (at your option) any later version.\n"
+"    Window Maker is free software; you can redistribute it and/or modify it "
+"under the terms of the GNU General Public License as published by the Free "
+"Software Foundation; either version 2 of the License, or (at your option) "
+"any later version.\n"
 "\n"
-"    Window Maker is distributed in the hope that it will be useful,\n"
-"but WITHOUT ANY WARRANTY; without even the implied warranty\n"
-"of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
-"See the GNU General Public License for more details.\n"
+"    Window Maker is distributed in the hope that it will be useful, but "
+"WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY "
+"or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for "
+"more details.\n"
 "\n"
-"    You should have received a copy of the GNU General Public\n"
-"License along with this program; if not, write to the Free Software\n"
-"Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA\n"
-"02110-1301, USA."
+"    You should have received a copy of the GNU General Public License along "
+"with this program; if not, see <https://www.gnu.org/licenses/>."
 msgstr ""
 "    Window Maker є вільним програмним забезпеченням; Ви можете\n"
 "розповсюджувати та/або модифікувати його у відповідності з умовами\n"
@@ -450,35 +523,33 @@ msgstr ""
 "програмою; якщо ні - напишіть до Free Software Foundation, Inc.,\n"
 "51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA."
 
-#: ../src/dialog.c:1590
+#: ../src/dialog.c:705
 msgid "Legal"
 msgstr "Правова інформація"
 
-#: ../src/dialog.c:1741 ../src/startup.c:394
+#: ../src/dialog.c:992
+#, fuzzy
+msgid "Keyboard Shortcuts"
+msgstr "Не прив'язувати комбінації клавіш"
+
+#: ../src/dialog_crash.c:147 ../src/monitor.c:85
 msgid "cannot open connection for crashing dialog panel. Aborting."
 msgstr ""
 "не вдалось відкрити з'єднання для панелі аварійного діалогу. Завершення "
 "роботи."
 
-#: ../src/dialog.c:1767
+#: ../src/dialog_crash.c:177
 msgid "Fatal error"
 msgstr "Критична помилка"
 
-#: ../src/dialog.c:1778
-#, c-format
-msgid ""
-"Window Maker received signal %i\n"
-"(%s)."
-msgstr ""
-"Window Maker: отримано сигнал %i\n"
-"(%s)."
-
-#: ../src/dialog.c:1781
+#: ../src/dialog_crash.c:187
 #, c-format
 msgid "Window Maker received signal %i."
 msgstr "Window Maker: отримано сигнал %i."
 
-#: ../src/dialog.c:1790
+#. Comment for the PO file: the %s is an email address
+#: ../src/dialog_crash.c:195
+#, c-format
 msgid ""
 " This fatal error occurred probably due to a bug. Please fill the included "
 "BUGFORM and report it to %s."
@@ -486,67 +557,100 @@ msgstr ""
 " Ця критична помилка, можливо, є результатом помилки в програмі. Будь ласка, "
 "заповніть форму BUGFORM і відправте її за адресою %s."
 
-#: ../src/dialog.c:1799
+#: ../src/dialog_crash.c:204
 msgid "What do you want to do now?"
 msgstr "Що робити?"
 
-#: ../src/dialog.c:1805
+#: ../src/dialog_crash.c:210
 msgid "Select action"
 msgstr "Виберіть дію"
 
-#: ../src/dialog.c:1806
+#: ../src/dialog_crash.c:211
 msgid "Abort and leave a core file"
 msgstr "Завершити роботу, залишивши файл core"
 
-#: ../src/dialog.c:1807
+#: ../src/dialog_crash.c:212
 msgid "Restart Window Maker"
 msgstr "Перезапустити Window Maker"
 
-#: ../src/dialog.c:1808
+#: ../src/dialog_crash.c:213
 msgid "Start alternate window manager"
 msgstr "Запустити альтернативний менеджер вікон"
 
-#: ../src/dialog.c:1986
+#
+#: ../src/dialog_icon.c:111
+#, fuzzy, c-format
 msgid ""
-"Window Maker is part of the GNUstep project.\n"
-"The GNUstep project aims to create a free\n"
-"implementation of the OpenStep(tm) specification\n"
-"which is a object-oriented framework for\n"
-"creating advanced graphical, multi-platform\n"
-"applications. Additionally, a development and\n"
-"user desktop enviroment will be created on top\n"
-"of the framework. For more information about\n"
-"GNUstep, please visit: www.gnustep.org"
+"Could not open directory \"%s\":\n"
+"%s"
+msgstr "Неможливо відкрити каталог "
+
+#: ../src/dialog_icon.c:127
+#, c-format
+msgid "full path for file \"%s\" in \"%s\" is longer than %d bytes, skipped"
 msgstr ""
-"Window Maker - це частина проекту GNUstep.\n"
-"Проект GNUstep має на меті створити вільну\n"
-"реалізацію специфікації OpenStep(tm), яка є\n"
-"об'єктно-орієнтованою основою для створення\n"
-"вдосконалених графічних незалежних від платформи\n"
-"прикладних програм. На цій основі буде створено\n"
-"середовище розробки та середовище робочого столу\n"
-"користувача. За додатковими подробицями щодо\n"
-"GNUstep, будь ласка, відвідайте: www.gnustep.org"
 
-#: ../src/dialog.c:2006
-msgid "About GNUstep"
-msgstr "Про GNUstep"
+#: ../src/dialog_icon.c:164
+msgid "Could not load image file "
+msgstr "Неможливо завантажити файл зображення "
 
-#: ../src/dock.c:213
+#: ../src/dialog_icon.c:482
+msgid "Directories"
+msgstr "Каталоги"
+
+#: ../src/dialog_icon.c:491
+msgid "Icons"
+msgstr "Іконки"
+
+#: ../src/dialog_icon.c:519
+msgid "List Mode"
+msgstr ""
+
+#: ../src/dialog_icon.c:524
+msgid "Names"
+msgstr ""
+
+#: ../src/dialog_icon.c:531
+msgid "Thumbs"
+msgstr ""
+
+#: ../src/dialog_icon.c:539
+msgid "Preview"
+msgstr ""
+
+#
+#: ../src/dialog_icon.c:551
+msgid "File Name:"
+msgstr "Ім'я файлу:"
+
+#: ../src/dialog_icon.c:575
+msgid "Choose File"
+msgstr "Виберіть файл"
+
+#: ../src/dialog_icon.c:594
+msgid "Icon Chooser"
+msgstr "Вибір іконки"
+
+#: ../src/dialog_run.c:2061
+msgid "Search or enter command..."
+msgstr ""
+
+#: ../src/dock.c:229 ../src/menu.c:2257
 #, c-format
 msgid "Type the name for workspace %i:"
 msgstr "Введіть ім'я для %i-го робочого столу:"
 
 #
-#: ../src/dock.c:214 ../src/dock.c:1141 ../src/dock.c:1144 ../src/dock.c:3409
+#: ../src/dock.c:230 ../src/dock.c:1441 ../src/dock.c:1443 ../src/dock.c:5230
+#: ../src/menu.c:2261
 msgid "Rename Workspace"
 msgstr "Перейменувати стіл"
 
-#: ../src/dock.c:520 ../src/dock.c:528
+#: ../src/dock.c:488 ../src/dock.c:495 ../src/winspector.c:981
 msgid "Warning"
 msgstr "Попередження"
 
-#: ../src/dock.c:521
+#: ../src/dock.c:489
 msgid ""
 "Some icons cannot be made omnipresent. Please make sure that no other icon "
 "is docked in the same positions on the other workspaces and the Clip is not "
@@ -556,7 +660,7 @@ msgstr ""
 "Впевніться, що на цій же позиції на інших робочих столах не прикріплена інша "
 "іконка і що в Скріпці є місце для нових іконок на всіх робочих столах."
 
-#: ../src/dock.c:529
+#: ../src/dock.c:496
 msgid ""
 "Icon cannot be made omnipresent. Please make sure that no other icon is "
 "docked in the same position on the other workspaces and the Clip is not full "
@@ -566,482 +670,2392 @@ msgstr ""
 "на цій же позиції на інших робочих столах не прикріплена інша іконка і що в "
 "Скріпці є місце для нових іконок на всіх робочих столах."
 
-#: ../src/dock.c:556
+#: ../src/dock.c:546
 msgid "Workspace Clip"
 msgstr "Скріпка Робочого столу"
 
-#: ../src/dock.c:557
+#: ../src/dock.c:546 ../src/dock.c:6429
+msgid "Drawer"
+msgstr ""
+
+#: ../src/dock.c:547
 msgid "All selected icons will be removed!"
 msgstr "Всі вибрані іконки будуть видалені!"
 
-#: ../src/dock.c:608 ../src/dock.c:1156 ../src/dock.c:1158 ../src/dock.c:3445
+#. can be: Unselect all icons
+#: ../src/dock.c:593 ../src/dock.c:1455 ../src/dock.c:1457 ../src/dock.c:5268
 msgid "Keep Icon"
 msgstr "Утримувати іконку"
 
 #
-#: ../src/dock.c:609 ../src/dock.c:2137 ../src/dock.c:2278
+#: ../src/dock.c:594 ../src/dock.c:2822 ../src/dock.c:3026
 msgid "Type the command used to launch the application"
 msgstr "Введіть команду, що використовується для запуску програми"
 
 #
-#: ../src/dock.c:965
-#, c-format
-msgid "could not launch application %s\n"
+#: ../src/dock.c:1174
+#, fuzzy, c-format
+msgid "could not launch application %s"
 msgstr "не вдалось запустити програму %s\n"
 
-#: ../src/dock.c:1020
+#: ../src/dock.c:1222
 msgid "could not create workspace submenu for Clip menu"
 msgstr "не вдалось створити підменю робочих місць для меню Скріпки"
 
-#: ../src/dock.c:1078
+#: ../src/dock.c:1287
 msgid "could not create options submenu for Clip menu"
 msgstr "не вдалось створити підменю параметрів для меню Скріпки"
 
-#: ../src/dock.c:1082 ../src/dock.c:1130
-msgid "Keep on Top"
-msgstr "Завжди на плаву"
-
-#: ../src/dock.c:1088
-msgid "Collapsed"
-msgstr "Звернуто"
-
-#: ../src/dock.c:1094
-msgid "Auto Collapse"
-msgstr "Автозвертати"
-
-#: ../src/dock.c:1100
-msgid "Auto Raise"
-msgstr "Автопіднімати"
-
-#: ../src/dock.c:1106
+#: ../src/dock.c:1291
 msgid "Auto Attract Icons"
 msgstr "Автопритягати іконки"
 
-#: ../src/dock.c:1136
+#: ../src/dock.c:1296
+msgid "Auto Collapse"
+msgstr "Автозвертати"
+
+#: ../src/dock.c:1301
+#, fuzzy
+msgid "Auto Compact"
+msgstr "Автозвертати"
+
+#: ../src/dock.c:1306 ../src/dock.c:1387
+msgid "Auto Raise"
+msgstr "Автопіднімати"
+
+#: ../src/dock.c:1311
+msgid "Collapsed"
+msgstr "Звернуто"
+
+#: ../src/dock.c:1316 ../src/dock.c:1392
+msgid "Keep on Top"
+msgstr "Завжди на плаву"
+
+#: ../src/dock.c:1378
+#, fuzzy
+msgid "could not create options submenu for Dock menu"
+msgstr "не вдалось створити підменю параметрів для меню Скріпки"
+
+#: ../src/dock.c:1382
+#, fuzzy
+msgid "Auto Hide"
+msgstr "Автопіднімати"
+
+#: ../src/dock.c:1417
+#, fuzzy
+msgid "Dock Options"
+msgstr "Опції"
+
+#: ../src/dock.c:1423
+msgid "Add a Drawer"
+msgstr ""
+
+#: ../src/dock.c:1427
 msgid "Clip Options"
 msgstr "Параметри Скріпки"
 
-#: ../src/dock.c:1146
+#. if (type == WM_DRAWER)
+#: ../src/dock.c:1429
+#, fuzzy
+msgid "Drawer Options"
+msgstr "Додаткові опції"
+
+#: ../src/dock.c:1446
 msgid "Selected"
 msgstr "Вибране"
 
-#: ../src/dock.c:1151 ../src/dock.c:1154 ../src/dock.c:3436
+#: ../src/dock.c:1451 ../src/dock.c:1453 ../src/dock.c:5258
 msgid "Select All Icons"
 msgstr "Вибір всіх іконок"
 
-#: ../src/dock.c:1160 ../src/dock.c:1162 ../src/dock.c:3453
+#: ../src/dock.c:1460 ../src/dock.c:1462 ../src/dock.c:5279
 msgid "Move Icon To"
 msgstr "Перемістити іконку на..."
 
-#: ../src/dock.c:1167 ../src/dock.c:1170 ../src/dock.c:3464
+#: ../src/dock.c:1468 ../src/dock.c:1470 ../src/dock.c:5293
 msgid "Remove Icon"
 msgstr "Видалити іконку"
 
-#: ../src/dock.c:1172
+#. can be: Remove Icons
+#: ../src/dock.c:1472
 msgid "Attract Icons"
 msgstr "Притягати іконки"
 
-#: ../src/dock.c:1175
-msgid "Launch"
-msgstr "Запуск"
-
-#: ../src/dock.c:1183
+#. can be: Unhide
+#: ../src/dock.c:1485
 msgid "Settings..."
 msgstr "Установки..."
 
-#: ../src/dock.c:1548 ../src/dock.c:1655
+#: ../src/dock.c:1918 ../src/dock.c:2018
 #, c-format
 msgid "bad value in docked icon state info %s"
 msgstr "помилкове значення в стані прикріпленої іконки -- %s"
 
-#: ../src/dock.c:1663
-#, c-format
-msgid "bad value in docked icon position %i,%i"
-msgstr "помилкове значення в позиції прикріпленої іконки %i,%i"
+#: ../src/dock.c:2046
+#, fuzzy, c-format
+msgid "bad value in dock state info:%s"
+msgstr "помилкове значення в стані прикріпленої іконки -- %s"
 
-#: ../src/dock.c:1919
-msgid "there are too many icons stored in dock. Ignoring what doesn't fit"
-msgstr "прикріплено надто багато іконок. Зайві будуть проігноровані"
+#: ../src/dock.c:2130
+#, c-format
+msgid "unknown dock edge \"%s\" in state info, keeping the current one"
+msgstr ""
 
 #. icon->forced_dock = 1;
-#: ../src/dock.c:2136 ../src/dock.c:2277
+#: ../src/dock.c:2821 ../src/dock.c:3025
 msgid "Dock Icon"
 msgstr "Іконка Доку"
 
-#: ../src/dock.c:3323
+#: ../src/dock.c:5156
 #, c-format
 msgid "Could not execute command \"%s\""
 msgstr "Неможливо виконати команду \"%s\""
 
-#: ../src/dock.c:3415
+#: ../src/dock.c:5236
 msgid "Toggle Omnipresent"
 msgstr "Присутність на всіх столах"
 
-#: ../src/dock.c:3420 ../src/kwm.c:637 ../src/winmenu.c:418
-#: ../src/winspector.c:1377
+#: ../src/dock.c:5241 ../src/winmenu.c:135 ../src/winspector.c:123
 msgid "Omnipresent"
 msgstr "На всіх столах"
 
-#: ../src/dock.c:3434
+#: ../src/dock.c:5256
 msgid "Unselect All Icons"
 msgstr "Зняття вибору всіх іконок"
 
-#: ../src/dock.c:3443
+#: ../src/dock.c:5266
 msgid "Keep Icons"
 msgstr "Утримувати іконки"
 
-#: ../src/dock.c:3451
+#: ../src/dock.c:5277
 msgid "Move Icons To"
 msgstr "Перемістити іконки на..."
 
-#: ../src/dock.c:3462
+#: ../src/dock.c:5291
 msgid "Remove Icons"
 msgstr "Видалити іконки"
 
-#: ../src/dock.c:3493 ../src/kwm.c:643
+#: ../src/dock.c:5321
 msgid "Bring Here"
 msgstr "Принести сюди"
 
-#: ../src/dockedapp.c:149
+#: ../src/dock.c:5345
+msgid "Remove Drawer"
+msgstr ""
+
+#: ../src/dock.c:6430
+msgid "All icons in this drawer will be detached!"
+msgstr ""
+
+#: ../src/dockedapp.c:64
 #, c-format
 msgid "could not find icon %s, used in a docked application"
 msgstr "не вдалось знайти іконку %s, використану в пришвартованій програмі"
 
 #
-#: ../src/dockedapp.c:229
+#: ../src/dockedapp.c:154
 #, c-format
 msgid "Could not open specified icon file: %s"
 msgstr "Не вдалось відкрити вказаний файл іконки: %s"
 
-#: ../src/dockedapp.c:231
+#: ../src/dockedapp.c:156
 msgid "Ignore"
 msgstr "Ігнорувати"
 
-#: ../src/dockedapp.c:333
+#: ../src/dockedapp.c:268
+msgid "Click to choose an icon"
+msgstr ""
+
+#: ../src/dockedapp.c:319
 msgid "Start when Window Maker is started"
 msgstr "Запустити при запуску WindowMaker'а"
 
-#: ../src/dockedapp.c:340
+#: ../src/dockedapp.c:324
 msgid "Lock (prevent accidental removal)"
 msgstr "Зафіксувати (перешкодити випадковому видаленню)"
 
 #
-#: ../src/dockedapp.c:344
+#: ../src/dockedapp.c:328
 msgid "Application path and arguments"
 msgstr "Шлях до програми і аргументи"
 
-#: ../src/dockedapp.c:357
+#: ../src/dockedapp.c:339
 msgid "Command for middle-click launch"
 msgstr "Команда для запуску по середній кнопці миші"
 
-#: ../src/dockedapp.c:371
+#: ../src/dockedapp.c:351
 #, c-format
 msgid "%s will be replaced with current selection"
 msgstr "%s буде замінено на поточне виділення"
 
-#: ../src/dockedapp.c:376
-msgid "Command for files dropped with DND"
+#: ../src/dockedapp.c:355
+#, fuzzy
+msgid "Command for dragged and dropped files"
 msgstr "Команда для \"перетягнутих\" файлів"
 
-#: ../src/dockedapp.c:390
+#: ../src/dockedapp.c:367
 #, c-format
 msgid "%d will be replaced with the file name"
 msgstr "%d буде замінено на ім'я файла"
 
-#: ../src/dockedapp.c:394
-msgid "DND support was not compiled in"
+#: ../src/dockedapp.c:370
+#, fuzzy
+msgid "XDnD support was not compiled in"
 msgstr "Підтримка перетягування даних не була включена при компіляції"
 
-#: ../src/dockedapp.c:399
+#: ../src/dockedapp.c:378
 msgid "Icon Image"
 msgstr "Зображення іконки"
 
-#: ../src/dockedapp.c:413 ../src/winspector.c:1515
+#: ../src/dockedapp.c:389 ../src/winspector.c:1708
 msgid "Browse..."
 msgstr "Вибрати..."
 
 #
-#: ../src/dockedapp.c:466
+#: ../src/dockedapp.c:465
 msgid "Docked Application Settings"
 msgstr "Параметри пришвартованої програми"
 
-#: ../src/framewin.c:649 ../src/framewin.c:744 ../src/menu.c:456
-#: ../src/texture.c:594
+#: ../src/event.c:526
+#, fuzzy
+msgid "Inotify: Reading config files in defaults database."
+msgstr "не вдалось прочитати домен \"%s\" з бази даних умовчань"
+
+#: ../src/event.c:584
+#, c-format
+msgid "read problem when trying to get INotify event: %s"
+msgstr ""
+
+#: ../src/event.c:609
+msgid ""
+"the defaults database has been deleted! Restart Window Maker to create the "
+"database with the default settings"
+msgstr ""
+
+#: ../src/event.c:614
+msgid ""
+"the unit containing the defaults database has been unmounted. Setting --"
+"static mode. Any changes will not be saved."
+msgstr ""
+
+#: ../src/event_input.c:555
+#, c-format
+msgid "invalid action \"%s\" for button %ld in ExtraMouseButtons"
+msgstr ""
+
+#: ../src/event_root.c:100
+msgid "Got Reconfigure command over the deprecated X channel, use wmakermsg"
+msgstr ""
+
+#: ../src/event_root.c:103
+#, c-format
+msgid "Got unknown command %s over the deprecated X channel"
+msgstr ""
+
+#: ../src/event_root.c:360
+msgid "another window manager is replacing us!"
+msgstr ""
+
+#: ../src/framewin.c:1178 ../src/framewin.c:1297 ../src/menu.c:637
+#: ../src/texture.c:414
 #, c-format
 msgid "could not render texture: %s"
 msgstr "не вдалось підготувати текстуру: %s"
 
-#: ../src/framewin.c:672 ../src/framewin.c:683 ../src/framewin.c:699
-#: ../src/framewin.c:710 ../src/framewin.c:717 ../src/framewin.c:724
-#: ../src/icon.c:350 ../src/menu.c:485
+#: ../src/framewin.c:1197 ../src/framewin.c:1209 ../src/framewin.c:1221
+#: ../src/framewin.c:1229 ../src/framewin.c:1235 ../src/icon.c:383
+#: ../src/menu.c:664
 #, c-format
 msgid "error rendering image:%s"
 msgstr "помилка при підготовці зображення:%s"
 
-#: ../src/framewin.c:777
+#: ../src/framewin.c:1325
 #, c-format
 msgid "error rendering image: %s"
 msgstr "помилка при підготовці зображення: %s"
 
-#: ../src/gnome.c:216 ../src/gnome.c:343 ../src/gnome.c:401
-msgid "out of memory while updating GNOME hints"
-msgstr "вичерпана пам'ять при оновленні GNOME hints"
+#: ../src/keybind_descriptions.h:42 ../src/keybind_descriptions.h:43
+#: ../src/keybind_descriptions.h:44 ../src/keybind_descriptions.h:45
+#: ../src/keybind_descriptions.h:46 ../src/keybind_descriptions.h:47
+#: ../src/keybind_descriptions.h:48
+msgid "Virtual Desktop"
+msgstr ""
 
-#: ../src/icon.c:229 ../src/wdefaults.c:443
-#, c-format
-msgid "error loading image file \"%s\""
-msgstr "помилка завантаження файлу зображення \"%s\""
+#: ../src/keybind_descriptions.h:42
+msgid "Move VirtualDesktop to next left edge"
+msgstr ""
 
-#
-#: ../src/icon.c:491 ../src/icon.c:500
-#, c-format
-msgid "could not create directory %s"
-msgstr "не вдалось створити каталог %s"
+#: ../src/keybind_descriptions.h:42
+msgid "VirtualEdgeLeftKey"
+msgstr ""
 
-#: ../src/icon.c:767
-#, c-format
-msgid "could not find default icon \"%s\""
-msgstr "не вдалось знайти іконку за умовчанням \"%s\""
+#: ../src/keybind_descriptions.h:43
+msgid "Move VirtualDesktop to next right edge"
+msgstr ""
 
-#: ../src/icon.c:773
-#, c-format
-msgid "could not load default icon \"%s\":%s"
-msgstr "не вдалось завантажити іконку за умовчанням \"%s\":%s"
+#: ../src/keybind_descriptions.h:43
+msgid "VirtualEdgeRightKey"
+msgstr ""
 
-#.
-#. * Warning: If you make some change that affects the order of the
-#. * entries, you must update the command #defines in the top of
-#. * this file.
-#.
-#: ../src/kwm.c:633 ../src/winmenu.c:441 ../src/winmenu.c:583
-msgid "Maximize"
-msgstr "Максимізувати"
+#: ../src/keybind_descriptions.h:44
+msgid "Move VirtualDesktop to next top edge"
+msgstr ""
 
-#: ../src/kwm.c:634 ../src/winmenu.c:578
-msgid "Unmaximize"
-msgstr "Демаксимізувати"
+#: ../src/keybind_descriptions.h:44
+msgid "VirtualEdgeUpKey"
+msgstr ""
 
-#: ../src/kwm.c:635 ../src/winmenu.c:449 ../src/winmenu.c:569
-msgid "Miniaturize"
+#: ../src/keybind_descriptions.h:45
+msgid "Move VirtualDesktop to next bottom edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:45
+msgid "VirtualEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:46
+msgid "Move VirtualDesktop to its origin"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:46
+msgid "VirtualDesktopHomeKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:47
+msgid "Center the focused window in the VirtualDesktop"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:47
+msgid "VirtualDesktopCenterKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:48
+msgid "Pin the focused window to the VirtualDesktop viewport"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:48
+msgid "VirtualDesktopPinKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:55 ../src/keybind_descriptions.h:56
+#: ../src/keybind_descriptions.h:220 ../src/keybind_descriptions.h:221
+#: ../src/keybind_descriptions.h:222 ../src/keybind_descriptions.h:223
+#: ../src/keybind_descriptions.h:224
+msgid "Session & Misc"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:55
+msgid "Toggle keyboard language"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:55
+msgid "ToggleKbdModeKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:56
+msgid "Pick accented and special characters"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:56
+msgid "AccentPickerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:62 ../src/keybind_descriptions.h:63
+#: ../src/keybind_descriptions.h:64
+msgid "Menus"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:62
+#, fuzzy
+msgid "Open applications menu"
+msgstr "Не показувати іконку"
+
+#: ../src/keybind_descriptions.h:62
+msgid "RootMenuKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:63
+msgid "Open window list menu"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:63
+#, fuzzy
+msgid "WindowListKey"
+msgstr "Список вікон"
+
+#: ../src/keybind_descriptions.h:64
+msgid "Open window commands menu"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:64
+#, fuzzy
+msgid "WindowMenuKey"
+msgstr "Вікна"
+
+#: ../src/keybind_descriptions.h:66 ../src/keybind_descriptions.h:67
+#: ../src/keybind_descriptions.h:68 ../src/keybind_descriptions.h:69
+#: ../src/keybind_descriptions.h:70 ../src/keybind_descriptions.h:71
+#: ../src/keybind_descriptions.h:72
+#, fuzzy
+msgid "Dock & Screen"
+msgstr "Іконка Доку"
+
+#: ../src/keybind_descriptions.h:66
+msgid "Raise/Lower Dock"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:66
+msgid "DockRaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:67
+msgid "Raise/Lower Clip"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:67
+msgid "ClipRaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:68
+msgid "Switch to next screen/monitor"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:68
+msgid "ScreenSwitchKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:69
+#, fuzzy
+msgid "Capture the entire screen"
+msgstr "Завжди усередині екрану"
+
+#: ../src/keybind_descriptions.h:69
+msgid "ScreenCaptureKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:70
+#, fuzzy
+msgid "Capture a window"
+msgstr "Умовчання для всіх вікон"
+
+#: ../src/keybind_descriptions.h:70
+msgid "WindowCaptureKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:71
+msgid "Capture a portion of the screen"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:71
+msgid "PartialCaptureKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:72
+msgid "Find the mouse pointer"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:72
+msgid "FindMouseKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:74 ../src/keybind_descriptions.h:75
+#: ../src/keybind_descriptions.h:76 ../src/keybind_descriptions.h:77
+#: ../src/keybind_descriptions.h:78 ../src/keybind_descriptions.h:79
+#: ../src/keybind_descriptions.h:80 ../src/keybind_descriptions.h:81
+#: ../src/keybind_descriptions.h:82 ../src/keybind_descriptions.h:83
+#: ../src/keybind_descriptions.h:84 ../src/keybind_descriptions.h:85
+#: ../src/keybind_descriptions.h:86 ../src/keybind_descriptions.h:87
+#: ../src/keybind_descriptions.h:88 ../src/keybind_descriptions.h:89
+#: ../src/keybind_descriptions.h:90 ../src/keybind_descriptions.h:91
+#: ../src/keybind_descriptions.h:92 ../src/keybind_descriptions.h:93
+#: ../src/keybind_descriptions.h:94 ../src/keybind_descriptions.h:95
+#: ../src/keybind_descriptions.h:96 ../src/keybind_descriptions.h:97
+#: ../src/keybind_descriptions.h:98 ../src/keybind_descriptions.h:99
+#: ../src/keybind_descriptions.h:100 ../src/keybind_descriptions.h:101
+#: ../src/keybind_descriptions.h:102 ../src/keybind_descriptions.h:103
+#: ../src/keybind_descriptions.h:104 ../src/keybind_descriptions.h:105
+#: ../src/keybind_descriptions.h:106 ../src/keybind_descriptions.h:107
+#: ../src/keybind_descriptions.h:108 ../src/keybind_descriptions.h:109
+#: ../src/keybind_descriptions.h:110 ../src/keybind_descriptions.h:111
+#: ../src/keybind_descriptions.h:112 ../src/keybind_descriptions.h:113
+#: ../src/keybind_descriptions.h:114 ../src/keybind_descriptions.h:115
+#: ../src/keybind_descriptions.h:116 ../src/keybind_descriptions.h:117
+#: ../src/keybind_descriptions.h:118 ../src/keybind_descriptions.h:119
+#: ../src/keybind_descriptions.h:120 ../src/keybind_descriptions.h:121
+#: ../src/keybind_descriptions.h:122 ../src/keybind_descriptions.h:123
+#: ../src/keybind_descriptions.h:124 ../src/keybind_descriptions.h:125
+#: ../src/switchmenu.c:166
+msgid "Windows"
+msgstr "Вікна"
+
+#: ../src/keybind_descriptions.h:74
+#, fuzzy
+msgid "Miniaturize active window"
 msgstr "Мінімізувати"
 
-#: ../src/kwm.c:636 ../src/winmenu.c:564
-msgid "Deminiaturize"
-msgstr "Демінімізувати"
+#: ../src/keybind_descriptions.h:74
+#, fuzzy
+msgid "MiniaturizeKey"
+msgstr "Мінімізувати"
 
-#: ../src/kwm.c:638
-msgid "Not Omnipresent"
-msgstr "Не на всіх столах"
+#: ../src/keybind_descriptions.h:75
+#, fuzzy
+msgid "Miniaturize all windows"
+msgstr "Мінімізувати"
 
-#: ../src/kwm.c:639
-msgid "Move"
-msgstr "Перемістити"
+#: ../src/keybind_descriptions.h:75
+#, fuzzy
+msgid "MiniaturizeAllKey"
+msgstr "Мінімізувати"
 
-#: ../src/kwm.c:640
-msgid "Resize"
+#: ../src/keybind_descriptions.h:76
+#, fuzzy
+msgid "Miniaturize other windows"
+msgstr "Мінімізувати"
+
+#: ../src/keybind_descriptions.h:76
+#, fuzzy
+msgid "MiniaturizeOthersKey"
+msgstr "Мінімізувати"
+
+#
+#: ../src/keybind_descriptions.h:77
+#, fuzzy
+msgid "Hide active application"
+msgstr "Емулювати іконку програми"
+
+#: ../src/keybind_descriptions.h:77
+#, fuzzy
+msgid "HideKey"
+msgstr "Приховати"
+
+#
+#: ../src/keybind_descriptions.h:78
+#, fuzzy
+msgid "Hide other applications"
+msgstr "не вдалось запустити програму %s\n"
+
+#: ../src/keybind_descriptions.h:78
+#, fuzzy
+msgid "HideOthersKey"
+msgstr "Приховати інші"
+
+#: ../src/keybind_descriptions.h:79
+msgid "Toggle show desktop (minimize/restore all)"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:79
+msgid "ShowDesktopKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:80
+#, fuzzy
+msgid "Show all windows"
+msgstr "Умовчання для всіх вікон"
+
+#: ../src/keybind_descriptions.h:80
+msgid "ShowAllKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:81
+#, fuzzy
+msgid "Arrange icons"
+msgstr "Притягати іконки"
+
+#: ../src/keybind_descriptions.h:81
+msgid "ArrangeIconsKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:82
+msgid "Move/Resize active window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:82
+#, fuzzy
+msgid "MoveResizeKey"
 msgstr "Змінити розмір"
 
-#.
-#. entry = wMenuAddCallback(menu, _("Select Shortcut"), NULL, NULL);
-#. wMenuEntrySetCascade(menu, entry, makeMakeShortcutMenu(scr));
-#.
-#: ../src/kwm.c:641 ../src/rootmenu.c:248 ../src/winmenu.c:513
-msgid "Close"
+#: ../src/keybind_descriptions.h:83
+#, fuzzy
+msgid "Close active window"
+msgstr "Виберіть вікно"
+
+#: ../src/keybind_descriptions.h:83
+#, fuzzy
+msgid "CloseKey"
 msgstr "Закрити"
 
-#: ../src/kwm.c:642 ../src/winmenu.c:497
-msgid "Move To"
-msgstr "Перемістити на..."
+#: ../src/keybind_descriptions.h:84
+#, fuzzy
+msgid "Restore active window geometry"
+msgstr "Перезапустити Window Maker"
 
-#: ../src/kwm.c:1096
-msgid "%a(Run Command,Type the command to run:)"
-msgstr "%a(Запустити команду,Введіть команду:)"
+#: ../src/keybind_descriptions.h:84
+msgid "RestoreGeometryKey"
+msgstr ""
 
-#: ../src/main.c:222
+#: ../src/keybind_descriptions.h:85
+msgid "Maximize active window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:85
+#, fuzzy
+msgid "MaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:86
+msgid "Maximize active window vertically"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:86
+#, fuzzy
+msgid "VMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:87
+msgid "Maximize active window horizontally"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:87
+#, fuzzy
+msgid "HMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:88
+msgid "Maximize active window left half"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:88
+#, fuzzy
+msgid "LHMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:89
+msgid "Maximize active window right half"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:89
+#, fuzzy
+msgid "RHMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:90
+msgid "Maximize active window top half"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:90
+#, fuzzy
+msgid "THMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:91
+msgid "Maximize active window bottom half"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:91
+#, fuzzy
+msgid "BHMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:92
+msgid "Maximize active window top left corner"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:92
+#, fuzzy
+msgid "TLCMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:93
+msgid "Maximize active window top right corner"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:93
+#, fuzzy
+msgid "TRCMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:94
+msgid "Maximize active window bottom left corner"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:94
+#, fuzzy
+msgid "BLCMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:95
+msgid "Maximize active window bottom right corner"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:95
+#, fuzzy
+msgid "BRCMaximizeKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:96
+#, fuzzy
+msgid "Tile active window"
+msgstr "Виберіть вікно"
+
+#: ../src/keybind_descriptions.h:96
+#, fuzzy
+msgid "MaximusKey"
+msgstr "Максимізувати"
+
+#: ../src/keybind_descriptions.h:97
+msgid "Move active window to left edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:97
+msgid "MoveToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:98
+msgid "Move active window to right edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:98
+msgid "MoveToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:99
+msgid "Move active window to top edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:99
+msgid "MoveToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:100
+msgid "Move active window to bottom edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:100
+msgid "MoveToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:101
+msgid "Move active window to left screen edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:101
+msgid "MoveToEdgeLeftNoSnapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:102
+msgid "Move active window to right screen edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:102
+msgid "MoveToEdgeRightNoSnapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:103
+msgid "Move active window to top screen edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:103
+msgid "MoveToEdgeUpNoSnapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:104
+msgid "Move active window to bottom screen edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:104
+msgid "MoveToEdgeDownNoSnapKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:105
+msgid "Grow active window to left edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:105
+msgid "GrowToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:106
+msgid "Grow active window to right edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:106
+msgid "GrowToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:107
+msgid "Grow active window to top edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:107
+msgid "GrowToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:108
+msgid "Grow active window to bottom edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:108
+msgid "GrowToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:109
+msgid "Shrink active window from left edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:109
+msgid "ShrinkToEdgeLeftKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:110
+msgid "Shrink active window from right edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:110
+msgid "ShrinkToEdgeRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:111
+msgid "Shrink active window from top edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:111
+msgid "ShrinkToEdgeUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:112
+msgid "Shrink active window from bottom edge"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:112
+msgid "ShrinkToEdgeDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:113
+#, fuzzy
+msgid "Toggle fullscreen for active window"
+msgstr "Умовчання для всіх вікон"
+
+#: ../src/keybind_descriptions.h:113
+msgid "ToggleFullscreenKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:114
+#, fuzzy
+msgid "Center active window"
+msgstr "Виберіть вікно"
+
+#: ../src/keybind_descriptions.h:114
+msgid "CenterKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:115
+msgid "Toggle window on top status"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:115
+#, fuzzy
+msgid "KeepOnTopKey"
+msgstr "Завжди на плаву"
+
+#: ../src/keybind_descriptions.h:116
+msgid "Toggle window at bottom status"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:116
+#, fuzzy
+msgid "KeepAtBottomKey"
+msgstr "Тримати під вікнами"
+
+#: ../src/keybind_descriptions.h:117
+#, fuzzy
+msgid "Toggle window omnipresent status"
+msgstr "Присутність на всіх столах"
+
+#: ../src/keybind_descriptions.h:117
+#, fuzzy
+msgid "OmnipresentKey"
+msgstr "На всіх столах"
+
+#: ../src/keybind_descriptions.h:118
+#, fuzzy
+msgid "Raise active window"
+msgstr "Виберіть вікно"
+
+#: ../src/keybind_descriptions.h:118
+msgid "RaiseKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:119
+#, fuzzy
+msgid "Lower active window"
+msgstr "Виберіть вікно"
+
+#: ../src/keybind_descriptions.h:119
+msgid "LowerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:120
+msgid "Raise/Lower window under mouse pointer"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:120
+msgid "RaiseLowerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:121
+#, fuzzy
+msgid "Shade active window"
+msgstr "Виберіть вікно"
+
+#: ../src/keybind_descriptions.h:121
+#, fuzzy
+msgid "ShadeKey"
+msgstr "Звернути в смужку"
+
+#: ../src/keybind_descriptions.h:122
+#, fuzzy
+msgid "Select active window"
+msgstr "Виберіть вікно"
+
+#: ../src/keybind_descriptions.h:122
+#, fuzzy
+msgid "SelectKey"
+msgstr "Вибране"
+
+#: ../src/keybind_descriptions.h:123
+msgid "Launch new instance of application"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:123
+msgid "WindowRelaunchKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:124
+msgid "Move to right/bottom/left/top head"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:124
+msgid "MoveTo12to6Head"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:125
+msgid "Move to left/top/right/bottom head"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:125
+msgid "MoveTo6to12Head"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:127 ../src/keybind_descriptions.h:128
+#: ../src/keybind_descriptions.h:129 ../src/keybind_descriptions.h:130
+#: ../src/keybind_descriptions.h:131 ../src/keybind_descriptions.h:132
+#: ../src/keybind_descriptions.h:133 ../src/keybind_descriptions.h:134
+#: ../src/keybind_descriptions.h:135 ../src/keybind_descriptions.h:136
+#, fuzzy
+msgid "Window Shortcuts"
+msgstr "Атрибути вікна"
+
+#: ../src/keybind_descriptions.h:127
+msgid "Shortcut for window 1"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:127
+msgid "WindowShortcut1Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:128
+msgid "Shortcut for window 2"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:128
+msgid "WindowShortcut2Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:129
+msgid "Shortcut for window 3"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:129
+msgid "WindowShortcut3Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:130
+msgid "Shortcut for window 4"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:130
+msgid "WindowShortcut4Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:131
+msgid "Shortcut for window 5"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:131
+msgid "WindowShortcut5Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:132
+msgid "Shortcut for window 6"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:132
+msgid "WindowShortcut6Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:133
+msgid "Shortcut for window 7"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:133
+msgid "WindowShortcut7Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:134
+msgid "Shortcut for window 8"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:134
+msgid "WindowShortcut8Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:135
+msgid "Shortcut for window 9"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:135
+msgid "WindowShortcut9Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:136
+msgid "Shortcut for window 10"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:136
+msgid "WindowShortcut10Key"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:138 ../src/keybind_descriptions.h:139
+#: ../src/keybind_descriptions.h:140 ../src/keybind_descriptions.h:141
+#: ../src/keybind_descriptions.h:142 ../src/keybind_descriptions.h:143
+#: ../src/keybind_descriptions.h:144 ../src/keybind_descriptions.h:145
+#: ../src/keybind_descriptions.h:146 ../src/keybind_descriptions.h:147
+#: ../src/keybind_descriptions.h:148 ../src/keybind_descriptions.h:149
+#: ../src/keybind_descriptions.h:150 ../src/keybind_descriptions.h:151
+msgid "Focus & Groups"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:138
+#, fuzzy
+msgid "Focus next window"
+msgstr "Виберіть вікно"
+
+#: ../src/keybind_descriptions.h:138
+msgid "FocusNextKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:139
+msgid "Focus previous window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:139
+msgid "FocusPrevKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:140
+msgid "Focus the window to the left"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:140
+msgid "FocusWindowLeftKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:141
+msgid "Focus the window to the right"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:141
+msgid "FocusWindowRightKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:142
+msgid "Focus the window above"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:142
+msgid "FocusWindowUpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:143
+msgid "Focus the window below"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:143
+msgid "FocusWindowDownKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:144
+msgid "Focus next window in group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:144
+msgid "GroupWindowNextKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:145
+msgid "Focus previous window in group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:145
+msgid "GroupWindowPrevKey"
+msgstr ""
+
+#
+#: ../src/keybind_descriptions.h:146
+#, fuzzy
+msgid "Switch to next application group"
+msgstr "Спільна іконка програми"
+
+#: ../src/keybind_descriptions.h:146
+msgid "GroupNextKey"
+msgstr ""
+
+#
+#: ../src/keybind_descriptions.h:147
+#, fuzzy
+msgid "Switch to previous application group"
+msgstr "Спільна іконка програми"
+
+#: ../src/keybind_descriptions.h:147
+msgid "GroupPrevKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:148
+msgid "Switch to next tab in group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:148
+msgid "GroupTabNextKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:149
+msgid "Switch to previous tab in group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:149
+msgid "GroupTabPrevKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:150
+msgid "Attach window as tab"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:150
+msgid "GroupTabAttachKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:151
+msgid "Detach tab from group"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:151
+msgid "GroupTabDetachKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:153 ../src/keybind_descriptions.h:154
+#: ../src/keybind_descriptions.h:155 ../src/keybind_descriptions.h:156
+#: ../src/keybind_descriptions.h:157 ../src/keybind_descriptions.h:158
+#: ../src/keybind_descriptions.h:159 ../src/keybind_descriptions.h:160
+#: ../src/keybind_descriptions.h:161 ../src/keybind_descriptions.h:162
+#: ../src/keybind_descriptions.h:163 ../src/keybind_descriptions.h:164
+#: ../src/keybind_descriptions.h:165 ../src/keybind_descriptions.h:166
+#: ../src/keybind_descriptions.h:167 ../src/keybind_descriptions.h:168
+#: ../src/keybind_descriptions.h:169 ../src/keybind_descriptions.h:170
+#: ../src/keybind_descriptions.h:171 ../src/keybind_descriptions.h:172
+#: ../src/keybind_descriptions.h:173 ../src/keybind_descriptions.h:174
+#: ../src/keybind_descriptions.h:175 ../src/keybind_descriptions.h:176
+#: ../src/keybind_descriptions.h:177 ../src/keybind_descriptions.h:178
+#: ../src/keybind_descriptions.h:179 ../src/keybind_descriptions.h:180
+#: ../src/keybind_descriptions.h:181 ../src/keybind_descriptions.h:182
+#: ../src/keybind_descriptions.h:183 ../src/keybind_descriptions.h:184
+#: ../src/keybind_descriptions.h:185 ../src/keybind_descriptions.h:186
+#: ../src/keybind_descriptions.h:187 ../src/keybind_descriptions.h:188
+#: ../src/keybind_descriptions.h:189 ../src/keybind_descriptions.h:190
+#: ../src/keybind_descriptions.h:191 ../src/keybind_descriptions.h:192
+#: ../src/keybind_descriptions.h:193 ../src/keybind_descriptions.h:194
+#: ../src/keybind_descriptions.h:195 ../src/keybind_descriptions.h:196
+#: ../src/keybind_descriptions.h:197 ../src/keybind_descriptions.h:198
+#: ../src/keybind_descriptions.h:199 ../src/keybind_descriptions.h:200
+#: ../src/keybind_descriptions.h:201 ../src/winmenu.c:98
+#: ../src/workspace.c:1809
+msgid "Workspaces"
+msgstr "Робочі столи"
+
+#
+#: ../src/keybind_descriptions.h:153
+#, fuzzy
+msgid "Open workspace pager"
+msgstr "Зберегти стан Робочого столу"
+
+#: ../src/keybind_descriptions.h:153
+#, fuzzy
+msgid "WorkspaceMapKey"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:154
+msgid "Switch to next workspace"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:154
+#, fuzzy
+msgid "NextWorkspaceKey"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:155
+msgid "Switch to previous workspace"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:155
+#, fuzzy
+msgid "PrevWorkspaceKey"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:156
+msgid "Switch to last used workspace"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:156
+#, fuzzy
+msgid "LastWorkspaceKey"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:157
+msgid "Switch to next ten workspaces"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:157
+msgid "NextWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:158
+msgid "Switch to previous ten workspaces"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:158
+msgid "PrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:159
+msgid "Switch to workspace on the left"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:159
+#, fuzzy
+msgid "LeftWorkspaceKey"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:160
+msgid "Switch to workspace on the right"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:160
+#, fuzzy
+msgid "RightWorkspaceKey"
+msgstr "Робочі столи"
+
+#
+#: ../src/keybind_descriptions.h:161
+#, fuzzy
+msgid "Switch to workspace above"
+msgstr "Зберегти стан Робочого столу"
+
+#: ../src/keybind_descriptions.h:161
+#, fuzzy
+msgid "UpWorkspaceKey"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:162
+msgid "Switch to workspace below"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:162
+#, fuzzy
+msgid "DownWorkspaceKey"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:163
+msgid "Switch to workspace 1"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:163
+#, fuzzy
+msgid "Workspace1Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:164
+msgid "Switch to workspace 2"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:164
+#, fuzzy
+msgid "Workspace2Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:165
+msgid "Switch to workspace 3"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:165
+#, fuzzy
+msgid "Workspace3Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:166
+msgid "Switch to workspace 4"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:166
+#, fuzzy
+msgid "Workspace4Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:167
+msgid "Switch to workspace 5"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:167
+#, fuzzy
+msgid "Workspace5Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:168
+msgid "Switch to workspace 6"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:168
+#, fuzzy
+msgid "Workspace6Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:169
+msgid "Switch to workspace 7"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:169
+#, fuzzy
+msgid "Workspace7Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:170
+msgid "Switch to workspace 8"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:170
+#, fuzzy
+msgid "Workspace8Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:171
+msgid "Switch to workspace 9"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:171
+#, fuzzy
+msgid "Workspace9Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:172
+msgid "Switch to workspace 10"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:172
+#, fuzzy
+msgid "Workspace10Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:173
+#, fuzzy
+msgid "Move window to next workspace"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:173
+msgid "MoveToNextWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:174
+#, fuzzy
+msgid "Move window to previous workspace"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:174
+msgid "MoveToPrevWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:175
+#, fuzzy
+msgid "Move window to last used workspace"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:175
+msgid "MoveToLastWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:176
+#, fuzzy
+msgid "Move window to next ten workspaces"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:176
+msgid "MoveToNextWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:177
+#, fuzzy
+msgid "Move window to previous ten workspaces"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:177
+msgid "MoveToPrevWorkspaceLayerKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:178
+msgid "Move window to workspace on the left"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:178
+msgid "MoveToLeftWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:179
+msgid "Move window to workspace on the right"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:179
+msgid "MoveToRightWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:180
+#, fuzzy
+msgid "Move window to workspace above"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:180
+#, fuzzy
+msgid "MoveToUpWorkspaceKey"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:181
+#, fuzzy
+msgid "Move window to workspace below"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:181
+msgid "MoveToDownWorkspaceKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:182
+#, fuzzy
+msgid "Move window to workspace 1"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:182
+#, fuzzy
+msgid "MoveToWorkspace1Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:183
+#, fuzzy
+msgid "Move window to workspace 2"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:183
+#, fuzzy
+msgid "MoveToWorkspace2Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:184
+#, fuzzy
+msgid "Move window to workspace 3"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:184
+#, fuzzy
+msgid "MoveToWorkspace3Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:185
+#, fuzzy
+msgid "Move window to workspace 4"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:185
+#, fuzzy
+msgid "MoveToWorkspace4Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:186
+#, fuzzy
+msgid "Move window to workspace 5"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:186
+#, fuzzy
+msgid "MoveToWorkspace5Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:187
+#, fuzzy
+msgid "Move window to workspace 6"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:187
+#, fuzzy
+msgid "MoveToWorkspace6Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:188
+#, fuzzy
+msgid "Move window to workspace 7"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:188
+#, fuzzy
+msgid "MoveToWorkspace7Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:189
+#, fuzzy
+msgid "Move window to workspace 8"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:189
+#, fuzzy
+msgid "MoveToWorkspace8Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:190
+#, fuzzy
+msgid "Move window to workspace 9"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:190
+#, fuzzy
+msgid "MoveToWorkspace9Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:191
+#, fuzzy
+msgid "Move window to workspace 10"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:191
+#, fuzzy
+msgid "MoveToWorkspace10Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:192
+#, fuzzy
+msgid "Toggle window on workspace 1"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:192
+#, fuzzy
+msgid "ToggleWorkspace1Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:193
+#, fuzzy
+msgid "Toggle window on workspace 2"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:193
+#, fuzzy
+msgid "ToggleWorkspace2Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:194
+#, fuzzy
+msgid "Toggle window on workspace 3"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:194
+#, fuzzy
+msgid "ToggleWorkspace3Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:195
+#, fuzzy
+msgid "Toggle window on workspace 4"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:195
+#, fuzzy
+msgid "ToggleWorkspace4Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:196
+#, fuzzy
+msgid "Toggle window on workspace 5"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:196
+#, fuzzy
+msgid "ToggleWorkspace5Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:197
+#, fuzzy
+msgid "Toggle window on workspace 6"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:197
+#, fuzzy
+msgid "ToggleWorkspace6Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:198
+#, fuzzy
+msgid "Toggle window on workspace 7"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:198
+#, fuzzy
+msgid "ToggleWorkspace7Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:199
+#, fuzzy
+msgid "Toggle window on workspace 8"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:199
+#, fuzzy
+msgid "ToggleWorkspace8Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:200
+#, fuzzy
+msgid "Toggle window on workspace 9"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:200
+#, fuzzy
+msgid "ToggleWorkspace9Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:201
+msgid "Toggle window on workspace 10"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:201
+#, fuzzy
+msgid "ToggleWorkspace10Key"
+msgstr "Робочі столи"
+
+#: ../src/keybind_descriptions.h:203 ../src/keybind_descriptions.h:204
+#: ../src/keybind_descriptions.h:205 ../src/keybind_descriptions.h:206
+#: ../src/keybind_descriptions.h:207 ../src/keybind_descriptions.h:208
+#: ../src/keybind_descriptions.h:209 ../src/keybind_descriptions.h:210
+#: ../src/keybind_descriptions.h:211 ../src/keybind_descriptions.h:212
+msgid "Tiling & Layout"
+msgstr ""
+
+#
+#: ../src/keybind_descriptions.h:203
+#, fuzzy
+msgid "Cycle workspace tiling layout"
+msgstr "Зберегти стан Робочого столу"
+
+#: ../src/keybind_descriptions.h:203
+msgid "LayoutCycleKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:204
+msgid "Cycle workspace tiling layout back"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:204
+msgid "LayoutCycleBackKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:205
+msgid "Swap tiling layout axis"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:205
+msgid "LayoutAxisKey"
+msgstr ""
+
+#
+#: ../src/keybind_descriptions.h:206
+#, fuzzy
+msgid "Set workspace layout to float"
+msgstr "Зберегти стан Робочого столу"
+
+#: ../src/keybind_descriptions.h:206
+msgid "LayoutFloatKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:207
+msgid "Increase layout master count"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:207
+msgid "MasterCountIncKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:208
+msgid "Decrease layout master count"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:208
+msgid "MasterCountDecKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:209
+msgid "Increase layout master ratio"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:209
+msgid "MasterRatioIncKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:210
+msgid "Decrease layout master ratio"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:210
+msgid "MasterRatioDecKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:211
+msgid "Toggle tiling for active window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:211
+msgid "TilingToggleKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:212
+#, fuzzy
+msgid "Swap active window into master"
+msgstr "Запустити альтернативний менеджер вікон"
+
+#: ../src/keybind_descriptions.h:212
+msgid "TilingSwapMasterKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:214 ../src/keybind_descriptions.h:215
+#: ../src/keybind_descriptions.h:216 ../src/keybind_descriptions.h:217
+#: ../src/keybind_descriptions.h:218
+#, fuzzy
+msgid "Window Marks"
+msgstr "Вікна"
+
+#: ../src/keybind_descriptions.h:214
+#, fuzzy
+msgid "Mark window: set mark"
+msgstr "Зробити вікно присутнім на всіх робочих столах."
+
+#: ../src/keybind_descriptions.h:214
+msgid "MarkSetKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:215
+msgid "Mark window: unset mark"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:215
+msgid "MarkUnsetKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:216
+msgid "Mark window: bring marked window here"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:216
+msgid "MarkBringKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:217
+msgid "Mark window: jump to marked window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:217
+msgid "MarkJumpKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:218
+msgid "Mark window: swap with marked window"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:218
+msgid "MarkSwapKey"
+msgstr ""
+
+#
+#: ../src/keybind_descriptions.h:220
+#, fuzzy
+msgid "Find application"
+msgstr "Примусове завершення"
+
+#: ../src/keybind_descriptions.h:220
+msgid "RunKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:221
+#, fuzzy
+msgid "Show keyboard shortcuts"
+msgstr "Не прив'язувати комбінації клавіш"
+
+#: ../src/keybind_descriptions.h:221
+msgid "ShowKeybindsKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:222
+#, fuzzy
+msgid "Exit Window Maker"
+msgstr "Перезапустити Window Maker"
+
+#: ../src/keybind_descriptions.h:222
+#, fuzzy
+msgid "ExitKey"
+msgstr "Вихід"
+
+#: ../src/keybind_descriptions.h:223
+#, fuzzy
+msgid "Lock screen"
+msgstr "Іконка Доку"
+
+#: ../src/keybind_descriptions.h:223
+msgid "LockScreenKey"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:224
+msgid "Open clipboard history"
+msgstr ""
+
+#: ../src/keybind_descriptions.h:224
+msgid "ClipboardKey"
+msgstr ""
+
+#: ../src/keybind.c:873
+#, c-format
+msgid "exec %A(Find)"
+msgstr ""
+
+#: ../src/keybind.c:1146
+#, fuzzy
+msgid "Other"
+msgstr "Приховати інші"
+
+#: ../src/layout.c:44
+msgid "Float"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Tile"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Tile wide"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Grid"
+msgstr ""
+
+#: ../src/layout.c:44
+msgid "Monocle"
+msgstr ""
+
+#: ../src/main.c:284
 msgid "failed to restart Window Maker."
 msgstr "не вдалось перезапустити Window Maker."
 
-#: ../src/main.c:225
+#: ../src/main.c:287
 #, c-format
 msgid "could not exec %s"
 msgstr "не вдалось виконати %s"
 
-#: ../src/main.c:271
+#: ../src/main.c:309
+#, c-format
+msgid "the display name has an unexpected syntax: \"%s\""
+msgstr ""
+
+#: ../src/main.c:320
+#, c-format
+msgid "the display name is too long: \"%s\""
+msgstr ""
+
+#: ../src/main.c:345
 msgid "Could not execute command: "
 msgstr "Неможливо виконати команду: "
 
-#: ../src/main.c:428
+#: ../src/main.c:512
 #, c-format
 msgid "%s aborted.\n"
 msgstr "%s перервано.\n"
 
-#: ../src/main.c:439
+#: ../src/main.c:521
 #, c-format
 msgid "Usage: %s [options]\n"
 msgstr "Запуск: %s [параметри]\n"
 
-#: ../src/main.c:440
+#: ../src/main.c:522
 msgid "The Window Maker window manager for the X window system"
 msgstr "Менеджер вікон Window Maker для віконної системи X Window"
 
-#: ../src/main.c:442
+#: ../src/main.c:524
 msgid " -display host:dpy\tdisplay to use"
 msgstr " -display хост:дисплей\tвикористовувати вказаний дисплей"
 
-#: ../src/main.c:444
-msgid " --no-cpp \t\tdisable preprocessing of configuration files"
-msgstr " --no-cpp \t\tзаборонити попередню обробку файлів конфігурації"
+#: ../src/main.c:526
+msgid " --replace\t\treplace running window manager"
+msgstr ""
 
-#: ../src/main.c:446
+#: ../src/main.c:528
 msgid " --no-dock\t\tdo not open the application Dock"
 msgstr " --no-dock\t\tне відкривати Док програм"
 
-#: ../src/main.c:447
+#: ../src/main.c:529
 msgid " --no-clip\t\tdo not open the workspace Clip"
 msgstr " --no-clip\t\tне відкривати Скріпку"
 
 #
-#: ../src/main.c:448
+#: ../src/main.c:530
 msgid " --no-autolaunch\tdo not autolaunch applications"
 msgstr " --no-autolaunch\tне виконувати автозапуск програм"
 
-#: ../src/main.c:449
+#: ../src/main.c:531
+msgid " --no-drawer\t\tdisable drawers in the dock"
+msgstr ""
+
+#: ../src/main.c:532
 msgid " --dont-restore\t\tdo not restore saved session"
 msgstr " --dont-restore\t\tне відтворювати збережені сеанси"
 
-#: ../src/main.c:451
+#: ../src/main.c:533
+msgid " --clientid id\t\tsession management client ID"
+msgstr ""
+
+#: ../src/main.c:535
 msgid " --locale locale\tlocale to use"
 msgstr " --locale locale\tвикористовувати локаль locale"
 
-#: ../src/main.c:453
-msgid ""
-" --create-stdcmap\tcreate the standard colormap hint in PseudoColor visuals"
-msgstr ""
-" --create-stdcmap\tcreate the standard colormap hint in PseudoColor visuals"
-
-#: ../src/main.c:454
+#: ../src/main.c:537
 msgid " --visual-id visualid\tvisual id of visual to use"
 msgstr ""
 " --visual-id visualid\tвикористовувати вказаний кольоровий клас відображення"
 
-#: ../src/main.c:455
+#: ../src/main.c:538
 msgid " --static\t\tdo not update or save configurations"
 msgstr " --static\t\tне проводити оновлення чи збереження конфігурацій"
 
-#: ../src/main.c:456
+#: ../src/main.c:540
 msgid " --no-polling\t\tdo not periodically check for configuration updates"
 msgstr " --no-polling\t\tне робити періодичних перевірок змін конфігурації"
 
-#: ../src/main.c:458
-msgid " --synchronous\t\tturn on synchronous display mode"
-msgstr " --synchronous\t\tвключити синхронний режим показу"
+#: ../src/main.c:542
+msgid " --global_defaults_path\tprint the path for default config and exit"
+msgstr ""
 
-#: ../src/main.c:460
+#: ../src/main.c:543
+msgid " --get-socketpath\tprint the IPC socket path for $DISPLAY and exit"
+msgstr ""
+
+#: ../src/main.c:544
 msgid " --version\t\tprint version and exit"
 msgstr " --version\t\tвивести номер версії та вийти"
 
-#: ../src/main.c:461
+#: ../src/main.c:545
 msgid " --help\t\t\tshow this message"
 msgstr " --help\t\t\tвивести цей текст"
 
-#: ../src/main.c:474
-#, c-format
-msgid ""
-"could not find user GNUstep directory (%s).\n"
-"Make sure you have installed Window Maker correctly and run wmaker.inst"
-msgstr ""
-"не вдалось знайти каталог GNUstep користувача (%s).\n"
-"Впевніться, що WindowMaker встановлено правильно і запустіть wmaker.inst"
-
 #
-#: ../src/main.c:479
-#, c-format
-msgid "could not find user GNUstep directory (%s)."
+#: ../src/main.c:555
+#, fuzzy, c-format
+msgid "could not find user configuration directory (%s)."
 msgstr "не вдалось знайти каталог GNUstep користувача (%s)."
 
-#: ../src/main.c:482
+#: ../src/main.c:558
+#, fuzzy
 msgid ""
-"There was an error while creating GNUstep directory, please make sure you "
-"have installed Window Maker correctly and run wmaker.inst"
+"There was an error while creating the configuration directory, please make "
+"sure you have installed Window Maker correctly and run wmaker.inst"
 msgstr ""
 "Невдача при створенні каталогу GNUstep, впевніться, що WindowMaker "
 "встановлено правильно і запустіть wmaker.inst"
 
-#: ../src/main.c:485
+#: ../src/main.c:561
 #, c-format
 msgid "%s directory created with default configuration."
 msgstr "Каталог %s створено з конфігурацією за умовчанням."
 
-#: ../src/main.c:505 ../src/main.c:510
+#: ../src/main.c:580
+msgid ""
+"could not initialise an inotify instance. Changes to the defaults database "
+"will require a restart to take effect. Check your kernel!"
+msgstr ""
+
+#: ../src/main.c:591
+#, c-format
+msgid ""
+"could not add an inotify watch on path %s. Changes to the defaults database "
+"will require a restart to take effect."
+msgstr ""
+
+#: ../src/main.c:617
 #, c-format
 msgid "%s:could not execute initialization script"
 msgstr "%s:не вдалось виконати сценарій ініціалізації"
 
-#: ../src/main.c:530 ../src/main.c:535
+#: ../src/main.c:631
 #, c-format
 msgid "%s:could not execute exit script"
 msgstr "%s:не вдалось виконати сценарій завершення роботи"
 
-#: ../src/main.c:663 ../src/main.c:671 ../src/main.c:679 ../src/main.c:699
+#: ../src/main.c:669 ../src/main.c:764 ../src/main.c:771 ../src/main.c:778
+#: ../src/main.c:788
 #, c-format
 msgid "too few arguments for %s"
 msgstr "надто мало аргументів для %s"
 
-#: ../src/main.c:683
+#: ../src/main.c:732
+#, c-format
+msgid "option \"%s\" is deprecated, please remove it from your script"
+msgstr ""
+
+#: ../src/main.c:782
 #, c-format
 msgid "bad value for visualid: \"%s\""
 msgstr "помилкове значення для visualid: \"%s\""
 
+#: ../src/main.c:798
+msgid ""
+"your version of Window Maker was compiled with INotify support, so \"--no-"
+"polling\" has no effect"
+msgstr ""
+
 #
-#: ../src/main.c:707
+#: ../src/main.c:804
 #, c-format
 msgid "%s: invalid argument '%s'\n"
 msgstr "%s: неправильний аргумент '%s'\n"
 
-#: ../src/main.c:708
+#: ../src/main.c:805
 #, c-format
 msgid "Try '%s --help' for more information\n"
 msgstr "Спробуйте '%s --help' для отримання додаткової інформації\n"
 
-#: ../src/main.c:736
-msgid "X server does not support locale"
-msgstr "X сервер не підтримує локалізацію"
-
-#: ../src/main.c:740
-msgid "cannot set locale modifiers"
-msgstr "не вдалось встановити параметри локалізації"
-
-#: ../src/main.c:756
+#: ../src/main.c:864 ../src/main.c:870
 #, c-format
 msgid "could not open display \"%s\""
 msgstr "не вдалось відкрити дисплей \"%s\""
 
+#: ../src/menu.c:2851
+#, fuzzy, c-format
+msgid "bad value in menus state info: %s"
+msgstr "помилкове значення в стані прикріпленої іконки -- %s"
+
+#: ../src/misc.c:110
+#, c-format
+msgid "can't convert \"%s\" to boolean"
+msgstr "не вдалось перетворити \"%s\" в булівське значення"
+
+#: ../src/misc.c:543
+msgid "Program Arguments"
+msgstr "Аргументи програми"
+
+#: ../src/misc.c:549
+msgid "Enter command arguments:"
+msgstr "Введіть аргументи команди:"
+
+#: ../src/misc.c:587 ../src/misc.c:588
+msgid "Exit"
+msgstr "Вихід"
+
+#: ../src/misc.c:588
+msgid "Are you sure you want to quit Window Maker?"
+msgstr ""
+
+#: ../src/misc.c:633 ../src/misc.c:639
+#, c-format
+msgid "bad window name value in %s state info"
+msgstr "помилкове значення імені вікна в інформації про стан для %s"
+
+#: ../src/misc.c:963 ../src/misc.c:978
+#, c-format
+msgid "%s failed, can't set workspace specific background image (%s)"
+msgstr ""
+
+#: ../src/misc.c:1005
+#, c-format
+msgid ""
+"could not set close-on-exec flag for bg_helper's communication file handle "
+"(%s)"
+msgstr ""
+
+#: ../src/misc.c:1033
+msgid "background image helper message is too long"
+msgstr ""
+
+#: ../src/misc.c:1051
+msgid "could not send message to background image helper"
+msgstr "не вдалось послати повідомлення програмі фонового зображення"
+
+#: ../src/monitor.c:92
+msgid "trying to start alternate window manager..."
+msgstr "спроба запуску альтернативного менеджера вікон..."
+
+#: ../src/monitor.c:98
+msgid "failed to start alternate window manager. Aborting."
+msgstr "не вдалось запустити альтернативний менеджер вікон. Завершення."
+
+#: ../src/monitor.c:128
+#, fuzzy
+msgid "Error respawning Window Maker"
+msgstr "Перезапустити Window Maker"
+
+#: ../src/monitor.c:135
+msgid "Error during monitoring of Window Maker process."
+msgstr ""
+
+#: ../src/monitor.c:160
+#, c-format
+msgid "Window Maker exited due to a crash (signal %i) and will be restarted."
+msgstr ""
+
 #
-#: ../src/menu.c:1255
-msgid "could not grab keyboard"
+#: ../src/moveres.c:1229
+#, fuzzy
+msgid "could not grab the keyboard for keyboard move/resize"
 msgstr "не вдалось захопити клавіатуру"
 
-#: ../src/menureader.c:264 ../src/rootmenu.c:733
+#.
+#. *  1st %s is a function name
+#. *  2nd %s is an email address
+#. *  3rd %s is the name of the operating system
+#.
+#: ../src/osdep_stub.c:43
+#, c-format
+msgid ""
+"%s is not implemented on this platform; tell %s you are running %s release "
+"%s version %s"
+msgstr ""
+
+#
+#: ../src/accent_picker.c:582
+#, fuzzy
+msgid "accent picker: could not grab the keyboard"
+msgstr "не вдалось захопити клавіатуру"
+
+#: ../src/accent_picker.c:915
+msgid "accent picker: ignoring invalid AccentPickerVariants entry"
+msgstr ""
+
+#: ../src/accent_picker.c:992
+msgid "accent picker: ignoring an unknown character set name"
+msgstr ""
+
+#: ../src/accent_picker.c:1041
+msgid "accent picker: invalid AccentPickerModifier, modifier mode disabled"
+msgstr ""
+
+#: ../src/accent_picker.c:1055
+#, c-format
+msgid "accent picker: %s may collide with application shortcuts"
+msgstr ""
+
+#: ../src/accent_picker.c:1070
+msgid "accent picker: modifier overlaps an existing key binding"
+msgstr ""
+
+#: ../src/resources.c:112
+#, c-format
+msgid "could not parse color \"%s\""
+msgstr "не вдалось розібрати колір \"%s\""
+
+#: ../src/resources.c:117
+#, c-format
+msgid "could not allocate color \"%s\""
+msgstr "не вдалось зарезервувати колір \"%s\""
+
+#: ../src/rootmenu.c:185
+msgid "Kill X session"
+msgstr "Аварійне завершення сеансу роботи"
+
+#: ../src/rootmenu.c:186
+msgid ""
+"Kill Window System session?\n"
+"(all applications will be closed)"
+msgstr ""
+"Закрити сеанс Віконної Системи?\n"
+"(всі програми будуть завершені)"
+
+#: ../src/rootmenu.c:591
+#, fuzzy, c-format
+msgid "%s: invalid kbd shortcut specification \"%s\" for entry %s"
+msgstr "%s:помилкове задання комбінації клавіш \"%s\" для пункту %s"
+
+#: ../src/rootmenu.c:599
+#, fuzzy, c-format
+msgid "%s: invalid key in shortcut \"%s\" for entry %s"
+msgstr "%s:помилкова клавіша в комбінації \"%s\" для пункту %s"
+
+#: ../src/rootmenu.c:658
+#, c-format
+msgid "%s: unmatched '\"' in menu file"
+msgstr "%s: непарна '\"' в файлі меню"
+
+#: ../src/rootmenu.c:707
+#, c-format
+msgid "%s: missing command"
+msgstr "%s: відсутня команда"
+
+#: ../src/rootmenu.c:763
+#, c-format
+msgid "invalid OPEN_MENU specification: %s"
+msgstr "помилкова специфікація OPEN_MENU: %s"
+
+#: ../src/rootmenu.c:834
 #, c-format
 msgid "%s:could not stat menu"
 msgstr "%s:не вдалось отримати меню"
 
-#: ../src/menureader.c:341 ../src/menureader.c:380
+#: ../src/rootmenu.c:842
 #, c-format
-msgid "could not stat() menu file '%s'"
-msgstr "не вдалось отримати файл меню '%s'"
+msgid "%s:could not stat menu:%s"
+msgstr "%s:не вдалось отримати меню:%s"
 
-#: ../src/menureader.c:416
+#: ../src/rootmenu.c:858
 #, c-format
-msgid "could not find menu file '%s' referenced in WMRootMenu"
-msgstr "не вдалось знайти файл меню '%s' вказаний в WMRootMenu"
+msgid "too many parameters in OPEN_MENU: %s"
+msgstr "надто багато параметрів в OPEN_MENU: %s"
 
-#: ../src/menureader.c:423
+#: ../src/rootmenu.c:896
+#, fuzzy, c-format
+msgid "invalid OPEN_PLMENU specification: %s"
+msgstr "помилкова специфікація OPEN_MENU: %s"
+
+#: ../src/rootmenu.c:952
+msgid ""
+"There are more than one WORKSPACE_MENU commands in the applications menu. "
+"Only one is allowed."
+msgstr ""
+"В головному меню вказано більше однієї команди WORKSPACE_MENU. Дозволена "
+"лише одна"
+
+#: ../src/rootmenu.c:983
+msgid ""
+"There are more than one WINDOWS_MENU commands in the applications menu. Only "
+"one is allowed."
+msgstr ""
+"В головному меню вказано більше однієї команди WINDOWS_MENU. Дозволена лише "
+"одна"
+
+#: ../src/rootmenu.c:988
+msgid "Window List"
+msgstr "Список вікон"
+
+#: ../src/rootmenu.c:1015 ../src/rootmenu.c:1032 ../src/rootmenu.c:1049
+#: ../src/rootmenu.c:1057
 #, c-format
-msgid "could not find any usable menu files. Please check '%s'"
-msgstr "не вдалось знайти файлів меню. Будь ласка, перевірте '%s'"
+msgid "%s:missing parameter for menu command \"%s\""
+msgstr "%s:відсутній параметр для команди меню \"%s\""
 
-#: ../src/menureader.c:438 ../src/rootmenu.c:1667
+#: ../src/rootmenu.c:1128
+#, c-format
+msgid "%s:unknown command \"%s\" in menu config."
+msgstr "%s:невідома команда \"%s\" в конфігурації меню"
+
+#: ../src/rootmenu.c:1135
+#, c-format
+msgid "%s:can't add shortcut for entry \"%s\""
+msgstr "%s:не вдалось додати комбінацію клавіш для команди \"%s\""
+
+#: ../src/rootmenu.c:1167
+msgid "maximum menu nesting depth exceeded"
+msgstr ""
+
+#: ../src/rootmenu.c:1174 ../src/rootmenu.c:1220
+#, fuzzy
+msgid "missing command in menu config"
+msgstr "%s:відсутня команда в конфігурації меню: %s"
+
+#: ../src/rootmenu.c:1202
+#, fuzzy
+msgid "syntax error in menu file: END declaration missing"
+msgstr "%s:синтаксична помилка в файлі меню: відсутня END"
+
+#: ../src/rootmenu.c:1234
+msgid "invalid menu, no menu title given"
+msgstr ""
+
+#: ../src/rootmenu.c:1251 ../src/rootmenu.c:1269 ../src/rootmenu.c:1277
+#: ../src/rootmenu.c:1282 ../src/rootmenu.c:1333 ../src/rootmenu.c:1364
+#, fuzzy, c-format
+msgid "could not open menu file \"%s\": %s"
+msgstr "%s:не вдалось відкрити файл меню"
+
+#: ../src/rootmenu.c:1286 ../src/rootmenu.c:1291
+#, fuzzy, c-format
+msgid "could not read menu pipe \"%s\": %s"
+msgstr "не вдалось завантажити растрове зображення з текстурою \"%s\":%s"
+
+#: ../src/rootmenu.c:1334
+msgid "pipe command for PropertyList is too long"
+msgstr ""
+
+#: ../src/rootmenu.c:1365
+msgid "pipe command is too long"
+msgstr ""
+
+#: ../src/rootmenu.c:1486 ../src/rootmenu.c:1560 ../src/rootmenu.c:1605
+#: ../src/rootmenu.c:1617 ../src/rootmenu.c:1628
+#, c-format
+msgid "out of memory while constructing directory menu %s"
+msgstr "вичерпана пам'ять при побудові меню каталога %s"
+
+#: ../src/rootmenu.c:1497
+#, c-format
+msgid "%s:could not stat file \"%s\" in menu directory"
+msgstr "%s:не отримується файл \"%s\" в каталозі меню"
+
+#: ../src/rootmenu.c:1569
+#, c-format
+msgid "ignoring directory menu entry with '\"' in its path: %s/%s"
+msgstr ""
+
+#: ../src/rootmenu.c:1669
+msgid "Commands"
+msgstr "Команди"
+
+#: ../src/rootmenu.c:1672
+msgid "Restart"
+msgstr "Перезапуск"
+
+#: ../src/rootmenu.c:1673
+msgid "Exit..."
+msgstr "Вихід..."
+
+#: ../src/rootmenu.c:1696
+#, c-format
+msgid "%s:maximum menu nesting depth exceeded"
+msgstr ""
+
+#: ../src/rootmenu.c:1720
+#, c-format
+msgid "could not find menu file \"%s\" referenced in WMRootMenu"
+msgstr "не вдалось знайти файл меню \"%s\", вказаний в WMRootMenu"
+
+#: ../src/rootmenu.c:1726
+#, c-format
+msgid "could not access menu \"%s\" referenced in WMRootMenu"
+msgstr "не вдалось прочитати меню \"%s\", вказане в WMRootMenu"
+
+#: ../src/rootmenu.c:1739
 #, c-format
 msgid ""
 "using default menu file \"%s\" as the menu referenced in WMRootMenu could "
@@ -1050,291 +3064,16 @@ msgstr ""
 "використовується меню за умовчанням \"%s\", тому що меню, вказане в файлі "
 "WMRootMenu, не вдалось знайти "
 
-#: ../src/menureader.c:457
-#, c-format
-msgid ""
-"invalid content in menu file '%s'.\n"
-"It should either be a property list menu or the path to the file, enclosed "
-"in \"."
-msgstr ""
-"некоректна інформація в файлі меню '%s'.\n"
-"Це має бути або меню в форматі property list, або шлях до файлу, взятий в \"."
-
-#: ../src/misc.c:71
-#, c-format
-msgid "could not define value for %s for cpp"
-msgstr "не вдалось визначити значення для %s для cpp"
-
-#: ../src/misc.c:101
-#, c-format
-msgid "could not get password entry for UID %i"
-msgstr "не вдалось отримати інформацію про користувача для UID %i"
-
-#: ../src/misc.c:126
-#, c-format
-msgid "your machine is misconfigured. HOSTNAME is set to %s"
-msgstr "Ваша система погано зконфігурована. Змінна HOSTNAME встановлена в %s"
-
-#: ../src/misc.c:132
-#, c-format
-msgid "your machine is misconfigured. HOST is set to %s"
-msgstr "Ваша система погано зконфігурована. Змінна HOST встановлена в %s"
-
-#: ../src/misc.c:630
-msgid "Program Arguments"
-msgstr "Аргументи програми"
-
-#: ../src/misc.c:631
-msgid "Enter command arguments:"
-msgstr "Введіть аргументи команди:"
-
-#: ../src/misc.c:724
-msgid "unable to get dropped data from DND drop"
-msgstr "не вдалось отримати від DND drop перетягнуті дані"
-
-#: ../src/misc.c:732
-msgid "error getting dropped data from DND drop"
-msgstr "помилка при отриманні даних від DND drop"
-
-#: ../src/misc.c:738
-msgid "out of memory while getting data from DND drop"
-msgstr "вичерпана пам'ять при отриманні даних від DND drop"
-
-#: ../src/misc.c:783 ../src/misc.c:923
-#, c-format
-msgid "out of memory during expansion of \"%s\""
-msgstr "вичерпана пам'ять під час розширення \"%s\""
-
-#: ../src/misc.c:837
-msgid "out of memory during expansion of \"%w\""
-msgstr "вичерпана пам'ять під час розширення \"%w\""
-
-#: ../src/misc.c:855
-msgid "out of memory during expansion of \"%W\""
-msgstr "вичерпана пам'ять під час розширення \"%W\""
-
-#: ../src/misc.c:871
-msgid "out of memory during expansion of \"%a\""
-msgstr "вичерпана пам'ять під час розширення \"%a\""
-
-#: ../src/misc.c:902
-#, c-format
-msgid "out of memory during expansion of \"%d\""
-msgstr "вичерпана пам'ять під час розширення \"%d\""
-
-#: ../src/misc.c:916
-msgid "selection not available"
-msgstr "недоступно виділення"
-
-#: ../src/misc.c:972 ../src/misc.c:978
-#, c-format
-msgid "bad window name value in %s state info"
-msgstr "помилкове значення імені вікна в інформації про стан для %s"
-
-#: ../src/misc.c:1235
-msgid "could not send message to background image helper"
-msgstr "не вдалось послати повідомлення програмі фонового зображення"
-
-#: ../src/pixmap.c:235
-#, c-format
-msgid "could not load mask bitmap file \"%s\". Won't use mask"
-msgstr ""
-"не вдалось завантажити растровий файл маски \"%s\". Маска не буде "
-"використана."
-
-#: ../src/resources.c:44
-#, c-format
-msgid "could not parse color \"%s\""
-msgstr "не вдалось розібрати колір \"%s\""
-
-#: ../src/resources.c:48
-#, c-format
-msgid "could not allocate color \"%s\""
-msgstr "не вдалось зарезервувати колір \"%s\""
-
-#: ../src/rootmenu.c:196 ../src/rootmenu.c:198
-msgid "Exit"
-msgstr "Вихід"
-
-#: ../src/rootmenu.c:197
-msgid "Exit window manager?"
-msgstr "Вийти з менеджера вікон?"
-
-#: ../src/rootmenu.c:245
-msgid "Close X session"
-msgstr "Завершити сеанс роботи"
-
-#: ../src/rootmenu.c:246
-msgid ""
-"Close Window System session?\n"
-"Kill might close applications with unsaved data."
-msgstr ""
-"Закрити сеанс Віконної Системи?\n"
-"Це може завершити програми з незбереженими даними."
-
-#: ../src/rootmenu.c:261
-msgid "Kill X session"
-msgstr "Аварійне завершення сеансу роботи"
-
-#: ../src/rootmenu.c:262
-msgid ""
-"Kill Window System session?\n"
-"(all applications will be closed)"
-msgstr ""
-"Закрити сеанс Віконної Системи?\n"
-"(всі програми будуть завершені)"
-
-#: ../src/rootmenu.c:539
-#, c-format
-msgid "%s:invalid kbd shortcut specification \"%s\" for entry %s"
-msgstr "%s:помилкове задання комбінації клавіш \"%s\" для пункту %s"
-
-#: ../src/rootmenu.c:547
-#, c-format
-msgid "%s:invalid key in shortcut \"%s\" for entry %s"
-msgstr "%s:помилкова клавіша в комбінації \"%s\" для пункту %s"
-
-#: ../src/rootmenu.c:600
-#, c-format
-msgid "%s: unmatched '\"' in menu file"
-msgstr "%s: непарна '\"' в файлі меню"
-
-#: ../src/rootmenu.c:650
-#, c-format
-msgid "%s: missing command"
-msgstr "%s: відсутня команда"
-
-#: ../src/rootmenu.c:682
-#, c-format
-msgid "invalid OPEN_MENU specification: %s"
-msgstr "помилкова специфікація OPEN_MENU: %s"
-
-#: ../src/rootmenu.c:741
-#, c-format
-msgid "%s:could not stat menu:%s"
-msgstr "%s:не вдалось отримати меню:%s"
-
-#: ../src/rootmenu.c:759
-#, c-format
-msgid "too many parameters in OPEN_MENU: %s"
-msgstr "надто багато параметрів в OPEN_MENU: %s"
-
-#: ../src/rootmenu.c:803
-msgid ""
-"There are more than one WORKSPACE_MENU commands in the applications menu. "
-"Only one is allowed."
-msgstr ""
-"В головному меню вказано більше однієї команди WORKSPACE_MENU. Дозволена "
-"лише одна"
-
-#: ../src/rootmenu.c:837
-msgid ""
-"There are more than one WINDOWS_MENU commands in the applications menu. Only "
-"one is allowed."
-msgstr ""
-"В головному меню вказано більше однієї команди WINDOWS_MENU. Дозволена лише "
-"одна"
-
-#: ../src/rootmenu.c:842
-msgid "Window List"
-msgstr "Список вікон"
-
-#: ../src/rootmenu.c:871 ../src/rootmenu.c:889 ../src/rootmenu.c:899
-#, c-format
-msgid "%s:missing parameter for menu command \"%s\""
-msgstr "%s:відсутній параметр для команди меню \"%s\""
-
-#: ../src/rootmenu.c:967
-#, c-format
-msgid "%s:unknown command \"%s\" in menu config."
-msgstr "%s:невідома команда \"%s\" в конфігурації меню"
-
-#: ../src/rootmenu.c:975
-#, c-format
-msgid "%s:can't add shortcut for entry \"%s\""
-msgstr "%s:не вдалось додати комбінацію клавіш для команди \"%s\""
-
-#: ../src/rootmenu.c:1112
-#, c-format
-msgid "%s:maximal line size exceeded in menu config: %s"
-msgstr "%s:перевищено максимальный розмір рядка в конфігурації меню: %s"
-
-#: ../src/rootmenu.c:1134 ../src/rootmenu.c:1227 ../src/rootmenu.c:1329
-#, c-format
-msgid "%s:missing command in menu config: %s"
-msgstr "%s:відсутня команда в конфігурації меню: %s"
-
-#: ../src/rootmenu.c:1164
-#, c-format
-msgid "%s:syntax error in menu file:END declaration missing"
-msgstr "%s:синтаксична помилка в файлі меню: відсутня END"
-
-#: ../src/rootmenu.c:1193 ../src/rootmenu.c:1293
-msgid "could not make arguments for menu file preprocessor"
-msgstr "не вдалось підставити аргументи для препроцесора файлу меню"
-
-#: ../src/rootmenu.c:1200 ../src/rootmenu.c:1301
-#, c-format
-msgid "%s:could not open/preprocess menu file"
-msgstr "%s:не вдалось відкрити/обробити файл меню"
-
-#: ../src/rootmenu.c:1212 ../src/rootmenu.c:1314
-#, c-format
-msgid "%s:could not open menu file"
-msgstr "%s:не вдалось відкрити файл меню"
-
-#: ../src/rootmenu.c:1239
-#, c-format
-msgid "%s:invalid menu file. MENU command is missing"
-msgstr "%s:файл меню помилковий. Відсутня команда MENU"
-
-#: ../src/rootmenu.c:1248
-msgid "error reading preprocessed menu data"
-msgstr "помилка читання оброблених даних меню"
-
-#: ../src/rootmenu.c:1341
-#, c-format
-msgid "%s:no title given for the root menu"
-msgstr "%s: не заданий заголовок кореневого меню"
-
-#: ../src/rootmenu.c:1432 ../src/rootmenu.c:1505 ../src/rootmenu.c:1546
-#, c-format
-msgid "out of memory while constructing directory menu %s"
-msgstr "вичерпана пам'ять при побудові меню каталога %s"
-
-#: ../src/rootmenu.c:1442
-#, c-format
-msgid "%s:could not stat file \"%s\" in menu directory"
-msgstr "%s:не отримується файл \"%s\" в каталозі меню"
-
-#: ../src/rootmenu.c:1600
-msgid "Commands"
-msgstr "Команди"
-
-#: ../src/rootmenu.c:1603
-msgid "Restart"
-msgstr "Перезапуск"
-
-#: ../src/rootmenu.c:1604
-msgid "Exit..."
-msgstr "Вихід..."
-
-#: ../src/rootmenu.c:1649
-#, c-format
-msgid "could not find menu file \"%s\" referenced in WMRootMenu"
-msgstr "не вдалось знайти файл меню \"%s\", вказаний в WMRootMenu"
-
-#: ../src/rootmenu.c:1656
-#, c-format
-msgid "could not access menu \"%s\" referenced in WMRootMenu"
-msgstr "не вдалось прочитати меню \"%s\", вказане в WMRootMenu"
-
-#: ../src/rootmenu.c:1690 ../src/rootmenu.c:1766
+#: ../src/rootmenu.c:1769 ../src/rootmenu.c:1829
 #, c-format
 msgid "%s:format error in root menu configuration \"%s\""
 msgstr "%s:помилка формату в конфігурації кореневого меню \"%s\""
 
-#: ../src/rootmenu.c:1854
+#: ../src/rootmenu.c:1958
+msgid "the applications menu could not be loaded, using a fallback"
+msgstr ""
+
+#: ../src/rootmenu.c:1961
 msgid ""
 "The applications menu could not be loaded. Look at the console output for a "
 "detailed description of the errors."
@@ -1342,188 +3081,569 @@ msgstr ""
 "Не вдалось завантажити меню програм. Повідомлення на консолі системи містять "
 "детальний опис проблеми."
 
-#: ../src/screen.c:740
-#, c-format
-msgid "could not initialize graphics library context: %s"
-msgstr "не вдалось ініціалізувати графічну бібліотеку: %s"
+#: ../src/screen.c:157
+#, fuzzy
+msgid "another window manager is running"
+msgstr "схоже, що вже працює інший менеджер вікон"
 
-#: ../src/screen.c:771
-msgid "could not do initialization of WINGs widget set"
+#: ../src/screen.c:158
+msgid "use the --replace flag to replace it"
+msgstr ""
+
+#: ../src/screen.c:194
+#, c-format
+msgid "waiting %ds for other window manager to exit"
+msgstr ""
+
+#: ../src/screen.c:207
+msgid "other window manager hasn't exited!"
+msgstr ""
+
+#: ../src/screen.c:215
+#, fuzzy
+msgid "replacing the other window manager"
+msgstr "Запустити альтернативний менеджер вікон"
+
+#: ../src/screen.c:264
+#, fuzzy, c-format
+msgid "could not find button pixmap \"%s\" in PixmapPath"
+msgstr "не вдалось знайти растровий файл курсора \"%s\""
+
+#: ../src/screen.c:270
+#, fuzzy, c-format
+msgid "could not load button pixmap \"%s\": %s"
+msgstr "не вдалось завантажити растрове зображення з текстурою \"%s\":%s"
+
+#: ../src/screen.c:615
+#, c-format
+msgid "could not load logo image for panels: %s"
+msgstr "не вдалось завантажити заставку для панелей: %s"
+
+#: ../src/screen.c:778
+#, c-format
+msgid "can't create Context on screen %d, %s"
+msgstr ""
+
+#: ../src/screen.c:796
+#, fuzzy
+msgid "could not initialize WINGs widget set"
 msgstr "не вдалось ініціалізувати набір віджетів WINGs"
 
-#: ../src/screen.c:1137
+#: ../src/screen.c:1179
 #, c-format
 msgid "could not save session state in %s"
 msgstr "не вдалось зберегти стан сеансу в %s"
 
-#: ../src/session.c:183 ../src/wdefaults.c:589 ../src/winspector.c:454
-#, c-format
-msgid "can't convert \"%s\" to boolean"
-msgstr "не вдалось перетворити \"%s\" в булівське значення"
+#: ../src/screen.c:1460
+msgid "Unable to find a proper screenshot image format"
+msgstr ""
 
-#: ../src/session.c:1023
-msgid "out of memory while saving session state"
-msgstr "вичерпана пам'ять при збереженні стану сеансу"
+#
+#: ../src/screen.c:1467
+#, fuzzy
+msgid "Unable to create screenshot directory"
+msgstr "не вдалось створити каталог %s"
 
-#: ../src/session.c:1106
-msgid "end of memory while saving session state"
-msgstr "вичерпана пам'ять при збереженні стану сеансу"
+#: ../src/screen.c:1481
+msgid ""
+"Unsafe screenshot filename template, it should not contain a path separator"
+msgstr ""
 
-#. This is not fatal but can mean the session manager exited.
-#. * If the session manager exited normally we would get a
-#. * Die message, so this probably means an abnormal exit.
-#. * If the sm was the last client of session, then we'll die
-#. * anyway, otherwise we can continue doing our stuff.
-#.
-#: ../src/session.c:1244
-msgid "connection to the session manager was lost"
-msgstr "втрачено з'єднання з менеджером сеансів"
+#: ../src/screen.c:1499
+msgid "Could not generate a free screenshot filename"
+msgstr ""
 
-#: ../src/stacking.c:79
+#: ../src/stacking.c:92
 msgid "could not get window list!!"
 msgstr "не вдалось отримати список вікон!!"
 
-#: ../src/startup.c:202
-#, c-format
-msgid "internal X error: %s\n"
+#: ../src/startup.c:129
+#, fuzzy, c-format
+msgid "internal X error: %s"
 msgstr "внутрішня помилка X сервера: %s\n"
 
-#: ../src/startup.c:260
+#: ../src/startup.c:506 ../src/startup.c:532 ../src/startup.c:543
 #, c-format
-msgid "got signal %i (%s) - restarting\n"
-msgstr "отримано сигнал %i (%s) -- перезапуск\n"
+msgid "could not read domain \"%s\" from defaults database"
+msgstr "не вдалось прочитати домен \"%s\" з бази даних умовчань"
 
-#: ../src/startup.c:262
-#, c-format
-msgid "got signal %i - restarting\n"
-msgstr "отримано сигнал %i - перезапуск\n"
-
-#: ../src/startup.c:272
-#, c-format
-msgid "got signal %i (%s) - rereading defaults\n"
-msgstr "отримано сигнал %i (%s) -- перечитування умовчань\n"
-
-#: ../src/startup.c:274
-#, c-format
-msgid "got signal %i - rereading defaults\n"
-msgstr "отримано сигнал %i - перечитування умовчань\n"
-
-#: ../src/startup.c:284
-#, c-format
-msgid "got signal %i (%s) - exiting...\n"
-msgstr "отримано сигнал %i (%s) -- завершення роботи...\n"
-
-#: ../src/startup.c:286
-#, c-format
-msgid "got signal %i - exiting...\n"
-msgstr "отримано сигнал %i -- завершення роботи...\n"
-
-#: ../src/startup.c:329
-#, c-format
-msgid "got signal %i (%s)\n"
-msgstr "отримано сигнал %i (%s)\n"
-
-#: ../src/startup.c:331
-#, c-format
-msgid "got signal %i\n"
-msgstr "отримано сигнал %i\n"
-
-#: ../src/startup.c:342
-msgid ""
-"crashed while trying to do some post-crash cleanup. Aborting immediatelly."
-msgstr ""
-"критична помилка під час відновлення після збою. НЕГАЙНЕ завершення роботи."
-
-#. we try to restart Window Maker
-#: ../src/startup.c:406
-msgid "trying to restart Window Maker..."
-msgstr "спроба перезапустити Window Maker..."
-
-#: ../src/startup.c:411
-msgid "trying to start alternate window manager..."
-msgstr "спроба запуску альтернативного менеджера вікон..."
-
-#: ../src/startup.c:417
-msgid "failed to start alternate window manager. Aborting."
-msgstr "не вдалось запустити альтернативний менеджер вікон. Завершення."
-
-#: ../src/startup.c:419
-msgid ""
-"a fatal error has occurred, probably due to a bug. Please fill the included "
-"BUGFORM and report it."
-msgstr ""
-"виникла критична помилка. Можливо, це результат помилки в програмі. Будь "
-"ласка, заповніть форму BUGFORM і відправте автору."
-
-#: ../src/startup.c:894
-#, c-format
-msgid "icon size is configured to %i, but it's too small. Using 16, instead\n"
+#: ../src/startup.c:524
+#, fuzzy, c-format
+msgid "icon size is configured to %i, but it's too small. Using 16 instead"
 msgstr "розмір іконки встановлено в %i, що надто мало. Використовується 16.\n"
 
-#: ../src/startup.c:922
+#: ../src/startup.c:621
+#, fuzzy
+msgid "RandR extension is not available"
+msgstr "недоступно виділення"
+
+#: ../src/startup.c:623
+msgid "RandR version check failed, RandR disabled"
+msgstr ""
+
+#: ../src/startup.c:625
+#, c-format
+msgid "RandR version %u.%u found but RandR version >=1.5 required"
+msgstr ""
+
+#: ../src/startup.c:675
 msgid "XKB is not supported. KbdModeLock is automatically disabled."
 msgstr "XKB не підтримується. KbdModeLock автоматично заборонено."
 
-#: ../src/startup.c:941
+#: ../src/startup.c:728
 msgid "it seems that there is already a window manager running"
 msgstr "схоже, що вже працює інший менеджер вікон"
 
-#: ../src/startup.c:947
+#: ../src/startup.c:734
 #, c-format
 msgid "could not manage screen %i"
 msgstr "не вдається керувати екраном %i"
 
-#: ../src/startup.c:1015
+#: ../src/startup.c:864
 msgid "could not manage any screen"
 msgstr "не вдається керувати жодним екраном"
 
-#: ../src/switchmenu.c:137
-msgid "Windows"
-msgstr "Вікна"
+#: ../src/superfluous.c:362
+#, c-format
+msgid "Impossible direction: %d"
+msgstr ""
 
-#: ../src/texture.c:329 ../src/texture.c:371
+#: ../src/switchpanel.c:144
+#, c-format
+msgid "switch panel: monitor \"%s\" matches no output, using the pointer head"
+msgstr ""
+
+#: ../src/switchpanel.c:460
+msgid "switch panel: missing temporary tile"
+msgstr ""
+
+#: ../src/switchpanel.c:508
+msgid "switch panel: cannot scale an icon tile"
+msgstr ""
+
+#: ../src/switchpanel.c:513
+msgid "switch panel: cannot convert an icon tile"
+msgstr ""
+
+#: ../src/switchpanel.c:569
+#, c-format
+msgid "switch panel: cannot load icon \"%s\" within its resource budget"
+msgstr ""
+
+#: ../src/switchpanel.c:582 ../src/switchpanel.c:599
+msgid "switch panel: cannot scale an icon"
+msgstr ""
+
+#: ../src/switchpanel.c:1180 ../src/switchpanel.c:1196
+msgid "switch panel: sub-strip is out of range, skipping it"
+msgstr ""
+
+#: ../src/switchpanel.c:1186
+msgid "switch panel: sub-strip resources exceed the budget, skipping it"
+msgstr ""
+
+#: ../src/switchpanel.c:1305
+msgid "switch panel: cannot rebuild the panel background, keeping its size"
+msgstr ""
+
+#: ../src/switchpanel.c:1368
+msgid "switch panel: sub-strip height is out of range, skipping it"
+msgstr ""
+
+#: ../src/switchpanel.c:1408
+msgid "switch panel: sub-strip does not fit the panel, skipping it"
+msgstr ""
+
+#. the schema bounds this key, so cycle panel-less
+#: ../src/switchpanel.c:1561
+#, c-format
+msgid "switch panel: icon size %d is unusable, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1590
+#, c-format
+msgid ""
+"switch panel: the icon strip for %d windows exceeds the X width limit, "
+"cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1594
+msgid ""
+"switch panel: the panel geometry exceeds the image size limit, cycling "
+"without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1597
+msgid ""
+"switch panel: the panel geometry exceeds the window size limits, cycling "
+"without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1600
+#, c-format
+msgid ""
+"switch panel: cannot size a panel for %d windows, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1614
+msgid "switch panel: fallback geometry is unusable, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1628
+msgid ""
+"switch panel: the panel exceeds the switch panel resource budget, cycling "
+"without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1641
+msgid "switch panel: cannot allocate its images, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1653
+msgid "switch panel: panel geometry is unusable, cycling without a panel"
+msgstr ""
+
+#: ../src/switchpanel.c:1726
+msgid "switch panel: cannot convert its background, cycling without a panel"
+msgstr ""
+
+#: ../src/texture.c:291
 #, c-format
 msgid "image file \"%s\" used as texture could not be found."
 msgstr "файл зображення текстури \"%s\" не знайдено."
 
-#: ../src/texture.c:335 ../src/texture.c:377
+#: ../src/texture.c:296
 #, c-format
 msgid "could not load texture pixmap \"%s\":%s"
 msgstr "не вдалось завантажити растрове зображення з текстурою \"%s\":%s"
 
-#: ../src/texture.c:437
-#, c-format
-msgid "library \"%s\" cound not be opened."
-msgstr "не вдалось відкрити бібліотеку \"%s\"."
-
-#: ../src/texture.c:446
-#, c-format
-msgid "function \"%s\" not found in library \"%s\""
-msgstr "функція \"%s\" не знайдена в бібліотеці \"%s\""
-
-#: ../src/texture.c:453
-msgid "function textures not supported on this system, sorry."
-msgstr "функціональні текстури не підтримуються цією системою."
-
-#: ../src/texture.c:598
+#: ../src/texture.c:418
 msgid "could not allocate image buffer"
 msgstr "не вдалось виділити буфер для зображення "
 
-#: ../src/wdefaults.c:437
+#: ../src/wconfigmodel.c:83 ../src/wdefaults.c:189 ../src/wdefaults.c:294
 #, c-format
-msgid "could not find icon file \"%s\""
-msgstr "не вдалось знайти файл іконки \"%s\""
+msgid "unknown FrameInnerBorderSides token \"%s\""
+msgstr ""
 
-#: ../src/window.c:2934 ../src/window.c:3073
+#: ../src/wconfigmodel.c:171 ../src/wconfigmodel.c:358
+#: ../src/wconfigmodel.c:648
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be String."
+msgstr "Неправильний формат параметра для ключа \"%s\". Має бути %s."
+
+#: ../src/wconfigmodel.c:214
+#, c-format
+msgid "can't convert \"%s\" to boolean for key \"%s\""
+msgstr "не вдалось перетворити \"%s\" в булівське значення для ключа \"%s\""
+
+#: ../src/wconfigmodel.c:224
+#, c-format
+msgid "can't convert \"%s\" to integer for key \"%s\""
+msgstr "неможливо перетворити \"%s\" в ціле значення для ключа \"%s\""
+
+#: ../src/wconfigmodel.c:229
+#, c-format
+msgid "integer value \"%s\" for key \"%s\" is outside [%d..%d]"
+msgstr ""
+
+#: ../src/wconfigmodel.c:268
+#, fuzzy, c-format
+msgid "wrong option value for key \"%s\"; got \"%s\", should be one of %s."
+msgstr "неправильне значення для ключа \"%s\". Має бути одне з %s."
+
+#: ../src/wconfigmodel.c:376
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be an array of paths."
+msgstr "Неправильний формат параметра для ключа \"%s\". Має бути %s."
+
+#: ../src/wconfigmodel.c:383 ../src/wconfigmodel.c:432
+#: ../src/wconfigmodel.c:490
+#, c-format
+msgid "Incorrect number of elements in array for key \"%s\"."
+msgstr "Некоректна кількість елементів в масиві для ключа \"%s\"."
+
+#: ../src/wconfigmodel.c:393
+#, fuzzy, c-format
+msgid "Wrong value for key \"%s\". Should be an array of paths."
+msgstr "Неправильне значення параметра для ключа \"%s\". Має бути Coordinate."
+
+#: ../src/wconfigmodel.c:427
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be Coordinate."
+msgstr "Неправильний формат параметра для ключа \"%s\". Має бути %s."
+
+#: ../src/wconfigmodel.c:440
+#, c-format
+msgid "Wrong value for key \"%s\". Should be Coordinate."
+msgstr "Неправильне значення параметра для ключа \"%s\". Має бути Coordinate."
+
+#: ../src/wconfigmodel.c:447
+#, c-format
+msgid "can't convert array to integers for \"%s\"."
+msgstr "не вдалось перетворити масив в цілі значення для \"%s\"."
+
+#: ../src/wconfigmodel.c:479
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be an array of strings."
+msgstr "Неправильний формат параметра для ключа \"%s\". Має бути %s."
+
+#: ../src/wconfigmodel.c:505
+#, fuzzy, c-format
+msgid "Wrong value for key \"%s\". Should be an array of strings."
+msgstr "Неправильне значення параметра для ключа \"%s\". Має бути Coordinate."
+
+#: ../src/wconfigmodel.c:562 ../src/wconfigmodel.c:678
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be an array."
+msgstr "Неправильний формат параметра для ключа \"%s\". Має бути %s."
+
+#: ../src/wconfigmodel.c:572
+#, fuzzy, c-format
+msgid "Invalid number of arguments for option \"%s\""
+msgstr "неправильна кількість аргументів у визначенні курсора"
+
+#
+#: ../src/wconfigmodel.c:578 ../src/wconfigmodel.c:587
+#: ../src/wconfigmodel.c:601 ../src/wconfigmodel.c:609
+#: ../src/wconfigmodel.c:621
+#, fuzzy, c-format
+msgid "Invalid arguments for option \"%s\""
+msgstr "%s: неправильний аргумент '%s'\n"
+
+#: ../src/wconfigmodel.c:634
+#, fuzzy, c-format
+msgid "Wrong option format for key \"%s\". Should be Key spec."
+msgstr "Неправильний формат параметра для ключа \"%s\". Має бути %s."
+
+#: ../src/wconfigmodel.c:654
+#, fuzzy, c-format
+msgid "Empty color for key \"%s\"."
+msgstr "не вдалось визначити колір для ключа \"%s\""
+
+#: ../src/wconfigmodel.c:831
 msgid ""
-"the NumLock, ScrollLock or similar key seems to be turned on.\n"
-"Turn it off or some mouse actions and keyboard shortcuts will not work."
+"\"MinimizeAllKey\" was renamed to \"MiniaturizeAllKey\"; update your domain"
+msgstr ""
+
+#: ../src/wdefaults.c:1178
+#, c-format
+msgid "icon \"%s\" doesn't exist, check your config files"
+msgstr ""
+
+#: ../src/wdefaults.c:1212
+#, fuzzy, c-format
+msgid "error loading image file \"%s\": %s"
+msgstr "помилка завантаження файлу зображення \"%s\""
+
+#: ../src/wdefaults.c:1248
+#, c-format
+msgid "could not find default icon \"%s\""
+msgstr "не вдалось знайти іконку за умовчанням \"%s\""
+
+#: ../src/window.c:4772 ../src/window.c:4956
+#, fuzzy
+msgid ""
+"The NumLock, ScrollLock or similar key seems to be turned on. Turn it off or "
+"some mouse actions and keyboard shortcuts will not work."
 msgstr ""
 "Схоже, що NumLock, ScrollLock чи аналогічна клавіша увімкнена.\n"
 "Деактивуйте її або ж деякі операції мишою і комбінації клавіш не будуть "
 "працювати."
 
-#: ../src/winmenu.c:126
+#: ../src/winmenu.c:90
+msgid "Restore geometry"
+msgstr ""
+
+#: ../src/winmenu.c:91
+msgid "Region snap"
+msgstr ""
+
+#: ../src/winmenu.c:92
+msgid "Edge snap"
+msgstr ""
+
+#: ../src/winmenu.c:93 ../src/winmenu.c:807
+msgid "Miniaturize"
+msgstr "Мінімізувати"
+
+#: ../src/winmenu.c:94 ../src/winmenu.c:827
+msgid "Shade"
+msgstr "Звернути в смужку"
+
+#: ../src/winmenu.c:96
+msgid "Resize/Move"
+msgstr "Змінити розмір/перемістити"
+
+#: ../src/winmenu.c:97 ../src/winmenu.c:838
+msgid "Select"
+msgstr "Вибрати"
+
+#: ../src/winmenu.c:99
+msgid "Attributes..."
+msgstr "Атрибути..."
+
+#: ../src/winmenu.c:100
+msgid "Options"
+msgstr "Опції"
+
+#: ../src/winmenu.c:101
+msgid "Attach as Tab..."
+msgstr ""
+
+#: ../src/winmenu.c:102
+msgid "Detach Tab"
+msgstr ""
+
+#: ../src/winmenu.c:103
+msgid "Close Tab Group"
+msgstr ""
+
+#: ../src/winmenu.c:105
+msgid "Close"
+msgstr "Закрити"
+
+#: ../src/winmenu.c:129 ../src/winspector.c:129
+msgid "Auto-hide on unfocus"
+msgstr ""
+
+#: ../src/winmenu.c:130 ../src/winspector.c:126
+msgid "Auto-miniaturize on unfocus"
+msgstr ""
+
+#: ../src/winmenu.c:131
+msgid "Keep at bottom"
+msgstr "Тримати під вікнами"
+
+#: ../src/winmenu.c:132
+msgid "Keep on top"
+msgstr "Тримати над вікнами"
+
+#: ../src/winmenu.c:133
+msgid "Lock position"
+msgstr ""
+
+#: ../src/winmenu.c:134
+msgid "Lock size"
+msgstr ""
+
+#: ../src/winmenu.c:136
+msgid "Skip switch panel"
+msgstr ""
+
+#: ../src/winmenu.c:137
+#, fuzzy
+msgid "Skip window list"
+msgstr "Список вікон"
+
+#: ../src/winmenu.c:151
+msgid "Maximize"
+msgstr "Максимізувати"
+
+#: ../src/winmenu.c:152
+msgid "Fullscreen"
+msgstr ""
+
+#: ../src/winmenu.c:153
+msgid "Vertical"
+msgstr ""
+
+#: ../src/winmenu.c:154
+msgid "Horizontal"
+msgstr ""
+
+#: ../src/winmenu.c:155
+msgid "Central"
+msgstr ""
+
+#: ../src/winmenu.c:156
+msgid "Left half"
+msgstr ""
+
+#: ../src/winmenu.c:157
+msgid "Right half"
+msgstr ""
+
+#: ../src/winmenu.c:158
+msgid "Top half"
+msgstr ""
+
+#: ../src/winmenu.c:159
+msgid "Bottom half"
+msgstr ""
+
+#: ../src/winmenu.c:160
+msgid "Top left"
+msgstr ""
+
+#: ../src/winmenu.c:161
+msgid "Top right"
+msgstr ""
+
+#: ../src/winmenu.c:162
+msgid "Bottom left"
+msgstr ""
+
+#: ../src/winmenu.c:163
+msgid "Bottom right"
+msgstr ""
+
+#: ../src/winmenu.c:164 ../src/winmenu.c:632
+msgid "Tiled"
+msgstr ""
+
+#: ../src/winmenu.c:271
+#, fuzzy
+msgid "Move left"
+msgstr "Перемістити на..."
+
+#: ../src/winmenu.c:272
+msgid "Move right"
+msgstr ""
+
+#: ../src/winmenu.c:273
+#, fuzzy
+msgid "Move up"
+msgstr "Перемістити"
+
+#: ../src/winmenu.c:274
+#, fuzzy
+msgid "Move down"
+msgstr "Перемістити на..."
+
+#: ../src/winmenu.c:275
+msgid "Grow left"
+msgstr ""
+
+#: ../src/winmenu.c:276
+msgid "Grow right"
+msgstr ""
+
+#: ../src/winmenu.c:277
+msgid "Grow up"
+msgstr ""
+
+#: ../src/winmenu.c:278
+msgid "Grow down"
+msgstr ""
+
+#: ../src/winmenu.c:279
+msgid "Shrink left"
+msgstr ""
+
+#: ../src/winmenu.c:280
+msgid "Shrink right"
+msgstr ""
+
+#: ../src/winmenu.c:281
+msgid "Shrink up"
+msgstr ""
+
+#: ../src/winmenu.c:282
+msgid "Shrink down"
+msgstr ""
+
+#: ../src/winmenu.c:324
 msgid ""
 "This will kill the application.\n"
 "Any unsaved changes will be lost.\n"
@@ -1533,129 +3653,38 @@ msgstr ""
 "Всі незбережені зміни будуть втрачені.\n"
 "Будь ласка, підтвердіть."
 
-#: ../src/winmenu.c:272 ../src/winmenu.c:281
-msgid "Set Shortcut"
+#: ../src/winmenu.c:494
+#, fuzzy, c-format
+msgid "Set Shortcut %i"
 msgstr "Встановити комбінацію клавіш"
 
-#: ../src/winmenu.c:359 ../src/winmenu.c:404
+#: ../src/winmenu.c:630
+msgid "Untiled"
+msgstr ""
+
+#: ../src/winmenu.c:661 ../src/winmenu.c:686 ../src/winmenu.c:712
+#: ../src/winmenu.c:733
 msgid "could not create submenu for window menu"
 msgstr "не вдалось створити підменю для меню вікна"
 
-#: ../src/winmenu.c:408
-msgid "Keep on top"
-msgstr "Тримати над вікнами"
+#: ../src/winmenu.c:804
+msgid "Deminiaturize"
+msgstr "Демінімізувати"
 
-#: ../src/winmenu.c:413
-msgid "Keep at bottom"
-msgstr "Тримати під вікнами"
-
-#: ../src/winmenu.c:457 ../src/winmenu.c:600
-msgid "Shade"
-msgstr "Звернути в смужку"
-
-#: ../src/winmenu.c:473
-msgid "Hide Others"
-msgstr "Приховати інші"
-
-#: ../src/winmenu.c:481
-msgid "Resize/Move"
-msgstr "Змінити розмір/перемістити"
-
-#: ../src/winmenu.c:489
-msgid "Select"
-msgstr "Вибрати"
-
-#: ../src/winmenu.c:502
-msgid "Attributes..."
-msgstr "Атрибути..."
-
-#: ../src/winmenu.c:504
-msgid "Options"
-msgstr "Опції"
-
-#: ../src/winmenu.c:595
+#: ../src/winmenu.c:824
 msgid "Unshade"
 msgstr "Витягти із смужки"
 
-#: ../src/winspector.c:387
-#, c-format
-msgid "Could not find icon \"%s\" specified for this window"
-msgstr "Неможливо знайти іконку \"%s\", вказану для цього вікна"
+#: ../src/winmenu.c:835
+#, fuzzy
+msgid "Deselect"
+msgstr "Вибрати"
 
-#: ../src/winspector.c:404
-#, c-format
-msgid "Could not open specified icon \"%s\":%s"
-msgstr "Неможливо відкрити вказаний файл іконки \"%s\":%s"
-
-#: ../src/winspector.c:1123
-#, c-format
-msgid "Inspecting  %s.%s"
-msgstr "Інспектується  %s.%s"
-
-#: ../src/winspector.c:1149
-msgid "Click in the window you wish to inspect."
-msgstr "Натисніть на вікні, яке хочете проінспектувати."
-
-#: ../src/winspector.c:1188
-msgid ""
-"The configuration will apply to all\n"
-"windows that have their WM_CLASS\n"
-"property set to the above selected\n"
-"name, when saved."
-msgstr ""
-"При збереженні конфігурація буде застосована\n"
-"до всіх вікон, у яких WM_CLASS встановлено у\n"
-"вибране значення."
-
-#: ../src/winspector.c:1217
-msgid "Save"
-msgstr "Зберегти"
-
-#: ../src/winspector.c:1225
-msgid "Apply"
-msgstr "Застосувати"
-
-#: ../src/winspector.c:1231
-msgid "Reload"
-msgstr "Перечитати"
-
-#: ../src/winspector.c:1240 ../src/winspector.c:1250
-msgid "Window Specification"
-msgstr "Специфікація вікна"
-
-#: ../src/winspector.c:1241
-msgid "Window Attributes"
-msgstr "Атрибути вікна"
-
-#: ../src/winspector.c:1242
-msgid "Advanced Options"
-msgstr "Додаткові опції"
-
-#: ../src/winspector.c:1243
-msgid "Icon and Initial Workspace"
-msgstr "Іконка і початковий стіл"
-
-#: ../src/winspector.c:1244
-msgid "Application Specific"
-msgstr "Властивості програми"
-
-#: ../src/winspector.c:1258
-msgid "Defaults for all windows"
-msgstr "Умовчання для всіх вікон"
-
-#: ../src/winspector.c:1312
-msgid "Select window"
-msgstr "Виберіть вікно"
-
-#: ../src/winspector.c:1326
-msgid "Attributes"
-msgstr "Атрибути"
-
-#: ../src/winspector.c:1337
+#: ../src/winspector.c:97
 msgid "Disable titlebar"
 msgstr "Прибрати шапку вікна"
 
-#: ../src/winspector.c:1339
+#: ../src/winspector.c:98
 msgid ""
 "Remove the titlebar of this window.\n"
 "To access the window commands menu of a window\n"
@@ -1669,43 +3698,43 @@ msgstr ""
 "комбінацію, якщо Ви змінили установки за\n"
 "умовчанням)."
 
-#: ../src/winspector.c:1346
+#: ../src/winspector.c:104
 msgid "Disable resizebar"
 msgstr "Прибрати смужку зміни розміру"
 
-#: ../src/winspector.c:1348
+#: ../src/winspector.c:105
 msgid "Remove the resizebar of this window."
 msgstr "Прибрати смужку зміни розміру цього вікна."
 
-#: ../src/winspector.c:1351
+#: ../src/winspector.c:107
 msgid "Disable close button"
 msgstr "Прибрати кнопку закриття"
 
-#: ../src/winspector.c:1353
+#: ../src/winspector.c:108
 msgid "Remove the `close window' button of this window."
 msgstr "Прибрати кнопку закриття для цього вікна."
 
-#: ../src/winspector.c:1356
+#: ../src/winspector.c:110
 msgid "Disable miniaturize button"
 msgstr "Прибрати кнопку мінімізації"
 
-#: ../src/winspector.c:1358
+#: ../src/winspector.c:111
 msgid "Remove the `miniaturize window' button of the window."
 msgstr "Прибрати кнопку мінімізації для цього вікна."
 
-#: ../src/winspector.c:1361
+#: ../src/winspector.c:113
 msgid "Disable border"
 msgstr "Прибрати бордюр вікна"
 
-#: ../src/winspector.c:1363
+#: ../src/winspector.c:114
 msgid "Remove the 1 pixel black border around the window."
 msgstr "Прибрати 1-піксельний чорний бордюр навколо вікна."
 
-#: ../src/winspector.c:1366
+#: ../src/winspector.c:116
 msgid "Keep on top (floating)"
 msgstr "Завжди зверху (плаваюче)"
 
-#: ../src/winspector.c:1368
+#: ../src/winspector.c:117
 msgid ""
 "Keep the window over other windows, not allowing\n"
 "them to cover it."
@@ -1713,23 +3742,37 @@ msgstr ""
 "Утримувати вікно поверх інших вікон, не дозволяючи\n"
 "їм покривати це вікно."
 
-#: ../src/winspector.c:1372
+#: ../src/winspector.c:120
 msgid "Keep at bottom (sunken)"
 msgstr "Завжди знизу (втоплене)"
 
-#: ../src/winspector.c:1374
+#: ../src/winspector.c:121
 msgid "Keep the window under all other windows."
 msgstr "Утримувати вікно покритим іншими перекриваючими вікнами."
 
-#: ../src/winspector.c:1379
+#: ../src/winspector.c:124
 msgid "Make window present in all workspaces."
 msgstr "Зробити вікно присутнім на всіх робочих столах."
 
-#: ../src/winspector.c:1382
+#: ../src/winspector.c:127
+#, fuzzy
+msgid "Miniaturize the window automatically when it loses focus."
+msgstr ""
+"Зробити вікно автоматично максимізуючимся при\n"
+"початковому розміщенні."
+
+#: ../src/winspector.c:130
+#, fuzzy
+msgid "Hide the window automatically when it loses focus."
+msgstr ""
+"Зробити вікно автоматично максимізуючимся при\n"
+"початковому розміщенні."
+
+#: ../src/winspector.c:132
 msgid "Start miniaturized"
 msgstr "Запуск мінімізованим"
 
-#: ../src/winspector.c:1384
+#: ../src/winspector.c:133
 msgid ""
 "Make the window be automatically miniaturized when it's\n"
 "first shown."
@@ -1737,11 +3780,11 @@ msgstr ""
 "Зробити вікно автоматично мінімізуючимся при\n"
 "початковому розміщенні."
 
-#: ../src/winspector.c:1388
+#: ../src/winspector.c:136
 msgid "Start maximized"
 msgstr "Запуск максимізованим"
 
-#: ../src/winspector.c:1390
+#: ../src/winspector.c:137
 msgid ""
 "Make the window be automatically maximized when it's\n"
 "first shown."
@@ -1749,11 +3792,11 @@ msgstr ""
 "Зробити вікно автоматично максимізуючимся при\n"
 "початковому розміщенні."
 
-#: ../src/winspector.c:1394
+#: ../src/winspector.c:140
 msgid "Full screen maximization"
 msgstr "Максимізувати на весь экран"
 
-#: ../src/winspector.c:1396
+#: ../src/winspector.c:141
 msgid ""
 "Make the window use the whole screen space when it's\n"
 "maximized. The titlebar and resizebar will be moved\n"
@@ -1763,15 +3806,23 @@ msgstr ""
 "максимізації. Смужки заголовку і зміни розміру будуть\n"
 "зміщені за межі екрану."
 
-#: ../src/winspector.c:1413
-msgid "Advanced"
-msgstr "Додатково"
+#: ../src/winspector.c:145
+#, fuzzy
+msgid "Swallow child window"
+msgstr "Виберіть вікно"
 
-#: ../src/winspector.c:1430
+#: ../src/winspector.c:146
+msgid ""
+"When a child process of this window maps its own window,\n"
+"hide this one and place the child where it was. When the\n"
+"child closes, this window reappears."
+msgstr ""
+
+#: ../src/winspector.c:151
 msgid "Do not bind keyboard shortcuts"
 msgstr "Не прив'язувати комбінації клавіш"
 
-#: ../src/winspector.c:1432
+#: ../src/winspector.c:152
 msgid ""
 "Do not bind keyboard shortcuts from Window Maker\n"
 "when this window is focused. This will allow the\n"
@@ -1783,31 +3834,42 @@ msgstr ""
 "вікну отримувати всі комбінації клавіш, незалежно\n"
 "від конфігурації їх прив'язки."
 
-#: ../src/winspector.c:1438
+#: ../src/winspector.c:157
 msgid "Do not bind mouse clicks"
 msgstr "Не прив'язувати натискання миші"
 
-#: ../src/winspector.c:1440
+#: ../src/winspector.c:158
+#, fuzzy
 msgid ""
 "Do not bind mouse actions, such as `Alt'+drag\n"
-"in the window (when alt is the modifier you haveconfigured)."
+"in the window (when Alt is the modifier you have\n"
+"configured)."
 msgstr ""
 "Не прив'язувати дії миші, такі як `Alt'+буксирування\n"
 "у вікні (при встановленому модифікаторі `Alt')."
 
-#: ../src/winspector.c:1445
+#: ../src/winspector.c:162
 msgid "Do not show in the window list"
 msgstr "Не показувати вікно в списку вікон."
 
-#: ../src/winspector.c:1447
+#: ../src/winspector.c:163
 msgid "Do not list the window in the window list menu."
 msgstr "Не показувати це вікно в меню списку вікон."
 
-#: ../src/winspector.c:1450
+#: ../src/winspector.c:165
+#, fuzzy
+msgid "Do not show in the switch panel"
+msgstr "Не показувати вікно в списку вікон."
+
+#: ../src/winspector.c:166
+msgid "Do not include in switch panel while cycling windows."
+msgstr ""
+
+#: ../src/winspector.c:168
 msgid "Do not let it take focus"
 msgstr "Не передавати фокус вводу"
 
-#: ../src/winspector.c:1452
+#: ../src/winspector.c:169
 msgid ""
 "Do not let the window take keyboard focus when you\n"
 "click on it."
@@ -1815,11 +3877,11 @@ msgstr ""
 "Не давати вікну отримувати фокус вводу з клавіатури\n"
 "при натисканні на ньому мишою."
 
-#: ../src/winspector.c:1456
+#: ../src/winspector.c:172
 msgid "Keep inside screen"
 msgstr "Завжди усередині екрану"
 
-#: ../src/winspector.c:1458
+#: ../src/winspector.c:173
 msgid ""
 "Do not allow the window to move itself completely\n"
 "outside the screen. For bug compatibility.\n"
@@ -1827,11 +3889,11 @@ msgstr ""
 "Не дозволяти вікну повністю переміститися\n"
 "за межі екрану.\n"
 
-#: ../src/winspector.c:1462
+#: ../src/winspector.c:176
 msgid "Ignore 'Hide Others'"
 msgstr "Ігнорувати 'Приховати інші'"
 
-#: ../src/winspector.c:1464
+#: ../src/winspector.c:177
 msgid ""
 "Do not hide the window when issuing the\n"
 "`HideOthers' command."
@@ -1839,11 +3901,11 @@ msgstr ""
 "Не приховувати це вікно при виконанні\n"
 "команди `Приховати інші'."
 
-#: ../src/winspector.c:1468
+#: ../src/winspector.c:180
 msgid "Ignore 'Save Session'"
 msgstr "Ігнорувати 'Зберегти сеанс'"
 
-#: ../src/winspector.c:1470
+#: ../src/winspector.c:181
 msgid ""
 "Do not save the associated application in the\n"
 "session's state, so that it won't be restarted\n"
@@ -1856,11 +3918,11 @@ msgstr ""
 "при запуску Window Maker'а."
 
 #
-#: ../src/winspector.c:1476
+#: ../src/winspector.c:186
 msgid "Emulate application icon"
 msgstr "Емулювати іконку програми"
 
-#: ../src/winspector.c:1478
+#: ../src/winspector.c:187
 msgid ""
 "Make this window act as an application that provides\n"
 "enough information to Window Maker for a dockable\n"
@@ -1870,55 +3932,79 @@ msgstr ""
 "надає достатньо інформації Window Maker'у для\n"
 "створення іконки програми, яка заноситься в Док."
 
-#: ../src/winspector.c:1484
+#: ../src/winspector.c:191
+msgid "Focus across workspaces"
+msgstr ""
+
+#: ../src/winspector.c:192
+msgid ""
+"Allow Window Maker to switch workspace to satisfy\n"
+"a focus request (annoying)."
+msgstr ""
+
+#: ../src/winspector.c:195
+#, fuzzy
+msgid "Do not let it be minimized"
+msgstr "Не передавати фокус вводу"
+
+#: ../src/winspector.c:196
+#, fuzzy
+msgid ""
+"Do not let the window of this application be\n"
+"minimized.\n"
+msgstr "Не показувати це вікно в меню списку вікон."
+
+#: ../src/winspector.c:199
+msgid "Ignore decoration changes"
+msgstr ""
+
+#: ../src/winspector.c:200
+msgid ""
+"Ignore any request from the application to change\n"
+"window decorations (like hiding the titlebar).\n"
+msgstr ""
+
+#: ../src/winspector.c:203
+msgid "Do not allow tab grouping"
+msgstr ""
+
+#: ../src/winspector.c:204
+msgid ""
+"Refuse this window as either the dragged window or the\n"
+"drop target when attaching windows into a tab group."
+msgstr ""
+
+#: ../src/winspector.c:207
+msgid "Do not tile"
+msgstr ""
+
+#: ../src/winspector.c:208
+msgid ""
+"Exempt this window from the workspace tiling layout.\n"
+"It stays floating and the layout reflows around it."
+msgstr ""
+
+#: ../src/winspector.c:212
 msgid "Disable language button"
 msgstr "Прибрати кнопку мови"
 
-#: ../src/winspector.c:1486
+#: ../src/winspector.c:213
 msgid "Remove the `toggle language' button of the window."
 msgstr "Прибрати кнопку перемикання мови клавіатури для вікна."
 
-#: ../src/winspector.c:1503
-msgid "Miniwindow Image"
-msgstr "Мініатюрне Зображення"
-
-#: ../src/winspector.c:1530
-msgid "Icon filename:"
-msgstr "Ім'я файлу іконки:"
-
-#: ../src/winspector.c:1543
-msgid "Ignore client supplied icon"
-msgstr "Ігнорувати іконку клієнта"
-
-#: ../src/winspector.c:1550
-msgid "Initial Workspace"
-msgstr "Початковий Робочий стіл"
-
-#: ../src/winspector.c:1552
-msgid "The workspace to place the window when it'sfirst shown."
-msgstr "Робочий стіл, куди помістити вікно при початковій його появі."
-
-#: ../src/winspector.c:1558
-msgid "Nowhere in particular"
-msgstr "Не задається"
-
-#: ../src/winspector.c:1576
-msgid "Application Attributes"
-msgstr "Відноситься до програми"
-
-#: ../src/winspector.c:1587
+#: ../src/winspector.c:217
 msgid "Start hidden"
 msgstr "Запускати прихованою"
 
-#: ../src/winspector.c:1589
+#: ../src/winspector.c:218
 msgid "Automatically hide application when it's started."
 msgstr "Автоматично приховувати програму при її запуску."
 
-#: ../src/winspector.c:1592
+#: ../src/winspector.c:220
 msgid "No application icon"
 msgstr "Не показувати іконку"
 
-#: ../src/winspector.c:1594
+#: ../src/winspector.c:221
 msgid ""
 "Disable the application icon for the application.\n"
 "Note that you won't be able to dock it anymore,\n"
@@ -1931,11 +4017,11 @@ msgstr ""
 "коректно працювати."
 
 #
-#: ../src/winspector.c:1600
+#: ../src/winspector.c:226
 msgid "Shared application icon"
 msgstr "Спільна іконка програми"
 
-#: ../src/winspector.c:1602
+#: ../src/winspector.c:227
 msgid ""
 "Use a single shared application icon for all of\n"
 "the instances of this application.\n"
@@ -1943,27 +4029,297 @@ msgstr ""
 "Використовувати єдину спільну іконку програми для\n"
 "всіх екземплярів цієї програми.\n"
 
-#: ../src/wmspec.c:277
-msgid "out of memory while updating wm hints"
-msgstr "вичерпана пам'ять при оновленні wm hints"
+#: ../src/winspector.c:545
+#, c-format
+msgid "Could not find icon \"%s\" specified for this window"
+msgstr "Неможливо знайти іконку \"%s\", вказану для цього вікна"
 
-#: ../src/workspace.c:107 ../src/workspace.c:108 ../src/workspace.c:893
+#: ../src/winspector.c:568
+#, c-format
+msgid "Could not open specified icon \"%s\":%s"
+msgstr "Неможливо відкрити вказаний файл іконки \"%s\":%s"
+
+#: ../src/winspector.c:980
+#, c-format
+msgid ""
+"Ignore client supplied icon is set, but icon filename textbox is empty. "
+"Using client supplied icon"
+msgstr ""
+
+#: ../src/winspector.c:1193
+#, c-format
+msgid "Inspecting  %s.%s"
+msgstr "Інспектується  %s.%s"
+
+#: ../src/winspector.c:1218
+msgid "Click in the window you wish to inspect."
+msgstr "Натисніть на вікні, яке хочете проінспектувати."
+
+#: ../src/winspector.c:1244
+msgid ""
+"The configuration will apply to all\n"
+"windows that have their WM_CLASS\n"
+"property set to the above selected\n"
+"name, when saved."
+msgstr ""
+"При збереженні конфігурація буде застосована\n"
+"до всіх вікон, у яких WM_CLASS встановлено у\n"
+"вибране значення."
+
+#: ../src/winspector.c:1267
+msgid "Save"
+msgstr "Зберегти"
+
+#: ../src/winspector.c:1275
+msgid "Apply"
+msgstr "Застосувати"
+
+#: ../src/winspector.c:1281
+msgid "Reload"
+msgstr "Перечитати"
+
+#: ../src/winspector.c:1290 ../src/winspector.c:1300
+msgid "Window Specification"
+msgstr "Специфікація вікна"
+
+#: ../src/winspector.c:1291
+msgid "Window Attributes"
+msgstr "Атрибути вікна"
+
+#: ../src/winspector.c:1292
+msgid "Advanced Options"
+msgstr "Додаткові опції"
+
+#: ../src/winspector.c:1293
+msgid "Icon and Initial Workspace"
+msgstr "Іконка і початковий стіл"
+
+#: ../src/winspector.c:1294
+msgid "Application Specific"
+msgstr "Властивості програми"
+
+#: ../src/winspector.c:1307
+msgid "Defaults for all windows"
+msgstr "Умовчання для всіх вікон"
+
+#: ../src/winspector.c:1358
+msgid "Select window"
+msgstr "Виберіть вікно"
+
+#: ../src/winspector.c:1366
+msgid "Auto tab group by class"
+msgstr ""
+
+#: ../src/winspector.c:1368
+msgid ""
+"When a new window of this class is opened and a tab group\n"
+"on the current workspace already contains a member of the\n"
+"same class, attach the new window to that group automatically."
+msgstr ""
+
+#: ../src/winspector.c:1571
+msgid "Attributes"
+msgstr "Атрибути"
+
+#: ../src/winspector.c:1644
+msgid "Advanced"
+msgstr "Додатково"
+
+#: ../src/winspector.c:1696
+#, fuzzy
+msgid "Application Icon"
+msgstr "Не показувати іконку"
+
+#: ../src/winspector.c:1713
+msgid "Icon filename:"
+msgstr "Ім'я файлу іконки:"
+
+#: ../src/winspector.c:1726
+msgid "Ignore client supplied icon"
+msgstr "Ігнорувати іконку клієнта"
+
+#: ../src/winspector.c:1732
+#, fuzzy
+msgid "Initial Workspaces"
+msgstr "Початковий Робочий стіл"
+
+#: ../src/winspector.c:1734
+#, fuzzy
+msgid ""
+"The workspace(s) to place the window when it's first shown. An empty "
+"selection means no opinion, use the normal rules."
+msgstr "Робочий стіл, куди помістити вікно при початковій його появі."
+
+#: ../src/winspector.c:1742
+msgid "Nowhere in particular"
+msgstr "Не задається"
+
+#: ../src/winspector.c:1765
+msgid "Application Attributes"
+msgstr "Відноситься до програми"
+
+#: ../src/wmspec.c:2852
+msgid ""
+" is not responding.\n"
+"\n"
+"You can wait for it to continue or force it to quit, losing any unsaved "
+"changes."
+msgstr ""
+
+#: ../src/wmspec.c:2856
+#, fuzzy
+msgid "Application Not Responding"
+msgstr "Відноситься до програми"
+
+#: ../src/wmspec.c:2857
+msgid "Force Quit"
+msgstr ""
+
+#: ../src/wmspec.c:2857
+msgid "Wait"
+msgstr ""
+
+#: ../src/wmspec.c:2876
+#, c-format
+msgid "could not signal process %d (%s), dropping its X connection instead"
+msgstr ""
+
+#: ../src/wmspec.c:2882
+#, c-format
+msgid "could not kill process %d (%s), dropping its X connection instead"
+msgstr ""
+
+#: ../src/workspace.c:280 ../src/workspace.c:1668
 #, c-format
 msgid "Workspace %i"
 msgstr "Робочий стіл %i"
 
-#: ../src/workspace.c:943
-msgid "Workspaces"
-msgstr "Робочі столи"
+#: ../src/workspace.c:336
+#, c-format
+msgid "Workspace \"%s\" in use; cannot delete"
+msgstr ""
 
-#: ../src/workspace.c:945
+#: ../src/workspace.c:1446
+#, c-format
+msgid "WorkspaceOutputs: unknown workspace \"%s\""
+msgstr ""
+
+#: ../src/workspace.c:1503
+#, c-format
+msgid "no workspace allowed on output \"%s\", created \"%s\""
+msgstr ""
+
+#: ../src/workspace.c:1520
+#, c-format
+msgid ""
+"no workspace allowed on output \"%s\" and at MAX_WORKSPACES, dropping "
+"WorkspaceOutputs pin on \"%s\""
+msgstr ""
+
+#: ../src/workspace.c:1776 ../src/workspace.c:1793
+msgid "Layout"
+msgstr ""
+
+#: ../src/workspace.c:1778
+#, fuzzy
+msgid "could not create Layout menu"
+msgstr "не вдається створити меню Робочих столів"
+
+#: ../src/workspace.c:1811
 msgid "could not create Workspace menu"
 msgstr "не вдається створити меню Робочих столів"
 
-#: ../src/workspace.c:952
+#: ../src/workspace.c:1818
 msgid "New"
 msgstr "Створити"
 
-#: ../src/workspace.c:953
+#: ../src/workspace.c:1819
 msgid "Destroy Last"
 msgstr "Знищити останній"
+
+#: ../src/workspace.c:1821
+msgid "Last Used"
+msgstr ""
+
+#: ../src/wxkb.c:119
+#, c-format
+msgid "Alt is bound to %s, which is nonsensical"
+msgstr ""
+
+#: ../src/wxkb.c:122
+#, c-format
+msgid "Meta is bound to %s, which is nonsensical"
+msgstr ""
+
+#: ../src/wxkb.c:125
+#, c-format
+msgid "Super is bound to %s, which is nonsensical"
+msgstr ""
+
+#: ../src/wxkb.c:128
+#, c-format
+msgid "Hyper is bound to %s, which is nonsensical"
+msgstr ""
+
+#: ../src/wxkb.c:215
+msgid "XKB extension is not supported by the X server"
+msgstr ""
+
+#: ../src/wxkb.c:229
+msgid "could not load the XKB keymap from the X server"
+msgstr ""
+
+#: ../src/wxkb.c:263
+msgid "could not reload the XKB keymap, key bindings keep the previous mapping"
+msgstr ""
+
+#: ../src/wxkb.c:489
+#, c-format
+msgid "Can't convert keymask 0x%04X to a shortcut label"
+msgstr ""
+
+#: ../src/wxkb.c:599
+msgid "XTest extension is not available, accent picker cannot inject text"
+msgstr ""
+
+#: ../src/wxkb.c:608
+msgid "XTest extension is not usable, accent picker cannot inject text"
+msgstr ""
+
+#: ../src/wxkb.c:773
+msgid "accent picker: no spare keycode for text injection"
+msgstr ""
+
+#: ../src/xdnd.c:208
+#, c-format
+msgid "wXDNDGetTypeList failed = %u"
+msgstr ""
+
+#: ../src/xsmp.c:105
+#, fuzzy
+msgid "lost connection to the session manager"
+msgstr "втрачено з'єднання з менеджером сеансів"
+
+#: ../src/xsmp.c:313
+msgid "could not register ICE connection watch"
+msgstr ""
+
+#: ../src/xsmp.c:331
+#, fuzzy, c-format
+msgid "could not connect to the session manager: %s"
+msgstr "втрачено з'єднання з менеджером сеансів"
+
+#: ../src/xsettings.c:330
+#, c-format
+msgid "another XSETTINGS manager is running on screen %d"
+msgstr ""
+
+#: ../src/xsettings.c:332
+#, c-format
+msgid "could not claim the XSETTINGS selection for screen %d"
+msgstr ""
+
+#: ../src/xsettings.c:372
+#, c-format
+msgid "another XSETTINGS manager is taking over screen %d"
+msgstr ""

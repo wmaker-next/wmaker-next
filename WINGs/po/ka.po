@@ -1,9 +1,9 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: WINGs\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 18:45-0400\n"
-"PO-Revision-Date: 2026-09-21 05:24+0200\n"
+"Project-Id-Version: WindowMaker 0.96.0-next\n"
+"Report-Msgid-Bugs-To: wmaker-dev@googlegroups.com\n"
+"POT-Creation-Date: 2026-11-16 21:59-0500\n"
+"PO-Revision-Date: 2026-11-16 22:16-0500\n"
 "Last-Translator: Ekaterine Papava <papava.e@gtu.ge>\n"
 "Language-Team: Georgian <(nothing)>\n"
 "Language: ka\n"
@@ -13,237 +13,169 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Poedit 3.9\n"
 
-msgid "PropList nested too deeply"
-msgstr "PropList-ის ჩადგმა ზედმეტად ღრმაა"
-
-msgid "property list description larger than %d bytes, rejected"
-msgstr "თვისებათა სიის აღწერა %d ბაიტზე დიდია, უარყოფილია"
-
-msgid "property list file '%s' exceeds %u bytes, refusing to load"
-msgstr "თვისებათა სიის ფაილი '%s' %u ბაიტს აღემატება, არ ჩაიტვირთება"
-
-msgid ""
-"%s: pipe output exceeds %u bytes or child did not exit normally, truncating"
-msgstr ""
-"%s: კონვეიერის გამოტანა %u ბაიტს აღემატება ან შვილობილი პროცესი ჩვეულებრივად "
-"არ დასრულდა, ხდება შემოკლება"
-
-msgid "path too long for wmkdirhier: %s"
-msgstr "ბილიკი ზედმეტად გრძელია wmkdirhier-სთვის: %s"
-
-msgid "invalid defaults domain name: %s"
-msgstr "დეფოლტების დომენის დაუშვებელი სახელი: %s"
-
-msgid "malformed label markup: %s"
-msgstr "ჭდის დაზიანებული მარკირება: %s"
-
-msgid "All"
-msgstr "ყველა"
-
-msgid "the X server has no XKB extension, falling back to a best-effort keymap"
-msgstr ""
-"X სერვერს XKB-ის გაფართოება არ გააჩნია, გამოიყენება მიახლოებული კლავიატურის "
-"რუკა"
-
-msgid "could not build a fallback keymap, text field input is unavailable"
-msgstr ""
-"სათადო კლავიატურის რუკის შექმნა შეუძლებელია, ტექსტური ველის შეყვანა "
-"მიუწვდომელია"
-
-msgid ""
-"could not load the XKB keymap from the X server, falling back to a best-"
-"effort keymap"
-msgstr ""
-"XKB-ის კლავიატურის რუკის X სერვერიდან ჩატვირთვა შეუძლებელია, გამოიყენება "
-"მიახლოებული კლავიატურის რუკა"
-
-msgid ""
-"could not reload the XKB keymap, keyboard input keeps the previous mapping"
-msgstr ""
-"XKB-ის კლავიატურის რუკის ხელახლა ჩატვირთვა შეუძლებელია, კლავიატურა იყენებს "
-"წინა ასახვას"
-
-msgid "Could not create component %s: %s"
-msgstr "ვერ შევქმენი კომპონენტი %s: %s"
-
-msgid "could not fork to run %s: %s"
-msgstr "ვერ შევქმენი პროცესს %s-ის გასაშვებად: %s"
-
-msgid "could not execute %s: %s"
-msgstr "ვერ გავუშვი %s: %s"
-
-msgid "could not create pipe to run %s: %s"
-msgstr "ვერ შევქმენი კონვეიერს %s-ის გასაშვებად: %s"
-
-msgid "unknown XDND action %lu"
-msgstr "უცნობი XDND ქმედება %lu"
-
-msgid "could not parse color \"%s\" for %s"
-msgstr "ფერის \"%s\" დამუშავება %s-თვის შეუძლებელია"
-
-#: ../../WINGs/error.c:104
+#: ../../WINGs/error.c:110
 msgid "fatal: "
 msgstr "ფატალური: "
 
-#: ../../WINGs/error.c:110
+#: ../../WINGs/error.c:116
 msgid "error: "
 msgstr "შეცდომა: "
 
-#: ../../WINGs/error.c:116
+#: ../../WINGs/error.c:122
 msgid "warning: "
 msgstr "გაფრთხილება: "
 
-#: ../../WINGs/findfile.c:57
+#: ../../WINGs/findfile.c:58
 #, c-format
 msgid "could not get password entry for UID %i"
 msgstr "შეუძლებელია პაროლის ჩანაწერის მიღება UID-ისთვის %i"
 
-#: ../../WINGs/findfile.c:87
+#: ../../WINGs/findfile.c:88
 #, c-format
 msgid "could not get password entry for user %s"
 msgstr "შეუძლებელია პაროლის ჩანაწერის მიღება მომხმარებლისთვის %s"
 
-#: ../../WINGs/findfile.c:207
+#: ../../WINGs/findfile.c:208
 #, c-format
 msgid "could not expand %s"
 msgstr "%s-ის გაფართოება შეუძლებელია"
 
-#: ../../WINGs/findfile.c:452
+#: ../../WINGs/findfile.c:455
 #, c-format
 msgid "Could not open input file \"%s\": %s"
 msgstr "გახსნის შეცდომა შეყვანის ფაილისთვის \"%s\": %s"
 
-#: ../../WINGs/findfile.c:468
+#: ../../WINGs/findfile.c:471
 #, c-format
 msgid "Could not create target file \"%s\": %s"
 msgstr "შექმნის შეცდომა სამიზნე ფაილისთვის \"%s\": %s"
 
-#: ../../WINGs/findfile.c:476
+#: ../../WINGs/findfile.c:479
 msgid "could not allocate memory for the copy buffer"
 msgstr "კოპირების ბუფერისთვის მეხსიერების გამოყოფა შეუძლებელია"
 
-#: ../../WINGs/findfile.c:493
+#: ../../WINGs/findfile.c:496
 #, c-format
 msgid "could not read from file \"%s\": %s"
 msgstr "ფაილიდან (\"%s\") კითხვის შეცდომა: %s"
 
-#: ../../WINGs/findfile.c:508
+#: ../../WINGs/findfile.c:511
 #, c-format
 msgid "could not write data to file \"%s\": %s"
 msgstr "მონაცემების ჩაწერის შეცდომა ფაილში \"%s\": %s"
 
-#: ../../WINGs/findfile.c:520
+#: ../../WINGs/findfile.c:523
 #, c-format
 msgid "could not set permission 0%03o on file \"%s\": %s"
 msgstr "წვდომის 0%03o დაყენება ფაილზე \"%s\" შეუძლებელია: %s"
 
-#: ../../WINGs/findfile.c:524
+#: ../../WINGs/findfile.c:527
 #, c-format
 msgid "could not close the file \"%s\": %s"
 msgstr "ფაილის \"%s\" დახურვა შეუძლებელია: %s"
 
-#: ../../WINGs/menuparser.c:109
+#: ../../WINGs/menuparser.c:110
 #, c-format
 msgid "   included from file \"%s\" at line %d"
 msgstr "   ჩასმულია ფიალიდან \"%s\" ხაზზე %d"
 
-#: ../../WINGs/menuparser.c:141
+#: ../../WINGs/menuparser.c:142
 #, c-format
 msgid "missing #endif to match #%s at line %d"
 msgstr "ნაკლული #endif რომ დაემთხვეს #%s-ს ხაზზე %d"
 
-#: ../../WINGs/menuparser.c:199
+#: ../../WINGs/menuparser.c:200
 msgid "multiple SHORTCUT definition not valid"
 msgstr "ერთზე მეტი SHORTCUT-ის აღწერა არასწორია"
 
-#: ../../WINGs/menuparser.c:252
+#: ../../WINGs/menuparser.c:253
 msgid "premature end of file while expecting a new line after '\\'"
 msgstr ""
 "ფაილის ნაადრევი დასასრული მაშინ, როცა მოველოდი ახალ ხაზს სიმბოლოს '\\' შემდეგ"
 
-#: ../../WINGs/menuparser.c:278
+#: ../../WINGs/menuparser.c:279
 #, c-format
 msgid "reached end of file while searching '*/' for comment started at line %d"
 msgstr ""
 "მიღწეულია ფაილის ბოლო, სანამ ვეძებდი '*/' კომენტარისთვის, რომელიც დაიწყო "
 "ხაზზე %d"
 
-#: ../../WINGs/menuparser.c:352
+#: ../../WINGs/menuparser.c:353
 msgid "missing closing double-quote before end-of-line"
 msgstr "აკლია დამხურავი ორმაგი ციტირების ბრჭყალი ხაზის ბოლომდე"
 
-#: ../../WINGs/menuparser.c:374
+#: ../../WINGs/menuparser.c:375
 msgid "missing closing simple-quote before end-of-line"
 msgstr "აკლია დამხურავი ერთმაგი ციტირების ბრჭყალი ხაზის ბოლომდე"
 
-#: ../../WINGs/menuparser.c:392
+#: ../../WINGs/menuparser.c:393
 msgid "too many nested macro expansions, breaking loop"
 msgstr ""
 "მეტისმეტად ბევრი ერთმანეთში ჩასმული მაკროს გაფართოება. მარყუჟი გაწყდება"
 
-#: ../../WINGs/menuparser.c:457
+#: ../../WINGs/menuparser.c:458
 #, c-format
 msgid "unknown directive '#%s'"
 msgstr "უცნობი დირექტივა '#%s'"
 
-#: ../../WINGs/menuparser.c:462
+#: ../../WINGs/menuparser.c:463
 #, c-format
 msgid "extra text after '#' command is ignored: \"%.16s...\""
 msgstr "დამატებითი ტექსტი '#' ბრძანების შემდეგ დაიგნორებულია: \"%.16s...\""
 
-#: ../../WINGs/menuparser.c:478
+#: ../../WINGs/menuparser.c:479
 msgid "no file name found for #include"
 msgstr "დირექტივისთვის #include ფაილის სახელი აღმოჩენილი არაა"
 
-#: ../../WINGs/menuparser.c:490
+#: ../../WINGs/menuparser.c:491
 msgid "file name must be enclosed in brackets or double-quotes for #define"
 msgstr ""
 "დირექტივისთვის #define ფაილის სახელი ორმაგ ბრჭყალებში, ან ფრჩხილებში უნდა "
 "იყოს ჩასმული"
 
-#: ../../WINGs/menuparser.c:504
+#: ../../WINGs/menuparser.c:505
 #, c-format
 msgid "missing closing '%c' in filename specification"
 msgstr "ფაილის სახელის სპეციფიკაციას დამხურავი '%c' სჭირდება"
 
-#: ../../WINGs/menuparser.c:522
+#: ../../WINGs/menuparser.c:523
 msgid "too many nested #include's"
 msgstr "მეტისმეტად ბევრი საკუთარ თავში ჩასმული #include-ები"
 
-#: ../../WINGs/menuparser.c:555
+#: ../../WINGs/menuparser.c:556
 #, c-format
 msgid "could not find file \"%s\" for #include"
 msgstr "დირექტივისთვის #include ფაილი '%s' აღმოჩენილი არაა"
 
-#: ../../WINGs/menuparser.c:575
+#: ../../WINGs/menuparser.c:576
 #, c-format
 msgid "missing macro name argument to #%s"
 msgstr "ნაკლული მაკროს სახელის არგუმენტი დირექტივისთვის #%s"
 
-#: ../../WINGs/menuparser.c:586
+#: ../../WINGs/menuparser.c:587
 msgid "too many nested #if sequences"
 msgstr "მეტისმეტად ბევრი ერთმანეთში ჩასმული #if მიმდევრობა"
 
-#: ../../WINGs/menuparser.c:612 ../../WINGs/menuparser.c:629
+#: ../../WINGs/menuparser.c:613 ../../WINGs/menuparser.c:630
 #, c-format
 msgid "found #%s but has no matching #if"
 msgstr "აღმოჩენილია #%s, მაგრამ არა შესაბამისი #if"
 
-#: ../../WINGs/menuparser_macros.c:165
+#: ../../WINGs/menuparser_macros.c:166
 msgid "no macro name found for #define"
 msgstr "#define-ში მაკროს სახელი აღმოჩენილი არაა"
 
-#: ../../WINGs/menuparser_macros.c:187
+#: ../../WINGs/menuparser_macros.c:188
 #, c-format
 msgid "premature end of file while reading arg-list for macro \"%s\""
 msgstr "ფაილის ნაადრევი დასრულება arg-list-ის კითხვისას მაკროსთვის '%s'"
 
-#: ../../WINGs/menuparser_macros.c:194
+#: ../../WINGs/menuparser_macros.c:195
 #, c-format
 msgid "too many parameters for macro \"%s\" definition"
 msgstr "მეტისმეტად ბევრი პარამეტრი მაკროს '%s' აღწერისთვის"
 
-#: ../../WINGs/menuparser_macros.c:209
+#: ../../WINGs/menuparser_macros.c:210
 #, c-format
 msgid ""
 "invalid character '%c' in arg-list for macro \"%s\" while expecting "
@@ -252,7 +184,7 @@ msgstr ""
 "არასწორი სიმბოლო '%c' არგუმენტების სიაში მაკროსთვის '%s' მაშინ, როცა "
 "მოველოდი პარამეტრის სახელ"
 
-#: ../../WINGs/menuparser_macros.c:220
+#: ../../WINGs/menuparser_macros.c:221
 #, c-format
 msgid ""
 "invalid character '%c' in arg-list for macro \"%s\" while expecting ',' or "
@@ -261,141 +193,145 @@ msgstr ""
 "არასწორი სიმბოლო '%c' არგუმენტების სიაში მაკროსთვის '%s' მაშინ, როცა "
 "მოველოდი ','-ს, an ')'-ს"
 
-#: ../../WINGs/menuparser_macros.c:253
+#: ../../WINGs/menuparser_macros.c:254
 #, c-format
 msgid "macro \"%s\" already defined, ignoring redefinition"
 msgstr "მაკრო '%s' უკვე აღწერილია. მოხდება მისი თავიდან აღწერის იგნორი"
 
-#: ../../WINGs/menuparser_macros.c:347
+#: ../../WINGs/menuparser_macros.c:348
 #, c-format
 msgid "more content than supported for the macro \"%s\""
 msgstr "მეტი შემცველობა, ვიდრე მხარდაჭერილია მაკროსთვის '%s'"
 
-#: ../../WINGs/menuparser_macros.c:458
+#: ../../WINGs/menuparser_macros.c:459
 #, c-format
 msgid "expansion for macro \"%s\" too big, line truncated"
 msgstr "გაფართოება მაკროსთვის '%s' მეტისმეტად დიდია. ხაზი წაიკვეთა"
 
-#: ../../WINGs/menuparser_macros.c:470
+#: ../../WINGs/menuparser_macros.c:471
 #, c-format
 msgid "macro \"%s\" needs parenthesis for arguments"
 msgstr "მაკროს '%s' არგუმენტებისთვის ფრჩხილები სჭირდება"
 
-#: ../../WINGs/menuparser_macros.c:501
+#: ../../WINGs/menuparser_macros.c:502
 msgid "missing closing quote or double-quote before end-of-line"
 msgstr "აკლია დამხურავი ბრჭყალი, ან ორმაგი ბრჭყალი ხაზის ბოლომდე"
 
-#: ../../WINGs/menuparser_macros.c:524
+#: ../../WINGs/menuparser_macros.c:525
 #, c-format
 msgid "too many arguments for macro \"%s\", expected only %d"
 msgstr "მეტისმეტად ბევრი არგუმენტი მაკროსთვის '%s'. მოველოდი, მხოლოდ, %d-ს"
 
-#: ../../WINGs/menuparser_macros.c:533
+#: ../../WINGs/menuparser_macros.c:534
 #, c-format
 msgid "premature end of line while searching for arguments to macro \"%s\""
 msgstr "ხაზი ნაადრევად დასრულდა არგუმენტების ძებნისას მაკროსთვის '%s'"
 
-#: ../../WINGs/menuparser_macros.c:539
+#: ../../WINGs/menuparser_macros.c:540
 #, c-format
 msgid "not enough arguments for macro \"%s\", expected %d but got only %d"
 msgstr ""
 "არასაკმარისი არგუმენტები მაკროსთვის '%s'. მოველოდი %d-ს, მივიღე, მხოლოდ %d"
 
-#: ../../WINGs/menuparser_macros.c:544
+#: ../../WINGs/menuparser_macros.c:545
 #, c-format
 msgid "too much data in parameter list of macro \"%s\", truncated"
 msgstr ""
 "მეტისმეტად ბევრი მონაცემები პარამეტრების სიაში მაკროსთვის '%s'. ისინი "
 "წაიკვეთება"
 
-#: ../../WINGs/menuparser_macros.c:564
+#: ../../WINGs/menuparser_macros.c:565
 #, c-format
 msgid "size of value for macro '%s' is too big, truncated"
 msgstr "მნიშვნელობის ზომა მაკროსთვის '%s' მეტისმეტად დიდია. ის წაიკვეთება"
 
-#: ../../WINGs/menuparser_macros.c:645 ../../WINGs/menuparser_macros.c:671
+#: ../../WINGs/menuparser_macros.c:646 ../../WINGs/menuparser_macros.c:672
 #, c-format
 msgid "could not determine %s"
 msgstr "%s-ის დადგენა შეუძლებელია"
 
-#: ../../WINGs/proplist.c:90
+#: ../../WINGs/proplist.c:111
 #, c-format
 msgid "syntax error in %s %s, line %i: %s"
 msgstr "სინტაქსის შეცდომა %s-ში %s, ხაზზე %i: %s"
 
-#: ../../WINGs/proplist.c:146
+#: ../../WINGs/proplist.c:167
 msgid "Only string or data is supported for a proplist dictionary key"
 msgstr ""
 "proplist-ის ლექსიკონის გასაღებისთვის, მხოლოდ, სტრიქონი, ან მონაცემებია "
 "მხარდაჭერილი"
 
-#: ../../WINGs/proplist.c:179 ../../WINGs/proplist.c:229
-#: ../../WINGs/proplist.c:500 ../../WINGs/proplist.c:563
-#: ../../WINGs/proplist.c:1193 ../../WINGs/proplist.c:1243
-#: ../../WINGs/proplist.c:1391 ../../WINGs/proplist.c:1471
-#: ../../WINGs/proplist.c:1590 ../../WINGs/proplist.c:1634
-#: ../../WINGs/proplist.c:1871
+#: ../../WINGs/proplist.c:200 ../../WINGs/proplist.c:250
+#: ../../WINGs/proplist.c:521 ../../WINGs/proplist.c:584
+#: ../../WINGs/proplist.c:1214 ../../WINGs/proplist.c:1264
+#: ../../WINGs/proplist.c:1412 ../../WINGs/proplist.c:1492
+#: ../../WINGs/proplist.c:1614 ../../WINGs/proplist.c:1658
+#: ../../WINGs/proplist.c:1895
 msgid "Used proplist functions on non-WMPropLists objects"
 msgstr "proplist ფუნქციები გამოყენებულია არა-WMPropLists ობიექტებზე"
 
-#: ../../WINGs/proplist.c:772
+#: ../../WINGs/proplist.c:793
 msgid "unterminated PropList string"
 msgstr "დაუსრულებელი PropList სტრიქონი"
 
-#: ../../WINGs/proplist.c:810
+#: ../../WINGs/proplist.c:831
 msgid "unterminated PropList data"
 msgstr "დაუსრულებელი PropList მონაცემები"
 
-#: ../../WINGs/proplist.c:818
+#: ../../WINGs/proplist.c:839
 msgid "unterminated PropList data (missing hexdigit)"
 msgstr "დაუსრულებელი PropList მონაცემები (აკლია hexdigit)"
 
-#: ../../WINGs/proplist.c:830 ../../WINGs/proplist.c:835
+#: ../../WINGs/proplist.c:851 ../../WINGs/proplist.c:856
 msgid "non hexdigit character in PropList data"
 msgstr "არა-hexdigit სიმბოლო PropList მონაცემებში"
 
-#: ../../WINGs/proplist.c:867
+#: ../../WINGs/proplist.c:888
 msgid "unterminated PropList array"
 msgstr "დაუსრულებელი PropList მასივი"
 
-#: ../../WINGs/proplist.c:875
+#: ../../WINGs/proplist.c:896
 msgid "missing or unterminated PropList array"
 msgstr "ნაკლული, ან დაუსრულებელი PropList მასივი"
 
-#: ../../WINGs/proplist.c:885
+#: ../../WINGs/proplist.c:906
 msgid "could not get PropList array element"
 msgstr "PropList მასივის ელემენტის მიღება შეუძლებელია"
 
-#: ../../WINGs/proplist.c:912
+#: ../../WINGs/proplist.c:933
 msgid "unterminated PropList dictionary"
 msgstr "დაუსრულებელი PropList ლექსიკონი"
 
-#: ../../WINGs/proplist.c:929
+#: ../../WINGs/proplist.c:950
 msgid "missing PropList dictionary key"
 msgstr "ნაკლული PropList ლექსიკონის გასაღები"
 
-#: ../../WINGs/proplist.c:931
+#: ../../WINGs/proplist.c:952
 msgid "missing PropList dictionary entry key or unterminated dictionary"
 msgstr ""
 "ნაკლული PropList ლექსიკონის ჩანაწერის გასაღები, ან დაუსრულებელი ლექსიკონი"
 
-#: ../../WINGs/proplist.c:939
+#: ../../WINGs/proplist.c:960
 msgid "error parsing PropList dictionary key"
 msgstr "PropList ლექსიკონის გასაღების დამუშავების შეცდომა"
 
-#: ../../WINGs/proplist.c:947
+#: ../../WINGs/proplist.c:968
 msgid "missing = in PropList dictionary entry"
 msgstr "PropList ლექსიკონის გასაღებში = აკლია"
 
-#: ../../WINGs/proplist.c:955
+#: ../../WINGs/proplist.c:976
 msgid "error parsing PropList dictionary entry value"
 msgstr "PropList ლექსიკონის ჩანაწერის მნიშვნელობის დამუშავების შეცდომა"
 
-#: ../../WINGs/proplist.c:963
+#: ../../WINGs/proplist.c:984
 msgid "missing ; in PropList dictionary entry"
 msgstr "PropList ლექსიკონის გასაღებში ; აკლია"
 
-#: ../../WINGs/proplist.c:1028
+#: ../../WINGs/proplist.c:1010
+msgid "PropList nested too deeply"
+msgstr "PropList-ის ჩადგმა ზედმეტად ღრმაა"
+
+#: ../../WINGs/proplist.c:1049
 msgid ""
 "was expecting a string, data, array or dictionary. If it's a string, try "
 "enclosing it with \"."
@@ -403,224 +339,282 @@ msgstr ""
 "მოველოდი სტრიქონს, მონაცემებს, მასივს, ან ლექსიკონს. თუ ეს სტრიქონია, "
 "სცადეთ, შემოსაზღვროთ სიმბოლოთი \"."
 
-#: ../../WINGs/proplist.c:1031
+#: ../../WINGs/proplist.c:1052
 msgid "Comments are not allowed inside WindowMaker owned domain files."
 msgstr ""
 "WindowMaker-ის საკუთრებაში არსებულ დომენის ფაილებში კომენტარები დაშვებული "
 "არაა."
 
-#: ../../WINGs/proplist.c:1663 ../../WINGs/proplist.c:1943
-#: ../../WINGs/proplist.c:1985
+#: ../../WINGs/proplist.c:1675
+#, c-format
+msgid "property list description larger than %d bytes, rejected"
+msgstr "თვისებათა სიის აღწერა %d ბაიტზე დიდია, უარყოფილია"
+
+#: ../../WINGs/proplist.c:1687 ../../WINGs/proplist.c:1967
+#: ../../WINGs/proplist.c:2009
 msgid "extra data after end of property list"
 msgstr "დამატებითი მონაცემები თვისებების სიის დასრულების შემდეგ"
 
-#: ../../WINGs/proplist.c:1911
+#: ../../WINGs/proplist.c:1935
 #, c-format
 msgid "could not get size for file '%s'"
 msgstr "ზომის მიღების შეცდომა ფაილისთვის '%s'"
 
-#: ../../WINGs/proplist.c:1926
+#: ../../WINGs/proplist.c:1940
+#, c-format
+msgid "property list file '%s' exceeds %u bytes, refusing to load"
+msgstr "თვისებათა სიის ფაილი '%s' %u ბაიტს აღემატება, არ ჩაიტვირთება"
+
+#: ../../WINGs/proplist.c:1950
 #, c-format
 msgid "error reading from file '%s'"
 msgstr "წაკითხვის შეცდომა ფაილიდან '%s'"
 
-#: ../../WINGs/proplist.c:1970
+#: ../../WINGs/proplist.c:1994
 #, c-format
 msgid "%s:could not open menu file"
 msgstr "%s:მენიუს ფაილის გახსნა შეუძლებელია"
 
-#: ../../WINGs/proplist.c:2033
+#: ../../WINGs/proplist.c:1998
+#, c-format
+msgid ""
+"%s: pipe output exceeds %u bytes or child did not exit normally, truncating"
+msgstr ""
+"%s: კონვეიერის გამოტანა %u ბაიტს აღემატება ან შვილობილი პროცესი ჩვეულებრივად "
+"არ დასრულდა, ხდება შემოკლება"
+
+#: ../../WINGs/proplist.c:2057
 #, c-format
 msgid "mkstemp (%s) failed"
 msgstr "mkstemp (%s) ჩავარდა"
 
-#: ../../WINGs/proplist.c:2043
+#: ../../WINGs/proplist.c:2068
 #, c-format
 msgid "mktemp (%s) failed"
 msgstr "mktemp (%s) ჩავარდა"
 
-#: ../../WINGs/proplist.c:2050
+#: ../../WINGs/proplist.c:2075
 #, c-format
 msgid "open (%s) failed"
 msgstr "open (%s) ჩავარდა"
 
-#: ../../WINGs/proplist.c:2057
+#: ../../WINGs/proplist.c:2082
 #, c-format
 msgid "writing to file: %s failed"
 msgstr "ჩაწერა ფაილში: %s ჩავარდა"
 
-#: ../../WINGs/proplist.c:2067
+#: ../../WINGs/proplist.c:2092
 #, c-format
 msgid "fclose (%s) failed"
 msgstr "fclose (%s) ჩავარდა"
 
-#: ../../WINGs/proplist.c:2075
+#: ../../WINGs/proplist.c:2100
 #, c-format
 msgid "rename ('%s' to '%s') failed"
 msgstr "სახელის გადარქმევა ('%s'-დან '%s'-ზე) ჩავარდა"
 
-#: ../../WINGs/userdefaults.c:89
+#: ../../WINGs/proplist.c:2204
+#, c-format
+msgid "path too long for wmkdirhier: %s"
+msgstr "ბილიკი ზედმეტად გრძელია wmkdirhier-სთვის: %s"
+
+#: ../../WINGs/proplist.c:2222
+#, c-format
+msgid "Could not create component %s: %s"
+msgstr "ვერ შევქმენი კომპონენტი %s: %s"
+
+#: ../../WINGs/spawn.c:99 ../../WINGs/spawn.c:164
+#, c-format
+msgid "could not fork to run %s: %s"
+msgstr "ვერ შევქმენი პროცესს %s-ის გასაშვებად: %s"
+
+#: ../../WINGs/spawn.c:106 ../../WINGs/spawn.c:175
+#, c-format
+msgid "could not execute %s: %s"
+msgstr "ვერ გავუშვი %s: %s"
+
+#: ../../WINGs/spawn.c:158
+#, c-format
+msgid "could not create pipe to run %s: %s"
+msgstr "ვერ შევქმენი კონვეიერს %s-ის გასაშვებად: %s"
+
+#: ../../WINGs/userdefaults.c:112
 msgid "variable WMAKER_USER_ROOT defined with invalid path, not used"
 msgstr ""
 "ცვლადი WMAKER_USER_ROOT აღწერილია არასწორი ბილიკით. გამოყენებული არ იქნება"
 
+#: ../../WINGs/userdefaults.c:224 ../../WINGs/userdefaults.c:242
+#, c-format
+msgid "invalid defaults domain name: %s"
+msgstr "დეფოლტების დომენის დაუშვებელი სახელი: %s"
+
 #. something happened with the file. just overwrite it
-#: ../../WINGs/userdefaults.c:314 ../../WINGs/userdefaults.c:329
+#: ../../WINGs/userdefaults.c:339 ../../WINGs/userdefaults.c:356
 #, c-format
 msgid "cannot read domain from file '%s' when syncing"
 msgstr "დომენის ფაილიდან '%s' სინქრონიზაციისას წაკითხვა შეუძლებელია"
 
-#: ../../WINGs/dragcommon.c:121
+#: ../../WINGs/dragcommon.c:80
+#, c-format
+msgid "unknown XDND action %lu"
+msgstr "უცნობი XDND ქმედება %lu"
+
+#: ../../WINGs/dragcommon.c:143
 #, c-format
 msgid "target %lu for XDND message no longer exists"
 msgstr "სამიზნე %lu XDND შეტყობინებისტვის აღარ არსებობს"
 
-#: ../../WINGs/dragcommon.c:194
+#: ../../WINGs/dragcommon.c:216
 #, c-format
 msgid "unsupported version %i for XDND enter message"
 msgstr "მხარდაუჭერელი ვერსია %i XDND-ის შესვლის შეტყობინებისთვის"
 
-#: ../../WINGs/dragsource.c:158
+#: ../../WINGs/dragsource.c:205
 msgid "XDND selection lost during drag operation..."
 msgstr "XDND მონიშნული დაიკარგა გადათრევის ოპერაციისას..."
 
-#: ../../WINGs/dragsource.c:727
+#: ../../WINGs/dragsource.c:781
 msgid "could not get XDND version for target of drop"
 msgstr "დაგდების სამიზნისტვის XDND-ის ვერსიის მიღება შეუძლებელია"
 
-#: ../../WINGs/dragsource.c:743
+#: ../../WINGs/dragsource.c:797
 msgid "could not get ownership of XDND selection"
 msgstr "XDND-ის მონიშნულის მფლობელობის მიღება შეუძლებელია"
 
-#: ../../WINGs/dragsource.c:1058
+#: ../../WINGs/dragsource.c:1112
 msgid "delay for drag destination response expired"
 msgstr "დაყოვნების მოლოდინის დრო გადათრევის სამიზნის პასუხისთვის ამოიწურა"
 
-#: ../../WINGs/wcolor.c:219 ../../WINGs/wcolor.c:230 ../../WINGs/wcolor.c:240
+#: ../../WINGs/wcolor.c:237 ../../WINGs/wcolor.c:323 ../../WINGs/wtabview.c:221
+#, c-format
+msgid "could not parse color \"%s\" for %s"
+msgstr "ფერის \"%s\" დამუშავება %s-თვის შეუძლებელია"
+
+#: ../../WINGs/wcolor.c:242 ../../WINGs/wcolor.c:253 ../../WINGs/wcolor.c:263
 #, c-format
 msgid "could not allocate %s color"
 msgstr "%s ფერის გამოყოფა შეუძლებელია"
 
-#: ../../WINGs/wcolor.c:230 ../../WINGs/wcolor.c:269 ../../WINGs/wcolor.c:279
+#: ../../WINGs/wcolor.c:253 ../../WINGs/wcolor.c:292 ../../WINGs/wcolor.c:302
 msgid "white"
 msgstr "თეთრი"
 
-#: ../../WINGs/wcolor.c:240
+#: ../../WINGs/wcolor.c:263
 msgid "black"
 msgstr "შავი"
 
-#: ../../WINGs/wcolor.c:249
+#: ../../WINGs/wcolor.c:272
 msgid "gray"
 msgstr "ნაცრისფერი"
 
-#: ../../WINGs/wcolor.c:259
+#: ../../WINGs/wcolor.c:282
 msgid "dark gray"
 msgstr "მუქი ნაცრისფერი"
 
-#: ../../WINGs/wcolorpanel.c:395
+#: ../../WINGs/wcolorpanel.c:488
 msgid "Colors"
 msgstr "ფერები"
 
-#: ../../WINGs/wcolorpanel.c:571 ../../WINGs/wcolorpanel.c:3001
+#: ../../WINGs/wcolorpanel.c:657 ../../WINGs/wcolorpanel.c:3049
 msgid "Brightness"
 msgstr "სიკაშკაშე"
 
-#: ../../WINGs/wcolorpanel.c:575 ../../WINGs/wcolorpanel.c:654
-#: ../../WINGs/wcolorpanel.c:690 ../../WINGs/wcolorpanel.c:726
-#: ../../WINGs/wcolorpanel.c:806 ../../WINGs/wcolorpanel.c:842
-#: ../../WINGs/wcolorpanel.c:879 ../../WINGs/wcolorpanel.c:917
-#: ../../WINGs/wcolorpanel.c:2276 ../../WINGs/wcolorpanel.c:3005
-#: ../../WINGs/wcolorpanel.c:3044 ../../WINGs/wcolorpanel.c:3084
+#: ../../WINGs/wcolorpanel.c:659 ../../WINGs/wcolorpanel.c:728
+#: ../../WINGs/wcolorpanel.c:754 ../../WINGs/wcolorpanel.c:780
+#: ../../WINGs/wcolorpanel.c:850 ../../WINGs/wcolorpanel.c:876
+#: ../../WINGs/wcolorpanel.c:903 ../../WINGs/wcolorpanel.c:931
+#: ../../WINGs/wcolorpanel.c:2331 ../../WINGs/wcolorpanel.c:3051
+#: ../../WINGs/wcolorpanel.c:3078 ../../WINGs/wcolorpanel.c:3106
 msgid "Color Panel: Could not allocate memory"
 msgstr "ფერების პანელი: მეხსიერების გამოყოფა შეუძლებელია"
 
-#: ../../WINGs/wcolorpanel.c:650
+#: ../../WINGs/wcolorpanel.c:726
 msgid "Red"
 msgstr "წითელი"
 
-#: ../../WINGs/wcolorpanel.c:686
+#: ../../WINGs/wcolorpanel.c:752
 msgid "Green"
 msgstr "მწვანე"
 
-#: ../../WINGs/wcolorpanel.c:722
+#: ../../WINGs/wcolorpanel.c:778
 msgid "Blue"
 msgstr "ლურჯი"
 
-#: ../../WINGs/wcolorpanel.c:739
+#: ../../WINGs/wcolorpanel.c:792
 msgid "Decimal"
 msgstr "ათობითი"
 
-#: ../../WINGs/wcolorpanel.c:747
+#: ../../WINGs/wcolorpanel.c:800
 msgid "Hexadecimal"
 msgstr "თექვსმეტობითი"
 
-#: ../../WINGs/wcolorpanel.c:802
+#: ../../WINGs/wcolorpanel.c:848
 msgid "Cyan"
 msgstr "ცისფერი"
 
-#: ../../WINGs/wcolorpanel.c:838
+#: ../../WINGs/wcolorpanel.c:874
 msgid "Magenta"
 msgstr "ფუქსინი"
 
-#: ../../WINGs/wcolorpanel.c:875
+#: ../../WINGs/wcolorpanel.c:901
 msgid "Yellow"
 msgstr "ყვითელი"
 
-#: ../../WINGs/wcolorpanel.c:913
+#: ../../WINGs/wcolorpanel.c:929
 msgid "Black"
 msgstr "შავი"
 
-#: ../../WINGs/wcolorpanel.c:991
+#: ../../WINGs/wcolorpanel.c:1004
 msgid "Spectrum"
 msgstr "სპექტრი"
 
-#: ../../WINGs/wcolorpanel.c:1017
+#: ../../WINGs/wcolorpanel.c:1030
 msgid "Palette"
 msgstr "პალიტრა"
 
-#: ../../WINGs/wcolorpanel.c:1022
+#: ../../WINGs/wcolorpanel.c:1035
 msgid "New from File..."
 msgstr "ახალი, ფაილიდან..."
 
-#: ../../WINGs/wcolorpanel.c:1023 ../../WINGs/wcolorpanel.c:1068
-#: ../../WINGs/wcolorpanel.c:1083
+#: ../../WINGs/wcolorpanel.c:1036 ../../WINGs/wcolorpanel.c:1081
+#: ../../WINGs/wcolorpanel.c:1096
 msgid "Rename..."
 msgstr "სახელის გადარქმევა..."
 
-#: ../../WINGs/wcolorpanel.c:1024 ../../WINGs/wcolorpanel.c:1069
-#: ../../WINGs/wcolorpanel.c:1084 ../../WINGs/wcolorpanel.c:3496
+#: ../../WINGs/wcolorpanel.c:1037 ../../WINGs/wcolorpanel.c:1082
+#: ../../WINGs/wcolorpanel.c:1097 ../../WINGs/wcolorpanel.c:3517
 msgid "Remove"
 msgstr "წაშლა"
 
-#: ../../WINGs/wcolorpanel.c:1025
+#: ../../WINGs/wcolorpanel.c:1038
 msgid "Copy"
 msgstr "კოპირება"
 
-#: ../../WINGs/wcolorpanel.c:1026
+#: ../../WINGs/wcolorpanel.c:1039
 msgid "New from Clipboard"
 msgstr "ახალი, ბუფერიდან"
 
-#: ../../WINGs/wcolorpanel.c:1045
+#: ../../WINGs/wcolorpanel.c:1058
 msgid "X11-Colors"
 msgstr "X11-ფერები"
 
-#: ../../WINGs/wcolorpanel.c:1062
+#: ../../WINGs/wcolorpanel.c:1075
 msgid "Color"
 msgstr "ფერი"
 
-#: ../../WINGs/wcolorpanel.c:1067
+#: ../../WINGs/wcolorpanel.c:1080
 msgid "Add..."
 msgstr "დამატება..."
 
-#: ../../WINGs/wcolorpanel.c:1077
+#: ../../WINGs/wcolorpanel.c:1090
 msgid "List"
 msgstr "ჩამონათვალი"
 
-#: ../../WINGs/wcolorpanel.c:1082
+#: ../../WINGs/wcolorpanel.c:1095
 msgid "New..."
 msgstr "ახალი..."
 
-#: ../../WINGs/wcolorpanel.c:1237
+#: ../../WINGs/wcolorpanel.c:1276
 #, c-format
 msgid ""
 "Color Panel: Could not create directory %s needed to store configurations"
@@ -628,75 +622,75 @@ msgstr ""
 "ფერების პანელი: კონფიგურაციების შესანახად საქაღალდის %s შექმნა შეუძლებელია"
 
 #. Delete the file, it doesn't belong here
-#: ../../WINGs/wcolorpanel.c:1243 ../../WINGs/wcolorpanel.c:3389
-#: ../../WINGs/wcolorpanel.c:3393
+#: ../../WINGs/wcolorpanel.c:1282 ../../WINGs/wcolorpanel.c:3410
+#: ../../WINGs/wcolorpanel.c:3414
 msgid "File Error"
 msgstr "ფაილის შეცდომა"
 
-#: ../../WINGs/wcolorpanel.c:1244
+#: ../../WINGs/wcolorpanel.c:1283
 msgid "Could not create ColorPanel configuration directory"
 msgstr "ფერების პანელის კონფიგურაციის საქაღალდის შექმნა შეუძლებელია"
 
-#: ../../WINGs/wcolorpanel.c:1245 ../../WINGs/wcolorpanel.c:3390
-#: ../../WINGs/wcolorpanel.c:3395 ../../WINGs/wcolorpanel.c:3420
-#: ../../WINGs/wfilepanel.c:227 ../../WINGs/wfilepanel.c:602
-#: ../../WINGs/wfilepanel.c:617 ../../WINGs/wfilepanel.c:720
-#: ../../WINGs/wfilepanel.c:888 ../../WINGs/wfontpanel.c:583
+#: ../../WINGs/wcolorpanel.c:1284 ../../WINGs/wcolorpanel.c:3411
+#: ../../WINGs/wcolorpanel.c:3416 ../../WINGs/wcolorpanel.c:3441
+#: ../../WINGs/wfilepanel.c:250 ../../WINGs/wfilepanel.c:618
+#: ../../WINGs/wfilepanel.c:632 ../../WINGs/wfilepanel.c:735
+#: ../../WINGs/wfilepanel.c:924 ../../WINGs/wfontpanel.c:610
 msgid "OK"
 msgstr "დიახ"
 
-#: ../../WINGs/wcolorpanel.c:1250
+#: ../../WINGs/wcolorpanel.c:1289
 msgid "Color Panel: Could not find file"
 msgstr "ფერების პანელი: ფაილი აღმოჩენილი არაა"
 
-#: ../../WINGs/wcolorpanel.c:1594 ../../WINGs/wcolorpanel.c:1713
+#: ../../WINGs/wcolorpanel.c:1633 ../../WINGs/wcolorpanel.c:1752
 msgid "Color Panel: X failed request"
 msgstr "ფერების პანელი: X-ზე მოთხოვნა ჩავარდა"
 
-#: ../../WINGs/wcolorpanel.c:3040
+#: ../../WINGs/wcolorpanel.c:3076
 msgid "Saturation"
 msgstr "გაჯერებულობა"
 
-#: ../../WINGs/wcolorpanel.c:3080
+#: ../../WINGs/wcolorpanel.c:3104
 msgid "Hue"
 msgstr "ტონი"
 
-#: ../../WINGs/wcolorpanel.c:3322
+#: ../../WINGs/wcolorpanel.c:3343
 msgid "Open Palette"
 msgstr "პალიტრის გახსნა"
 
-#: ../../WINGs/wcolorpanel.c:3390
+#: ../../WINGs/wcolorpanel.c:3411
 msgid "Invalid file format !"
 msgstr "არასწორი ფაილის ფორმატი !"
 
-#: ../../WINGs/wcolorpanel.c:3392
+#: ../../WINGs/wcolorpanel.c:3413
 #, c-format
 msgid "can't remove file %s"
 msgstr "ვერ წავშალე ფაილი %s"
 
-#: ../../WINGs/wcolorpanel.c:3394
+#: ../../WINGs/wcolorpanel.c:3415
 msgid "Couldn't remove file from Configuration Directory !"
 msgstr "კონფიგურაციის საქაღალდიდან ფაილის წაშლა ჩავარდა !"
 
-#: ../../WINGs/wcolorpanel.c:3419
+#: ../../WINGs/wcolorpanel.c:3440
 msgid "Rename"
 msgstr "სახელის გადარქმევა"
 
-#: ../../WINGs/wcolorpanel.c:3419
+#: ../../WINGs/wcolorpanel.c:3440
 msgid "Rename palette to:"
 msgstr "პალიტრის სახელის გადარქმევა:"
 
-#: ../../WINGs/wcolorpanel.c:3420 ../../WINGs/wfilepanel.c:236
-#: ../../WINGs/wfilepanel.c:617 ../../WINGs/wfilepanel.c:720
+#: ../../WINGs/wcolorpanel.c:3441 ../../WINGs/wfilepanel.c:259
+#: ../../WINGs/wfilepanel.c:632 ../../WINGs/wfilepanel.c:735
 msgid "Cancel"
 msgstr "გაუქმება"
 
 #. Careful, this palette exists already
-#: ../../WINGs/wcolorpanel.c:3436 ../../WINGs/wfilepanel.c:720
+#: ../../WINGs/wcolorpanel.c:3457 ../../WINGs/wfilepanel.c:735
 msgid "Warning"
 msgstr "გაფრთხილება"
 
-#: ../../WINGs/wcolorpanel.c:3437
+#: ../../WINGs/wcolorpanel.c:3458
 msgid ""
 "Palette already exists !\n"
 "\n"
@@ -706,24 +700,24 @@ msgstr ""
 "\n"
 "გადავაწერო თავზე ?"
 
-#: ../../WINGs/wcolorpanel.c:3437 ../../WINGs/wcolorpanel.c:3496
+#: ../../WINGs/wcolorpanel.c:3458 ../../WINGs/wcolorpanel.c:3517
 msgid "No"
 msgstr "არა"
 
-#: ../../WINGs/wcolorpanel.c:3437 ../../WINGs/wcolorpanel.c:3496
+#: ../../WINGs/wcolorpanel.c:3458 ../../WINGs/wcolorpanel.c:3517
 msgid "Yes"
 msgstr "დიახ"
 
-#: ../../WINGs/wcolorpanel.c:3468
+#: ../../WINGs/wcolorpanel.c:3489
 #, c-format
 msgid "Couldn't rename palette %s to %s"
 msgstr "პალიტრის სახელის %s-დან %s-ზე გადარქმევა ჩავარდა"
 
-#: ../../WINGs/wcolorpanel.c:3491
+#: ../../WINGs/wcolorpanel.c:3512
 msgid "This will permanently remove the palette "
 msgstr "ეს სამუდამოდ წაშლის პალიტრას "
 
-#: ../../WINGs/wcolorpanel.c:3493
+#: ../../WINGs/wcolorpanel.c:3514
 msgid ""
 ".\n"
 "\n"
@@ -733,142 +727,164 @@ msgstr ""
 "\n"
 "მართლა გნებავთ ამ პალიტრის წაშლა ?"
 
-#: ../../WINGs/wcolorpanel.c:3515
+#: ../../WINGs/wcolorpanel.c:3536
 #, c-format
 msgid "Couldn't remove palette %s"
 msgstr "ვერ წავშალე პალიტრა %s"
 
-#: ../../WINGs/wcolorpanel.c:3824
+#: ../../WINGs/wcolorpanel.c:3832
 msgid "Color Panel: Color unspecified"
 msgstr "ფერების პანელი: ფერი მითითებული არაა"
 
-#: ../../WINGs/wfilepanel.c:216
+#: ../../WINGs/wfilepanel.c:239
 msgid "Name:"
 msgstr "სახელი:"
 
-#: ../../WINGs/wfilepanel.c:306 ../../WINGs/wfilepanel.c:364
+#: ../../WINGs/wfilepanel.c:269
+msgid "Delete the selected file or directory"
+msgstr ""
+
+#: ../../WINGs/wfilepanel.c:278
+#, fuzzy
+msgid "Create a directory"
+msgstr "საქაღალდის შექმნა"
+
+#: ../../WINGs/wfilepanel.c:287
+#, fuzzy
+msgid "Go to your home directory"
+msgstr "WINGs: ვერ გავხსენი საქაღალდე %s\n"
+
+#: ../../WINGs/wfilepanel.c:296
+msgid "Browse the floppy disk directory"
+msgstr ""
+
+#: ../../WINGs/wfilepanel.c:306
+msgid "Unmount (not implemented)"
+msgstr ""
+
+#: ../../WINGs/wfilepanel.c:334 ../../WINGs/wfilepanel.c:394
 msgid "Open"
 msgstr "გახსნა"
 
-#: ../../WINGs/wfilepanel.c:322 ../../WINGs/wfilepanel.c:370
+#: ../../WINGs/wfilepanel.c:350 ../../WINGs/wfilepanel.c:400
 msgid "Save"
 msgstr "შენახვა"
 
-#: ../../WINGs/wfilepanel.c:506
+#: ../../WINGs/wfilepanel.c:536
 #, c-format
 msgid "WINGs: could not open directory %s\n"
 msgstr "WINGs: ვერ გავხსენი საქაღალდე %s\n"
 
-#: ../../WINGs/wfilepanel.c:526
+#: ../../WINGs/wfilepanel.c:556
 #, c-format
 msgid "WINGs: could not stat %s\n"
 msgstr "WINGs: %s-ის აღმოჩენა შეუძლებელია\n"
 
-#: ../../WINGs/wfilepanel.c:602 ../../WINGs/wfilepanel.c:888
-#: ../../WINGs/wfontpanel.c:582
+#: ../../WINGs/wfilepanel.c:618 ../../WINGs/wfilepanel.c:924
+#: ../../WINGs/wfontpanel.c:609
 msgid "Error"
 msgstr "შეცდომა"
 
-#: ../../WINGs/wfilepanel.c:616
+#: ../../WINGs/wfilepanel.c:631
 msgid "Create Directory"
 msgstr "საქაღალდის შექმნა"
 
-#: ../../WINGs/wfilepanel.c:617
+#: ../../WINGs/wfilepanel.c:632
 msgid "Enter directory name"
 msgstr "შეიყვანეთ საქაღალდის სახელი"
 
-#: ../../WINGs/wfilepanel.c:645
+#: ../../WINGs/wfilepanel.c:660
 #, c-format
 msgid "Can not create %s: %s"
 msgstr "ვერ შევქმენი %s: %s"
 
-#: ../../WINGs/wfilepanel.c:710
+#: ../../WINGs/wfilepanel.c:725
 #, c-format
 msgid "Can not find %s: %s"
 msgstr "ვერ ვიპოვე %s: %s"
 
-#: ../../WINGs/wfilepanel.c:716
+#: ../../WINGs/wfilepanel.c:731
 #, c-format
 msgid "Delete %s %s?"
 msgstr "წავშალო %s %s?"
 
-#: ../../WINGs/wfilepanel.c:717
+#: ../../WINGs/wfilepanel.c:732
 msgid "directory"
 msgstr "საქაღალდე"
 
-#: ../../WINGs/wfilepanel.c:717
+#: ../../WINGs/wfilepanel.c:732
 msgid "file"
 msgstr "ფაილი"
 
-#: ../../WINGs/wfilepanel.c:724
+#: ../../WINGs/wfilepanel.c:739
 #, c-format
 msgid "Removing %s failed: %s"
 msgstr "%s-ის წაშლის შეცდომა: %s"
 
-#: ../../WINGs/wfilepanel.c:756
+#: ../../WINGs/wfilepanel.c:771 ../../WINGs/wfilepanel.c:778
 #, c-format
 msgid "An error occurred browsing '%s'."
 msgstr "შეცდომა '%s'-ის დათვალიერებისას."
 
-#: ../../WINGs/wfilepanel.c:759
+#: ../../WINGs/wfilepanel.c:785 ../../WINGs/wfilepanel.c:791
 #, c-format
 msgid "'%s' is not a directory."
 msgstr "'%s' საქაღალდე არაა."
 
-#: ../../WINGs/wfilepanel.c:888
+#: ../../WINGs/wfilepanel.c:924
 msgid "File does not exist."
 msgstr "ფაილი არ არსებობს."
 
-#: ../../WINGs/wfont.c:74
+#: ../../WINGs/wfont.c:97
 #, c-format
 msgid "invalid font: %s. Trying '%s'"
 msgstr "არასწორი: %s. ვცდი: '%s'"
 
-#: ../../WINGs/wfont.c:160
+#: ../../WINGs/wfont.c:197
 #, c-format
 msgid "could not load font spec: %s."
 msgstr "ჩატვირთვის შეცდომა ფონტის სპეციფიკაციისთვის: %s."
 
-#: ../../WINGs/wfont.c:167
+#: ../../WINGs/wfont.c:204
 #, c-format
 msgid "could not load default font spec: %s."
 msgstr "ჩატვირთვის შეცდომა ნაგულისხმევი ფონტის სპეციფიკაციისთვის: %s."
 
-#: ../../WINGs/wfont.c:345 ../../WINGs/wfont.c:367
+#: ../../WINGs/wfont.c:395 ../../WINGs/wfont.c:417
 #, c-format
 msgid "could not load font: %s."
 msgstr "ფონტის ჩატვირთვა შეუძლებელია: %s."
 
 #. WMSetWidgetBackgroundColor(panel->win, WMWhiteColor(scr));
-#: ../../WINGs/wfontpanel.c:213
+#: ../../WINGs/wfontpanel.c:236
 msgid "Font Panel"
 msgstr "ფონტის პანელი"
 
-#: ../../WINGs/wfontpanel.c:249
+#: ../../WINGs/wfontpanel.c:272
 msgid "The quick brown fox jumps over the lazy dog"
 msgstr "ბაყაყი წყალში ყიყინებს"
 
-#: ../../WINGs/wfontpanel.c:255
+#: ../../WINGs/wfontpanel.c:278
 msgid "Family"
 msgstr "ოჯახი"
 
-#: ../../WINGs/wfontpanel.c:266
+#: ../../WINGs/wfontpanel.c:289
 msgid "Typeface"
 msgstr "მოხაზულობა"
 
-#: ../../WINGs/wfontpanel.c:277
+#: ../../WINGs/wfontpanel.c:300
 msgid "Size"
 msgstr "ზომა"
 
-#: ../../WINGs/wfontpanel.c:296
+#: ../../WINGs/wfontpanel.c:319
 msgid "Set"
 msgstr "დაყენება"
 
-#: ../../WINGs/wfontpanel.c:302
+#: ../../WINGs/wfontpanel.c:325
 msgid "Revert"
 msgstr "დაბრუნება"
 
-#: ../../WINGs/wfontpanel.c:583
+#: ../../WINGs/wfontpanel.c:610
 msgid "Could not init font config library\n"
 msgstr "ფონტის კონფიგურაციის ბიბლიოთეკის ინიციალიზაცია შეუძლებელია\n"
 
@@ -882,7 +898,7 @@ msgstr "WINGs: ჩატვირთვის შეცდომა ვიჯე
 msgid "WINGs: could not open display %s"
 msgstr "WINGs: გახსნის შეცდომა ეკრანისთვის %s"
 
-#: ../../WINGs/widgets.c:871
+#: ../../WINGs/widgets.c:874
 msgid ""
 "could not load any fonts. Make sure your font installation and locale "
 "settings are correct."
@@ -890,6 +906,42 @@ msgstr ""
 "ფონტების ჩატვირთვა შეუძლებელია. დარწმუნდით, რომ ფონტები და ლოკალის "
 "პარამეტრები სწორია."
 
-#: ../../WINGs/wruler.c:158
+#: ../../WINGs/wlabel.c:279
+#, c-format
+msgid "malformed label markup: %s"
+msgstr "ჭდის დაზიანებული მარკირება: %s"
+
+#: ../../WINGs/wmultiselectpopup.c:304
+msgid "All"
+msgstr "ყველა"
+
+#: ../../WINGs/wruler.c:159
 msgid "0   inches"
 msgstr "0   დუიმი"
+
+#: ../../WINGs/wxkb.c:153
+msgid "the X server has no XKB extension, falling back to a best-effort keymap"
+msgstr ""
+"X სერვერს XKB-ის გაფართოება არ გააჩნია, გამოიყენება მიახლოებული კლავიატურის "
+"რუკა"
+
+#: ../../WINGs/wxkb.c:166 ../../WINGs/wxkb.c:178
+msgid "could not build a fallback keymap, text field input is unavailable"
+msgstr ""
+"სათადო კლავიატურის რუკის შექმნა შეუძლებელია, ტექსტური ველის შეყვანა "
+"მიუწვდომელია"
+
+#: ../../WINGs/wxkb.c:175
+msgid ""
+"could not load the XKB keymap from the X server, falling back to a best-"
+"effort keymap"
+msgstr ""
+"XKB-ის კლავიატურის რუკის X სერვერიდან ჩატვირთვა შეუძლებელია, გამოიყენება "
+"მიახლოებული კლავიატურის რუკა"
+
+#: ../../WINGs/wxkb.c:289
+msgid ""
+"could not reload the XKB keymap, keyboard input keeps the previous mapping"
+msgstr ""
+"XKB-ის კლავიატურის რუკის ხელახლა ჩატვირთვა შეუძლებელია, კლავიატურა იყენებს "
+"წინა ასახვას"
