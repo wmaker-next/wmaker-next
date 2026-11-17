@@ -854,6 +854,7 @@ void StartUp(bool defaultScreenOnly)
 		 * happens to sit under the clip never receives EnterNotify,
 		 * restack the corner windows once everything is up */
 		wHotCornersRaise(wdisp->screens[j]);
+		wDockRevealRaise(wdisp->screens[j]);
 	}
 
 	for (j = 0; j < wdisp->screen_count; j++)

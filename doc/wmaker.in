@@ -215,6 +215,41 @@ window dimensions. A very large icon size or window count that exceeds
 one of these limits logs the actual reason and falls back to cycling
 without a visible panel. Icon sizes 1, 2 and 3 render real icons in
 positive, bounded dimensions.
+.SH "DOCK AUTO-HIDE"
+The dock's Dock Options menu can select
+.BR Auto Hide ,
+which slides the dock and its drawers off the screen edge and reveals
+them from a thin strip at that edge or from any dock tile. The setting is
+stored in the WMState domain and a restored session starts hidden.
+.PP
+.B DockAutoHideSpeed
+in the WindowMaker defaults domain sets how long one slide takes, in
+milliseconds, from the current offset to the target. It accepts 0 to
+5000, defaults to
+.BR 200 ,
+and 0 makes the transition instant. A value outside that range logs a
+warning and uses the default. The key is reloaded at runtime: an
+ongoing slide is retargeted with the new duration, and a change to
+.B DisableAnimations
+or a speed of 0 finishes an ongoing slide immediately.
+.PP
+.B DockAutoHideVisiblePercent
+keeps a slice of the dock on screen when the chain is hidden, so the
+edge never goes completely blank. It is a percentage of the dock strip
+thickness, accepts 0 to 100 and defaults to
+.BR 0 ,
+which slides the chain fully out of the root framebuffer. The slice is
+rounded up, so any non-zero percentage leaves at least one pixel, and
+clamped to the chain depth, so 100 never pushes the dock past its shown
+position. On an 80 pixel icon size a small value such as 2 is only two
+pixels wide; pick a value like 10 for a slice that is easy to hit. Like the speed key it is reloaded at runtime and a hidden
+dock snaps to the new target. A hidden dock still reserves no
+placement space and publishes no
+.BR _NET_WM_STRUT ,
+so with Keep on Top the slice is drawn over maximised windows,
+while
+.B _NET_WORKAREA
+is unaffected because it never included the dock.
 .SH "OPTIONS"
 .TP
 .BI \-\-clientid " id"

@@ -5,9 +5,10 @@
 # are dropped or preserved as DockPerResolution says, that icon lists
 # longer than the screen capacity survive a save/restore round trip for
 # the dock, a drawer and a workspace clip, and that a legacy state file
-# without an Edge key keeps its screen edge. Runs wmaker under Xvfb on
-# an isolated display and WMAKER_USER_ROOT, tracks every PID it spawns
-# and kills only those.
+# without an Edge key keeps its screen edge, and that the Auto Hide,
+# Lowered and AutoRaiseLower flags restore independently. Runs wmaker
+# under Xvfb on an isolated display and WMAKER_USER_ROOT, tracks every
+# PID it spawns and kills only those.
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -401,6 +402,58 @@ check "legacy left position stays on the left edge" \
 	state_has 'Edge = Left;'
 check "legacy left position re-pinned to the left origin" \
 	state_has 'Position = "0,128";'
+
+# ---- case 10: the three dock flags restore independently -------------
+
+note "case 10: AutoHide, Lowered and AutoRaiseLower round-trip together"
+printf '{\n}\n' > "$WMHOME/Defaults/WindowMaker"
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+$(emit_icons 1 indA "0," "")
+    );
+    Position = "$((W - ISZ)),0";
+    Edge = Right;
+    Lowered = Yes;
+    AutoRaiseLower = Yes;
+    AutoHide = Yes;
+  };
+  Workspaces = ( { Name = Main; } );
+}
+WMEOD
+start_wmaker
+stop_wmaker
+check "independent flags: AutoHide survived the round trip" \
+	state_has 'AutoHide = Yes;'
+check "independent flags: Lowered survived the round trip" \
+	state_has 'Lowered = Yes;'
+check "independent flags: AutoRaiseLower survived the round trip" \
+	state_has 'AutoRaiseLower = Yes;'
+
+# ---- case 11: Keep on Top wins over Auto Raise -----------------------
+
+note "case 11: a state file setting both pair flags keeps Keep on Top"
+cat > "$WMHOME/Defaults/WMState" <<WMEOD
+{
+  Dock = {
+    Applications = (
+$(emit_icons 1 pairA "0," "")
+    );
+    Position = "$((W - ISZ)),0";
+    Edge = Right;
+    Lowered = No;
+    AutoRaiseLower = Yes;
+  };
+  Workspaces = ( { Name = Main; } );
+}
+WMEOD
+start_wmaker
+stop_wmaker
+check "pair normalize: Keep on Top survived" \
+	state_has 'Lowered = No;'
+check "pair normalize: Auto Raise cleared" \
+	state_has 'AutoRaiseLower = No;'
 
 note "dock state drive summary"
 printf 'PASS: %d, FAIL: %d\n' "$PASSED" "$FAILED" | tee -a "$LOG"

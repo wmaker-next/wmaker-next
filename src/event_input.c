@@ -787,6 +787,10 @@ static void handleEnterNotify(xcb_generic_event_t *ev)
 	if (!scr)
 		return;
 
+	/* before the fast-cross lookahead, a quick crossing must reveal */
+	if (wDockRevealHandleCrossing(scr, ev, true))
+		return;
+
 	if (WXEvqTakeTyped(wdisp->conn, XCB_LEAVE_NOTIFY, e->event, &peek)) {
 		/* already left the window..., the lookahead is consumed
 		 * either way */
@@ -883,6 +887,9 @@ static void handleLeaveNotify(xcb_generic_event_t *ev)
 	if (wEventCrossingIgnored(ev->full_sequence))
 		return;
 	if (!scr)
+		return;
+
+	if (wDockRevealHandleCrossing(scr, ev, false))
 		return;
 
 	if (e->mode == XCB_NOTIFY_MODE_NORMAL) {

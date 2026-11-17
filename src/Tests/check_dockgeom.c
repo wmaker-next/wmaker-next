@@ -377,6 +377,152 @@ static void test_compress_no_shared_cells(void)
 	CHECK(cells[0] == -3 && cells[1] == -2 && cells[2] == -1);
 }
 
+static void test_floor_div(void)
+{
+	CHECK(wDockGeomFloorDiv(0, 64) == 0);
+	CHECK(wDockGeomFloorDiv(32, 64) == 0);
+	CHECK(wDockGeomFloorDiv(63, 64) == 0);
+	CHECK(wDockGeomFloorDiv(64, 64) == 1);
+	CHECK(wDockGeomFloorDiv(96, 64) == 1);
+	CHECK(wDockGeomFloorDiv(-1, 64) == -1);
+	CHECK(wDockGeomFloorDiv(-32, 64) == -1);
+	CHECK(wDockGeomFloorDiv(-63, 64) == -1);
+	CHECK(wDockGeomFloorDiv(-64, 64) == -1);
+	CHECK(wDockGeomFloorDiv(-65, 64) == -2);
+	CHECK(wDockGeomFloorDiv(-96, 64) == -2);
+
+	/* drawer-span rounding must floor, an aligned negative offset
+	 * is a cell of its own */
+	CHECK(wDockGeomFloorDiv(0 + ISZ / 2, ISZ) == 0);
+	CHECK(wDockGeomFloorDiv(-32 + ISZ / 2, ISZ) == 0);
+	CHECK(wDockGeomFloorDiv(-64 + ISZ / 2, ISZ) == -1);
+	CHECK(wDockGeomFloorDiv(-96 + ISZ / 2, ISZ) == -1);
+	CHECK(wDockGeomFloorDiv(-128 + ISZ / 2, ISZ) == -2);
+	CHECK(wDockGeomFloorDiv(64 + ISZ / 2, ISZ) == 1);
+}
+
+/* the delta must place the chain on the exclusive boundary of
+ * [root_lo, root_hi), leaving no on-root pixel */
+static void check_hidden_outside(WDockEdge edge, int root_lo, int root_hi,
+				 int shown_origin, int max_across)
+{
+	int delta = wDockGeomHideDelta(edge, root_lo, root_hi, shown_origin,
+				       max_across, ISZ, 0);
+	int origin = shown_origin + delta;
+
+	if (edge == WDOCK_EDGE_LEFT || edge == WDOCK_EDGE_TOP) {
+		int chain_hi = origin + (max_across + 1) * ISZ;
+
+		CHECK(chain_hi <= root_lo);
+		CHECK(chain_hi == root_lo);
+	} else {
+		int chain_lo = origin - max_across * ISZ;
+
+		CHECK(chain_lo >= root_hi);
+		CHECK(chain_lo == root_hi);
+	}
+}
+
+static void test_hide_delta(void)
+{
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_LEFT, 0, 1920, 0, 0, ISZ, 0) == -ISZ);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_TOP, 0, 1080, 0, 0, ISZ, 0) == -ISZ);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_RIGHT, 0, 1920, 1920 - ISZ, 0, ISZ, 0) == ISZ);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_BOTTOM, 0, 1080, 1080 - ISZ, 0, ISZ, 0) == ISZ);
+
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_LEFT, 0, 1920, 40, 0, ISZ, 0) < 0);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_TOP, 0, 1080, 40, 0, ISZ, 0) < 0);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_RIGHT, 0, 1920, 1800, 0, ISZ, 0) > 0);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_BOTTOM, 0, 1080, 900, 0, ISZ, 0) > 0);
+
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_LEFT, 0, 1920, 0, 2, ISZ, 0) == -3 * ISZ);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_TOP, 0, 1080, 0, 1, ISZ, 0) == -2 * ISZ);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_RIGHT, 0, 1920, 1920 - ISZ, 2, ISZ, 0)
+	      == 3 * ISZ);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_BOTTOM, 0, 1080, 1080 - ISZ, 3, ISZ, 0)
+	      == 4 * ISZ);
+
+	check_hidden_outside(WDOCK_EDGE_LEFT, 0, 1920, 0, 0);
+	check_hidden_outside(WDOCK_EDGE_LEFT, 0, 1920, 300, 2);
+	check_hidden_outside(WDOCK_EDGE_TOP, 0, 1080, 0, 0);
+	check_hidden_outside(WDOCK_EDGE_TOP, 0, 1080, 500, 4);
+	check_hidden_outside(WDOCK_EDGE_RIGHT, 0, 1920, 1920 - ISZ, 0);
+	check_hidden_outside(WDOCK_EDGE_RIGHT, 0, 1920, 1500, 3);
+	check_hidden_outside(WDOCK_EDGE_BOTTOM, 0, 1080, 1080 - ISZ, 0);
+	check_hidden_outside(WDOCK_EDGE_BOTTOM, 0, 1080, 200, 1);
+
+	/* interior primary-head origin, still hidden against the root */
+	check_hidden_outside(WDOCK_EDGE_LEFT, 0, 1920, 1200, 0);
+	check_hidden_outside(WDOCK_EDGE_LEFT, 0, 3840, 1920, 2);
+	check_hidden_outside(WDOCK_EDGE_RIGHT, 0, 1920, 700, 0);
+	check_hidden_outside(WDOCK_EDGE_RIGHT, 0, 3840, 2656, 1);
+	check_hidden_outside(WDOCK_EDGE_TOP, 0, 1080, 600, 2);
+	check_hidden_outside(WDOCK_EDGE_BOTTOM, 0, 1080, 300, 0);
+
+	check_hidden_outside(WDOCK_EDGE_LEFT, 0, 1920, -40, 0);
+	check_hidden_outside(WDOCK_EDGE_RIGHT, 0, 1920, 2400, 0);
+}
+
+/* the chain must leave exactly keep_visible pixels of its near tile
+ * inside the root, and never more than the chain depth */
+static void check_kept_visible(WDockEdge edge, int root_lo, int root_hi,
+			       int shown_origin, int max_across, int keep)
+{
+	int delta = wDockGeomHideDelta(edge, root_lo, root_hi, shown_origin,
+				       max_across, ISZ, keep);
+	int origin = shown_origin + delta;
+	int extent = (max_across + 1) * ISZ;
+	int want = keep;
+
+	if (want > extent)
+		want = extent;
+
+	if (edge == WDOCK_EDGE_LEFT || edge == WDOCK_EDGE_TOP) {
+		int chain_hi = origin + extent;
+
+		CHECK(chain_hi - root_lo == want);
+		CHECK(chain_hi <= root_lo + extent);
+	} else {
+		int chain_lo = origin - max_across * ISZ;
+
+		CHECK(root_hi - chain_lo == want);
+		CHECK(chain_lo >= root_hi - extent);
+	}
+}
+
+static void test_hide_delta_keep_visible(void)
+{
+	int i;
+
+	/* zero keeps the full hide */
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_LEFT, 0, 1920, 0, 0, ISZ, 0) == -ISZ);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_RIGHT, 0, 1920, 1920 - ISZ, 0, ISZ, 0) == ISZ);
+
+	/* one icon left on screen shortens the delta by that much */
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_LEFT, 0, 1920, 0, 0, ISZ, 10) == -ISZ + 10);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_TOP, 0, 1080, 0, 0, ISZ, 10) == -ISZ + 10);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_RIGHT, 0, 1920, 1920 - ISZ, 0, ISZ, 10) == ISZ - 10);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_BOTTOM, 0, 1080, 1080 - ISZ, 0, ISZ, 10) == ISZ - 10);
+
+	/* a full-tile keep on a lone dock is the shown position */
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_LEFT, 0, 1920, 0, 0, ISZ, ISZ) == 0);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_RIGHT, 0, 1920, 1920 - ISZ, 0, ISZ, ISZ) == 0);
+
+	for (i = 0; i <= 4 * ISZ; i += ISZ / 4) {
+		check_kept_visible(WDOCK_EDGE_LEFT, 0, 1920, 0, 0, i);
+		check_kept_visible(WDOCK_EDGE_LEFT, 0, 1920, 300, 2, i);
+		check_kept_visible(WDOCK_EDGE_TOP, 0, 1080, 0, 3, i);
+		check_kept_visible(WDOCK_EDGE_RIGHT, 0, 1920, 1920 - ISZ, 0, i);
+		check_kept_visible(WDOCK_EDGE_RIGHT, 0, 1920, 1500, 2, i);
+		check_kept_visible(WDOCK_EDGE_BOTTOM, 0, 1080, 1080 - ISZ, 1, i);
+		check_kept_visible(WDOCK_EDGE_LEFT, 0, 1920, 1200, 1, i);
+	}
+
+	/* the keep never pushes the chain past the shown position */
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_LEFT, 0, 1920, 0, 0, ISZ, 10 * ISZ) == 0);
+	CHECK(wDockGeomHideDelta(WDOCK_EDGE_RIGHT, 0, 1920, 1920 - ISZ, 2, ISZ, 10 * ISZ) == 0);
+}
+
 int main(void)
 {
 	test_origin_screen();
@@ -390,6 +536,9 @@ int main(void)
 	test_compress_no_shared_cells();
 	test_strut();
 	test_head_on_edge();
+	test_floor_div();
+	test_hide_delta();
+	test_hide_delta_keep_visible();
 
 	return check_report("check_dockgeom");
 }

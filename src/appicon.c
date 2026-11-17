@@ -428,9 +428,9 @@ static void drawCorner(WIcon * icon)
 
 void wAppIconMove(WAppIcon * aicon, int x, int y)
 {
-	xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
 	aicon->x_pos = x;
 	aicon->y_pos = y;
+	wDockApplyIconPosition(aicon);
 }
 
 #ifdef WS_INDICATOR
@@ -983,6 +983,8 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 	if (ondock)
 		xcb_map_window(wdisp->conn, scr->dock_shadow);
 
+	wDockAutoHideDragBegin(scr);
+
 	while (1) {
 		free(ev);
 		ev = NULL;
@@ -1247,11 +1249,13 @@ bool wHandleAppIconMove(WAppIcon *aicon, xcb_generic_event_t *event)
 				wArrangeIcons(scr, true);
 			free(ev);
 			wfree(allDocks);
+			wDockAutoHideDragEnd(scr);
 			return hasMoved;
 		}
 	}
 
 	wfree(allDocks);
+	wDockAutoHideDragEnd(scr);
 	return hasMoved;
 }
 

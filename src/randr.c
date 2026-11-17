@@ -849,7 +849,8 @@ static void wRandR_Update(WScreen *scr)
 		 * a screen growth can be filled with new icons, this
 		 * also re-pins the edge axis to the new geometry */
 		wDockApplyIconSize(scr);
-		if ((scr->xine_info.primary_head != i && w_global.config->keep_dock_on_primary_head) ||
+		if (scr->dock->auto_hide ||
+		    (scr->xine_info.primary_head != i && w_global.config->keep_dock_on_primary_head) ||
 		    scr->dock->x_pos < 0 ||
 		    scr->dock->x_pos + w_global.config->icon_size > scr->scr_width ||
 		    scr->dock->y_pos < 0 ||

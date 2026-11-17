@@ -39,6 +39,7 @@
 #include "actions.h"
 #include "xinerama.h"
 #include "stacking.h"
+#include "dock.h"
 
 #define PIECES ((64/ICON_KABOOM_PIECE_SIZE)*(64/ICON_KABOOM_PIECE_SIZE))
 #define KAB_PRECISION		4
@@ -244,6 +245,8 @@ reinit:
 		double sqrt_h = sqrt(h);
 		if (h > 3) {
 			double offset, x = s * data->count - sqrt_h;
+			int bx, by;
+
 			if (x > sqrt_h) {
 				++data->pow;
 				data->count = 0;
@@ -251,25 +254,26 @@ reinit:
 			} else ++data->count;
 			offset = h - x*x;
 
+			wDockAutoHideEffectivePosition(aicon, &bx, &by);
 			switch (data->dir) {
 			case 0: /* left, bounce to right */
-				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos + (int)offset, aicon->y_pos });
+				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ bx + (int)offset, by });
 				break;
 			case 1: /* right, bounce to left */
-				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos - (int)offset, aicon->y_pos });
+				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ bx - (int)offset, by });
 				break;
 			case 2: /* top, bounce down */
-				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos + (int)offset });
+				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ bx, by + (int)offset });
 				break;
 			case 3: /* bottom, bounce up */
-				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos - (int)offset });
+				xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ bx, by - (int)offset });
 				break;
 			}
 			return;
 		}
 	}
 
-	xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ aicon->x_pos, aicon->y_pos });
+	wDockApplyIconPosition(aicon);
 	aicon->icon->core->screen_ptr->flags.need_restack = 1;
 	data->wapp->bounce_data = NULL;
 	data->wapp->flags.bouncing = 0;
@@ -285,6 +289,8 @@ void wAppBounceCancel(WApplication *wapp)
 	if (!data)
 		return;
 
+	if (wapp->app_icon)
+		wDockApplyIconPosition(wapp->app_icon);
 	wapp->bounce_data = NULL;
 	wapp->flags.bouncing = 0;
 	WMDeleteTimerHandler(data->timer);

@@ -1335,6 +1335,11 @@ unsigned int wConfigApplyRuntime(WScreen *scr, const WConfig *old_config,
 		for (wapp = scr->wapp_list; wapp; wapp = wapp->next)
 			wAppBounceWhileUrgent(wapp);
 	}
+	if (scr && (wConfigChangesHas(changes, WCFG_KEY_DOCK_AUTO_HIDE_SPEED) ||
+		    wConfigChangesHas(changes, WCFG_KEY_DISABLE_ANIMATIONS)))
+		wDockAutoHideAnimationConfigChanged(scr);
+	if (scr && wConfigChangesHas(changes, WCFG_KEY_DOCK_AUTO_HIDE_VISIBLE_PERCENT))
+		wDockAutoHideGeometryChanged(scr);
 	if (scr && wConfigChangesHas(changes, WCFG_KEY_BLINK_TITLEBAR_WHEN_URGENT)) {
 		WWindow *wwin = scr->focused_window;
 

@@ -60,6 +60,18 @@ typedef struct WDock {
     unsigned int lclip_button_pushed:1;
     unsigned int rclip_button_pushed:1;
 
+    /* auto-hide slide state, meaningful on scr->dock only. x_pos and
+     * y_pos stay canonical, slide_offset applies on configure. */
+    unsigned int auto_hide:1;	       /* persistent mode */
+    unsigned int hidden:1;	       /* last fully reached state */
+    unsigned int target_hidden:1;      /* current transition target */
+    WMagicNumber auto_hide_magic;      /* one-shot hide-delay timer */
+    WMagicNumber slide_magic;	       /* persistent animation timer */
+    int slide_offset;		       /* signed root-normal delta, 0 = shown */
+    int slide_from_offset;	       /* interpolation start */
+    int64_t slide_started_ms;	       /* CLOCK_MONOTONIC timestamp */
+    xcb_window_t reveal_strip;	       /* XCB_NONE when not mapped */
+
     struct WMenu *menu;
 
     struct WDDomain *defaults;
@@ -153,12 +165,32 @@ RImage* wDrawerMakeTile(WScreen *scr, RImage *normalTile);
 #define WO_NOT_APPLICABLE  1
 #define WO_SUCCESS         2
 
-typedef enum
-{
-	P_NORMAL = 0,
-	P_AUTO_RAISE_LOWER,
-	P_KEEP_ON_TOP,
-} dockPosition;
+/* The dock whose slide offset applies: self, root dock for a drawer,
+ * NULL for a clip. */
+WDock *wDockAutoHideOwner(WDock *dock);
+
+/* Canonical shown coordinates plus the owner's slide offset on the
+ * edge-normal axis, canonical when the chain does not auto-hide. */
+void wDockAutoHideEffectivePosition(const WAppIcon *btn, int *x, int *y);
+
+void wDockApplyIconPosition(WAppIcon *btn);
+
+void dockSetLowered(WDock *dock, bool lowered);
+
+void wDockAutoHideApplyInitial(WScreen *scr);
+void wDockAutoHideGeometryChanged(WScreen *scr);
+void wDockAutoHideStripUpdate(WScreen *scr);
+void wDockAutoHideAnimationConfigChanged(WScreen *scr);
+void wDockRevealRaise(WScreen *scr);
+
+bool wDockRevealHandleCrossing(WScreen *scr, xcb_generic_event_t *ev, bool enter);
+
+/* While the counter is positive the auto-hide delay never hides */
+void wDockAutoHideBusyPush(WScreen *scr);
+void wDockAutoHideBusyPop(WScreen *scr);
+
+void wDockAutoHideDragBegin(WScreen *scr);
+void wDockAutoHideDragEnd(WScreen *scr);
 
 int wClipMakeIconOmnipresent(WAppIcon *aicon, int omnipresent);
 

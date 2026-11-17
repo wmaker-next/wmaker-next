@@ -30,6 +30,7 @@
 #include "WindowMaker.h"
 #include "GNUstep.h"
 #include "screen.h"
+#include "dock.h"
 #include "window.h"
 #include "framewin.h"
 #include "keybind.h"
@@ -129,6 +130,7 @@ static void raiseWindow(WSwitchPanel * swpanel, WWindow * wwin)
 			CommitStacking(wwin->screen_ptr);
 		}
 		wHotCornersRaise(wwin->screen_ptr);
+		wDockRevealRaise(wwin->screen_ptr);
 	}
 }
 

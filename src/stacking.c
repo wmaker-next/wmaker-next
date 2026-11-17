@@ -33,6 +33,7 @@
 
 #include "WindowMaker.h"
 #include "screen.h"
+#include "dock.h"
 #include "window.h"
 #include "actions.h"
 #include "properties.h"
@@ -140,6 +141,7 @@ void CommitStacking(WScreen * scr)
 	i = wStackCollectWindows(&ctx, windows, nwindows);
 	wXRestackWindows(wdisp->conn, windows, i);
 	wHotCornersRaise(scr);
+	wDockRevealRaise(scr);
 #ifdef VIRTUAL_DESKTOP
 	wWorkspaceRaiseEdge(scr);
 #endif

@@ -352,3 +352,43 @@ void wDockGeomStrut(WMRect rect, int root_w, int root_h, WDockEdge edge,
 		break;
 	}
 }
+
+int wDockGeomFloorDiv(int num, int den)
+{
+	int q = num / den;
+
+	if (num % den != 0 && num < 0)
+		q--;
+
+	return q;
+}
+
+int wDockGeomHideDelta(WDockEdge edge, int root_lo, int root_hi,
+		       int shown_origin, int max_across, int icon_size,
+		       int keep_visible)
+{
+	int chain_lo, chain_hi, extent;
+
+	if (max_across < 0)
+		max_across = 0;
+	if (keep_visible < 0)
+		keep_visible = 0;
+
+	if (edge == WDOCK_EDGE_LEFT || edge == WDOCK_EDGE_TOP) {
+		chain_lo = shown_origin;
+		chain_hi = shown_origin + (max_across + 1) * icon_size;
+		extent = chain_hi - chain_lo;
+		if (keep_visible > extent)
+			keep_visible = extent;
+
+		return root_lo - chain_hi + keep_visible;
+	}
+
+	chain_lo = shown_origin - max_across * icon_size;
+	chain_hi = shown_origin + icon_size;
+	extent = chain_hi - chain_lo;
+	if (keep_visible > extent)
+		keep_visible = extent;
+
+	return root_hi - chain_lo - keep_visible;
+}

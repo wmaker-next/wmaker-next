@@ -33,6 +33,7 @@
 #include "menu.h"
 #include "workspace.h"
 #include "screen.h"
+#include "dock.h"
 #include "window.h"
 #include "xinerama.h"
 #include "framewin.h"
@@ -768,6 +769,7 @@ void wWorkspaceRaiseEdge(WScreen *scr)
 	}
 	toggle ^= 1;
 	wHotCornersRaise(scr);
+	wDockRevealRaise(scr);
 }
 
 void wWorkspaceLowerEdge(WScreen *scr)

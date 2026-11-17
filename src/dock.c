@@ -31,6 +31,7 @@
 #include <math.h>
 #include <limits.h>
 #include <dirent.h>
+#include <time.h>
 
 #include <cairo.h>
 #include <WINGs/WINGsP.h>
@@ -93,7 +94,7 @@ static WMPropList *dAutoCompact;
 
 static WMPropList *dPosition, *dApplications, *dLowered, *dCollapsed, *dEdge;
 
-static WMPropList *dAutoCollapse, *dAutoRaiseLower, *dOmnipresent;
+static WMPropList *dAutoCollapse, *dAutoRaiseLower, *dAutoHide, *dOmnipresent;
 
 static WMPropList *dDrawers = NULL;
 
@@ -112,6 +113,10 @@ static int getClipButton(int px, int py);
 static void toggleLowered(WDock *dock);
 
 static void toggleCollapsed(WDock *dock);
+
+static void toggleAutoHide(WDock *dock);
+
+static void syncRaiseLowerEntries(WMenu *menu, WDock *dock);
 
 static void clipIconExpose(WObjDescriptor *desc, xcb_generic_event_t *event);
 
@@ -142,6 +147,30 @@ static int onScreen(WScreen *scr, int x, int y);
 static int dock_clamp_along_pixel(WScreen *scr, WDockEdge edge, int along,
 				  int neg_extent, int pos_extent);
 static void dock_live_span(const WDock *dock, int *neg, int *pos);
+static void dock_strip_destroy(WDock *root);
+
+static int dockMessageDialog(WScreen *scr, const char *title, const char *message,
+			     const char *button1, const char *button2, const char *button3)
+{
+	int ret;
+
+	wDockAutoHideBusyPush(scr);
+	ret = wMessageDialog(scr, title, message, button1, button2, button3);
+	wDockAutoHideBusyPop(scr);
+
+	return ret;
+}
+
+static int dockInputDialog(WScreen *scr, const char *title, const char *message, char **text)
+{
+	int ret;
+
+	wDockAutoHideBusyPush(scr);
+	ret = wInputDialog(scr, title, message, text);
+	wDockAutoHideBusyPop(scr);
+
+	return ret;
+}
 
 static void make_keys(void)
 {
@@ -170,6 +199,7 @@ static void make_keys(void)
 	dEdge = WMCreatePLString("Edge");
 	dAutoCollapse = WMCreatePLString("AutoCollapse");
 	dAutoRaiseLower = WMCreatePLString("AutoRaiseLower");
+	dAutoHide = WMCreatePLString("AutoHide");
 	dAutoAttractIcons = WMCreatePLString("AutoAttractIcons");
 	dAutoCompact = WMCreatePLString("AutoCompact");
 
@@ -197,7 +227,7 @@ static void renameCallback(WMenu *menu, WMenuEntry *entry)
 	name = wstrdup(dock->screen_ptr->workspaces[wspace]->name);
 
 	snprintf(buffer, sizeof(buffer), _("Type the name for workspace %i:"), wspace + 1);
-	if (wInputDialog(dock->screen_ptr, _("Rename Workspace"), buffer, &name))
+	if (dockInputDialog(dock->screen_ptr, _("Rename Workspace"), buffer, &name))
 		wWorkspaceRename(dock->screen_ptr, wspace, name);
 
 	wfree(name);
@@ -205,11 +235,13 @@ static void renameCallback(WMenu *menu, WMenuEntry *entry)
 
 static void toggleLoweredCallback(WMenu *menu, WMenuEntry *entry)
 {
+	WDock *dock;
+
 	assert(entry->clientdata != NULL);
+	dock = entry->clientdata;
 
-	toggleLowered(entry->clientdata);
-
-	entry->flags.indicator_on = !(((WDock *) entry->clientdata)->lowered);
+	toggleLowered(dock);
+	syncRaiseLowerEntries(menu, dock);
 
 	wMenuPaint(menu);
 }
@@ -267,7 +299,7 @@ static void killCallback(WMenu *menu, WMenuEntry *entry)
 	}
 
 	if (w_global.config->dont_confirm_kill
-	    || wMessageDialog(menu->frame->screen_ptr, _("Kill Application"),
+	    || dockMessageDialog(menu->frame->screen_ptr, _("Kill Application"),
 			      buffer, _("Yes"), _("No"), NULL) == WAPRDefault) {
 		if (fPtr != NULL) {
 			WWindow *wwin, *twin;
@@ -453,14 +485,14 @@ static void omnipresentCallback(WMenu *menu, WMenuEntry *entry)
 	WMFreeArray(selectedIcons);
 
 	if (failed > 1) {
-		wMessageDialog(dock->screen_ptr, _("Warning"),
+		dockMessageDialog(dock->screen_ptr, _("Warning"),
 			       _("Some icons cannot be made omnipresent. "
 				 "Please make sure that no other icon is "
 				 "docked in the same positions on the other "
 				 "workspaces and the Clip is not full in "
 				 "some workspace."), _("OK"), NULL, NULL);
 	} else if (failed == 1) {
-		wMessageDialog(dock->screen_ptr, _("Warning"),
+		dockMessageDialog(dock->screen_ptr, _("Warning"),
 			       _("Icon cannot be made omnipresent. "
 				 "Please make sure that no other icon is "
 				 "docked in the same position on the other "
@@ -510,7 +542,7 @@ static void removeIconsCallback(WMenu *menu, WMenuEntry *entry)
 	selectedIcons = getSelected(dock);
 
 	if (WMGetArrayItemCount(selectedIcons)) {
-		if (wMessageDialog(dock->screen_ptr,
+		if (dockMessageDialog(dock->screen_ptr,
 					dock->type == WM_CLIP ? _("Workspace Clip") : _("Drawer"),
 					_("All selected icons will be removed!"),
 					_("OK"), _("Cancel"), NULL) != WAPRDefault) {
@@ -558,7 +590,7 @@ static void keepIconsCallback(WMenu *menu, WMenuEntry *entry)
 
 			clickedIcon->editing = 1;
 			wretain(clickedIcon);
-			ok = wInputDialog(dock->screen_ptr, _("Keep Icon"),
+			ok = dockInputDialog(dock->screen_ptr, _("Keep Icon"),
 					  _("Type the command used to launch the application"), &command);
 			gone = clickedIcon->destroyed;
 			if (!gone) {
@@ -757,15 +789,15 @@ static void toggleAutoCollapseCallback(WMenu *menu, WMenuEntry *entry)
 	wMenuPaint(menu);
 }
 
-static void toggleAutoRaiseLower(WDock *dock)
+static void dockSetAutoRaiseLower(WDock *dock, bool on)
 {
 	WDrawerChain *dc;
 
-	dock->auto_raise_lower = !dock->auto_raise_lower;
+	dock->auto_raise_lower = on;
 	if (dock->type == WM_DOCK)
 	{
 		for (dc = dock->screen_ptr->drawers; dc != NULL; dc = dc->next) {
-			toggleAutoRaiseLower(dc->adrawer);
+			dockSetAutoRaiseLower(dc->adrawer, on);
 		}
 	}
 }
@@ -774,18 +806,30 @@ static void toggleAutoRaiseLowerCallback(WMenu *menu, WMenuEntry *entry)
 {
 	WDock *dock;
 
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) menu;
-
 	assert(entry->clientdata != NULL);
+	dock = entry->clientdata;
 
-	dock = (WDock *) entry->clientdata;
-
-	toggleAutoRaiseLower(dock);
-
-	entry->flags.indicator_on = ((WDock *) entry->clientdata)->auto_raise_lower;
+	dockSetAutoRaiseLower(dock, !dock->auto_raise_lower);
+	/* auto raise needs the normal level */
+	if (dock->auto_raise_lower && !dock->lowered)
+		dockSetLowered(dock, true);
+	syncRaiseLowerEntries(menu, dock);
 
 	wMenuPaint(menu);
+}
+
+static void syncRaiseLowerEntries(WMenu *menu, WDock *dock)
+{
+	WMenuEntry *entry;
+	int i;
+
+	for (i = 0; i < menu->entry_no; i++) {
+		entry = menu->entries[i];
+		if (entry->callback == toggleLoweredCallback)
+			entry->flags.indicator_on = !dock->lowered;
+		else if (entry->callback == toggleAutoRaiseLowerCallback)
+			entry->flags.indicator_on = dock->auto_raise_lower;
+	}
 }
 
 static void launchCallback(WMenu *menu, WMenuEntry *entry)
@@ -968,6 +1012,9 @@ void wDockInsetArea(WScreen *scr, WArea *area)
 	int offset;
 
 	if (!scr->dock)
+		return;
+
+	if (scr->dock->auto_hide && scr->dock->hidden)
 		return;
 
 	offset = ICON_SIZE + DOCK_EXTRA_SPACE;
@@ -1196,9 +1243,25 @@ static void updateClipOptionsMenu(WMenu *menu, WDock *dock)
 	if (!menu || !dock)
 		return;
 
-	/* keep on top */
+	/* attract icons */
 	entry = menu->entries[index];
-	entry->flags.indicator_on = !dock->lowered;
+	entry->flags.indicator_on = dock->attract_icons;
+	entry->clientdata = dock;
+
+	/* auto-collapse */
+	entry = menu->entries[++index];
+	entry->flags.indicator_on = dock->auto_collapse;
+	entry->clientdata = dock;
+
+	/* auto compact */
+	entry = menu->entries[++index];
+	entry->flags.indicator_on = dock->auto_compact;
+	entry->clientdata = dock;
+	wMenuSetHidden(menu, index, dock->type != WM_CLIP);
+
+	/* auto-raise/lower */
+	entry = menu->entries[++index];
+	entry->flags.indicator_on = dock->auto_raise_lower;
 	entry->clientdata = dock;
 	wMenuSetHidden(menu, index, dock->type != WM_CLIP);
 
@@ -1207,26 +1270,9 @@ static void updateClipOptionsMenu(WMenu *menu, WDock *dock)
 	entry->flags.indicator_on = dock->collapsed;
 	entry->clientdata = dock;
 
-	/* auto-collapse */
+	/* keep on top */
 	entry = menu->entries[++index];
-	entry->flags.indicator_on = dock->auto_collapse;
-	entry->clientdata = dock;
-
-	/* auto-raise/lower */
-	entry = menu->entries[++index];
-	entry->flags.indicator_on = dock->auto_raise_lower;
-	entry->clientdata = dock;
-	wMenuSetHidden(menu, index, dock->type != WM_CLIP);
-	wMenuSetEnabled(menu, index, dock->lowered);
-
-	/* attract icons */
-	entry = menu->entries[++index];
-	entry->flags.indicator_on = dock->attract_icons;
-	entry->clientdata = dock;
-
-	/* auto compact */
-	entry = menu->entries[++index];
-	entry->flags.indicator_on = dock->auto_compact;
+	entry->flags.indicator_on = !dock->lowered;
 	entry->clientdata = dock;
 	wMenuSetHidden(menu, index, dock->type != WM_CLIP);
 
@@ -1246,12 +1292,7 @@ static WMenu *makeClipOptionsMenu(WScreen *scr)
 		return NULL;
 	}
 
-	entry = wMenuAddCallback(menu, _("Keep on Top"), toggleLoweredCallback, NULL);
-	entry->flags.indicator = 1;
-	entry->flags.indicator_on = 1;
-	entry->flags.indicator_type = MI_CHECK;
-
-	entry = wMenuAddCallback(menu, _("Collapsed"), toggleCollapsedCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Auto Attract Icons"), toggleAutoAttractCallback, NULL);
 	entry->flags.indicator = 1;
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
@@ -1261,17 +1302,22 @@ static WMenu *makeClipOptionsMenu(WScreen *scr)
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
 
+	entry = wMenuAddCallback(menu, _("Auto Compact"), toggleAutoCompactCallback, NULL);
+	entry->flags.indicator = 1;
+	entry->flags.indicator_on = 1;
+	entry->flags.indicator_type = MI_CHECK;
+
 	entry = wMenuAddCallback(menu, _("Auto Raise"), toggleAutoRaiseLowerCallback, NULL);
 	entry->flags.indicator = 1;
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
 
-	entry = wMenuAddCallback(menu, _("Auto Attract Icons"), toggleAutoAttractCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Collapsed"), toggleCollapsedCallback, NULL);
 	entry->flags.indicator = 1;
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
 
-	entry = wMenuAddCallback(menu, _("Auto Compact"), toggleAutoCompactCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Keep on Top"), toggleLoweredCallback, NULL);
 	entry->flags.indicator = 1;
 	entry->flags.indicator_on = 1;
 	entry->flags.indicator_type = MI_CHECK;
@@ -1283,61 +1329,20 @@ static WMenu *makeClipOptionsMenu(WScreen *scr)
 }
 
 
-static void setDockPositionNormalCallback(WMenu *menu, WMenuEntry *entry)
+static void toggleAutoHideCallback(WMenu *menu, WMenuEntry *entry)
 {
-	WDock *dock = (WDock *) entry->clientdata;
+	WDock *dock;
 
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) menu;
+	assert(entry->clientdata != NULL);
+	dock = entry->clientdata;
 
-	if (entry->flags.indicator_on) // already set, nothing to do
-		return;
-	// Do we come from auto raise lower or keep on top?
-	if (dock->auto_raise_lower)
-	{
-		dock->auto_raise_lower = 0;
-	}
-	else
-	{
-		// Will take care of setting lowered = 0 in drawers
-		toggleLowered(dock);
-	}
-	entry->flags.indicator_on = 1;
+	toggleAutoHide(dock);
+	entry->flags.indicator_on = dock->auto_hide;
+
+	wMenuPaint(menu);
 }
 
-static void setDockPositionAutoRaiseLowerCallback(WMenu *menu, WMenuEntry *entry)
-{
-	WDock *dock = (WDock *) entry->clientdata;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) menu;
-
-	if (entry->flags.indicator_on) // already set, nothing to do
-		return;
-	// Do we come from normal or keep on top?
-	if (!dock->lowered)
-	{
-		toggleLowered(dock);
-	}
-	dock->auto_raise_lower = 1;
-	entry->flags.indicator_on = 1;
-}
-
-static void setDockPositionKeepOnTopCallback(WMenu *menu, WMenuEntry *entry)
-{
-	WDock *dock = (WDock *) entry->clientdata;
-
-	/* Parameter not used, but tell the compiler that it is ok */
-	(void) menu;
-
-	if (entry->flags.indicator_on) // already set, nothing to do
-		return;
-	dock->auto_raise_lower = 0;
-	toggleLowered(dock);
-	entry->flags.indicator_on = 1;
-}
-
-static void updateDockPositionMenu(WMenu *menu, WDock *dock)
+static void updateDockOptionsMenu(WMenu *menu, WDock *dock)
 {
 	WMenuEntry *entry;
 	int index = 0;
@@ -1345,23 +1350,26 @@ static void updateDockPositionMenu(WMenu *menu, WDock *dock)
 	assert(menu);
 	assert(dock);
 
-	/* Normal level */
+	/* auto hide */
 	entry = menu->entries[index++];
-	entry->flags.indicator_on = (dock->lowered && !dock->auto_raise_lower);
+	entry->flags.indicator_on = dock->auto_hide;
 	entry->clientdata = dock;
 
-	/* Auto-raise/lower */
+	/* auto-raise/lower */
 	entry = menu->entries[index++];
 	entry->flags.indicator_on = dock->auto_raise_lower;
 	entry->clientdata = dock;
 
-	/* Keep on top */
+	/* keep on top */
 	entry = menu->entries[index++];
 	entry->flags.indicator_on = !dock->lowered;
 	entry->clientdata = dock;
+
+	menu->flags.realized = 0;
+	wMenuRealize(menu);
 }
 
-static WMenu *makeDockPositionMenu(WScreen *scr)
+static WMenu *makeDockOptionsMenu(WScreen *scr)
 {
 	/* When calling this, the dock is being created, so scr->dock is still not set
 	 * Therefore the callbacks' clientdata and the indicators can't be set,
@@ -1371,21 +1379,24 @@ static WMenu *makeDockPositionMenu(WScreen *scr)
 
 	menu = wMenuCreate(scr, NULL, false);
 	if (!menu) {
-		wwarning(_("could not create options submenu for dock position menu"));
+		wwarning(_("could not create options submenu for Dock menu"));
 		return NULL;
 	}
 
-	entry = wMenuAddCallback(menu, _("Normal"), setDockPositionNormalCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Auto Hide"), toggleAutoHideCallback, NULL);
 	entry->flags.indicator = 1;
-	entry->flags.indicator_type = MI_DIAMOND;
+	entry->flags.indicator_on = 1;
+	entry->flags.indicator_type = MI_CHECK;
 
-	entry = wMenuAddCallback(menu, _("Auto raise & lower"), setDockPositionAutoRaiseLowerCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Auto Raise"), toggleAutoRaiseLowerCallback, NULL);
 	entry->flags.indicator = 1;
-	entry->flags.indicator_type = MI_DIAMOND;
+	entry->flags.indicator_on = 1;
+	entry->flags.indicator_type = MI_CHECK;
 
-	entry = wMenuAddCallback(menu, _("Keep on Top"), setDockPositionKeepOnTopCallback, NULL);
+	entry = wMenuAddCallback(menu, _("Keep on Top"), toggleLoweredCallback, NULL);
 	entry->flags.indicator = 1;
-	entry->flags.indicator_type = MI_DIAMOND;
+	entry->flags.indicator_on = 1;
+	entry->flags.indicator_type = MI_CHECK;
 
 	menu->flags.realized = 0;
 	wMenuRealize(menu);
@@ -1407,13 +1418,13 @@ static WMenu *dockMenuCreate(WScreen *scr, int type)
 
 	menu = wMenuCreate(scr, NULL, false);
 	if (type == WM_DOCK) {
-		entry = wMenuAddCallback(menu, _("Dock position"), NULL, NULL);
-		if (scr->dock_pos_menu == NULL)
-			scr->dock_pos_menu = makeDockPositionMenu(scr);
-		wMenuEntrySetCascade(menu, entry, scr->dock_pos_menu);
+		entry = wMenuAddCallback(menu, _("Dock Options"), NULL, NULL);
+		if (scr->dock_options_menu == NULL)
+			scr->dock_options_menu = makeDockOptionsMenu(scr);
+		wMenuEntrySetCascade(menu, entry, scr->dock_options_menu);
 
 		if (!wdisp->flags.nodrawer)
-			wMenuAddCallback(menu, _("Add a drawer"), addADrawerCallback, NULL);
+			wMenuAddCallback(menu, _("Add a Drawer"), addADrawerCallback, NULL);
 
 	} else {
 		if (type == WM_CLIP)
@@ -1557,7 +1568,7 @@ WDock *wDockCreate(WScreen *scr, int type, const char *name)
 	dock->lowered = 1;
 	dock->icon_array[0] = btn;
 	wRaiseFrame(btn->icon->core);
-	xcb_configure_window(wdisp->conn, btn->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ btn->x_pos, btn->y_pos });
+	wDockApplyIconPosition(btn);
 
 	/* create dock menu */
 	dock->menu = dockMenuCreate(scr, type);
@@ -1575,6 +1586,16 @@ void wDockDestroy(WDock *dock)
 {
 	int i;
 	WAppIcon *aicon;
+
+	if (dock->type == WM_DOCK) {
+		WMDeleteTimerHandlerPtr(&dock->auto_hide_magic);
+		WMDeleteTimerHandlerPtr(&dock->slide_magic);
+		dock->auto_hide = 0;
+		dock->hidden = 0;
+		dock->target_hidden = 0;
+		dock->slide_offset = 0;
+		dock_strip_destroy(dock);
+	}
 
 	for (i = (dock->type == WM_CLIP) ? 1 : 0; i < dock->max_icons; i++) {
 		aicon = dock->icon_array[i];
@@ -1828,6 +1849,11 @@ static WMPropList *dockSaveState(WDock *dock)
 
 		value = (dock->auto_raise_lower ? dYes : dNo);
 		WMPutInPLDictionary(dock_state, dAutoRaiseLower, value);
+
+		if (dock->type == WM_DOCK) {
+			value = (dock->auto_hide ? dYes : dNo);
+			WMPutInPLDictionary(dock_state, dAutoHide, value);
+		}
 	}
 
 	return dock_state;
@@ -2230,6 +2256,20 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 		}
 	}
 
+	/* Keep on Top and Auto Raise are mutually exclusive */
+	if (!dock->lowered)
+		dock->auto_raise_lower = 0;
+
+	value = WMGetFromPLDictionary(dock_state, dAutoHide);
+	if (value) {
+		if (!WMIsPLString(value)) {
+			COMPLAIN("AutoHide");
+		} else {
+			if (strcasecmp(WMGetFromPLString(value), "YES") == 0)
+				dock->auto_hide = 1;
+		}
+	}
+
 	/* restore attract icons state */
 	dock->attract_icons = 0;
 
@@ -2323,7 +2363,7 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 			else
 				ChangeStackingLevel(aicon->icon->core, WMDockLevel);
 
-			wCoreConfigure(aicon->icon->core, aicon->x_pos, aicon->y_pos, 0, 0);
+			wDockApplyIconPosition(aicon);
 			if (!dock->collapsed)
 				xcb_map_window(wdisp->conn, aicon->icon->core->window);
 
@@ -2361,6 +2401,16 @@ WDock *wDockRestoreState(WScreen *scr, WMPropList *dock_state, int type)
 	}
 
 finish:
+	/* an empty or missing Applications list leaves the default main
+	 * tile at its creation position, follow the restored dock */
+	if (dock->icon_array[0]) {
+		WAppIcon *top = dock->icon_array[0];
+
+		top->x_pos = dock->x_pos + top->xindex * ICON_SIZE;
+		top->y_pos = dock->y_pos + top->yindex * ICON_SIZE;
+		wDockApplyIconPosition(top);
+	}
+
 	if (type == WM_DRAWER && dock->icon_array[0])
 		update_icon_pixmap(dock->icon_array[0]->icon);
 
@@ -2772,7 +2822,7 @@ bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, bool update_icon
 			if (dock->type != WM_CLIP || !icon->attracted) {
 				icon->editing = 1;
 				wretain(icon);
-				if (wInputDialog(dock->screen_ptr, _("Dock Icon"),
+				if (dockInputDialog(dock->screen_ptr, _("Dock Icon"),
 						 _("Type the command used to launch the application"), &command)) {
 					if (icon->destroyed) {
 						wfree(command);
@@ -2852,6 +2902,8 @@ bool wDockAttachIcon(WDock *dock, WAppIcon *icon, int x, int y, bool update_icon
 
 	/* Save it */
 	save_appicon(icon);
+
+	wDockAutoHideGeometryChanged(dock->screen_ptr);
 
 	if (w_global.config->auto_arrange_icons)
 		wArrangeIcons(dock->screen_ptr, true);
@@ -2938,6 +2990,9 @@ void wDockReattachIcon(WDock *dock, WAppIcon *icon, int x, int y)
 		clipCompactRay(dock, ox, oy, NULL);
 		clipCompactRay(dock, x, y, NULL);
 	}
+
+	wDockApplyIconPosition(icon);
+	wDockAutoHideGeometryChanged(dock->screen_ptr);
 }
 
 bool wDockMoveIconBetweenDocks(WDock *src, WDock *dest, WAppIcon *icon, int x, int y)
@@ -2971,7 +3026,7 @@ bool wDockMoveIconBetweenDocks(WDock *src, WDock *dest, WAppIcon *icon, int x, i
 		} else {
 			icon->editing = 1;
 			/* icon->forced_dock = 1; */
-			if (wInputDialog(src->screen_ptr, _("Dock Icon"),
+			if (dockInputDialog(src->screen_ptr, _("Dock Icon"),
 					 _("Type the command used to launch the application"), &command)) {
 				wAppIconSetCommand(icon, command);
 			} else {
@@ -3036,6 +3091,9 @@ bool wDockMoveIconBetweenDocks(WDock *src, WDock *dest, WAppIcon *icon, int x, i
 	dest->icon_count++;
 
 	MoveInStackListUnder(dest->icon_array[index - 1]->icon->core, icon->icon->core);
+
+	wDockApplyIconPosition(icon);
+	wDockAutoHideGeometryChanged(dest->screen_ptr);
 
 	/*
 	 * Update icon pixmap, RImage doesn't change,
@@ -3127,6 +3185,8 @@ void wDockDetach(WDock *dock, WAppIcon *icon)
 
 	if (dock->auto_collapse || dock->auto_raise_lower)
 		clipLeave(dock);
+
+	wDockAutoHideGeometryChanged(dock->screen_ptr);
 }
 
 /*
@@ -3580,6 +3640,668 @@ bool wDockFindFreeSlot(WDock *dock, int *x_pos, int *y_pos)
 	return done;
 }
 
+WDock *wDockAutoHideOwner(WDock *dock)
+{
+	if (!dock)
+		return NULL;
+
+	switch (dock->type) {
+	case WM_DOCK:
+		return dock;
+	case WM_DRAWER:
+		return dock->screen_ptr->dock;
+	default:
+		return NULL;
+	}
+}
+
+void wDockAutoHideEffectivePosition(const WAppIcon *btn, int *x, int *y)
+{
+	WDock *owner;
+
+	*x = btn->x_pos;
+	*y = btn->y_pos;
+
+	owner = wDockAutoHideOwner(btn->dock);
+	if (!owner || owner->slide_offset == 0)
+		return;
+
+	if (wDockEdgeHorizontal(owner->edge))
+		*y += owner->slide_offset;
+	else
+		*x += owner->slide_offset;
+}
+
+void wDockApplyIconPosition(WAppIcon *btn)
+{
+	int x, y;
+
+	wDockAutoHideEffectivePosition(btn, &x, &y);
+	xcb_configure_window(wdisp->conn, btn->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ x, y });
+}
+
+static void dock_apply_icons(WDock *dock)
+{
+	int i;
+
+	for (i = 0; i < dock->max_icons; i++)
+		if (dock->icon_array[i])
+			wDockApplyIconPosition(dock->icon_array[i]);
+}
+
+static void dock_apply_chain(WDock *root)
+{
+	WDrawerChain *dc;
+
+	dock_apply_icons(root);
+	for (dc = root->screen_ptr->drawers; dc != NULL; dc = dc->next)
+		dock_apply_icons(dc->adrawer);
+}
+
+#define DOCK_REVEAL_STRIP	4
+#define DOCK_AUTO_HIDE_DELAY	400
+#define DOCK_SLIDE_STEP_MS	20
+
+static int64_t dock_monotonic_ms(void)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+}
+
+/* Depth over the tiles that are actually mapped: a collapsed dock or
+ * drawer leaves its contents unmapped, counting them would push the
+ * whole chain past the visible column and leave no slice on screen. */
+static void dock_max_across_one(WDock *dock, WDockEdge edge, int *max)
+{
+	int i, a;
+
+	for (i = 0; i < dock->max_icons; i++) {
+		if (!dock->icon_array[i] || (i > 0 && dock->collapsed))
+			continue;
+		a = abs(wDockAcrossIndex(dock->icon_array[i], edge));
+		if (a > *max)
+			*max = a;
+	}
+}
+
+static int dock_max_across(WDock *root)
+{
+	WDrawerChain *dc;
+	int max = 0;
+
+	dock_max_across_one(root, root->edge, &max);
+	for (dc = root->screen_ptr->drawers; dc != NULL; dc = dc->next)
+		dock_max_across_one(dc->adrawer, root->edge, &max);
+
+	return max;
+}
+
+static int dock_hide_delta(WDock *root)
+{
+	WScreen *scr = root->screen_ptr;
+	int root_hi = wDockEdgeHorizontal(root->edge) ? scr->scr_height : scr->scr_width;
+	int origin = wDockEdgeHorizontal(root->edge) ? root->y_pos : root->x_pos;
+	int thickness = ICON_SIZE + DOCK_EXTRA_SPACE;
+	int keep = (thickness * w_global.config->dock_auto_hide_visible_percent + 99) / 100;
+
+	return wDockGeomHideDelta(root->edge, 0, root_hi, origin,
+				  dock_max_across(root), ICON_SIZE, keep);
+}
+
+static bool dock_slide_instant(void)
+{
+	if (w_global.config->dock_auto_hide_speed == 0 || w_global.display_off)
+		return true;
+#ifndef USE_ANIMATIONS
+	return true;
+#else
+	return w_global.config->no_animations;
+#endif
+}
+
+static void dock_strip_rect(WDock *root, int *rx, int *ry, int *rw, int *rh)
+{
+	WScreen *scr = root->screen_ptr;
+	WMRect anchor = dock_anchor_rect(scr);
+	int neg, pos, span_lo, span_hi, along, len;
+
+	dock_live_span(root, &neg, &pos);
+	along = wDockEdgeHorizontal(root->edge) ? root->x_pos : root->y_pos;
+	span_lo = along - neg;
+	span_hi = along + pos;
+
+	if (wDockEdgeHorizontal(root->edge)) {
+		int lo = (int)anchor.pos.x;
+		int hi = lo + (int)anchor.size.width;
+
+		if (span_lo < lo)
+			span_lo = lo;
+		if (span_hi > hi)
+			span_hi = hi;
+		len = span_hi - span_lo;
+		if (len < 1)
+			len = 1;
+		*rx = span_lo;
+		*rw = len;
+		*rh = DOCK_REVEAL_STRIP;
+		if (root->edge == WDOCK_EDGE_TOP)
+			*ry = (int)anchor.pos.y;
+		else
+			*ry = (int)anchor.pos.y + (int)anchor.size.height - DOCK_REVEAL_STRIP;
+	} else {
+		int lo = (int)anchor.pos.y;
+		int hi = lo + (int)anchor.size.height;
+
+		if (span_lo < lo)
+			span_lo = lo;
+		if (span_hi > hi)
+			span_hi = hi;
+		len = span_hi - span_lo;
+		if (len < 1)
+			len = 1;
+		*ry = span_lo;
+		*rh = len;
+		*rw = DOCK_REVEAL_STRIP;
+		if (root->edge == WDOCK_EDGE_LEFT)
+			*rx = (int)anchor.pos.x;
+		else
+			*rx = (int)anchor.pos.x + (int)anchor.size.width - DOCK_REVEAL_STRIP;
+	}
+}
+
+static void dock_strip_create(WDock *root)
+{
+	WScreen *scr = root->screen_ptr;
+	int x, y, w, h;
+
+	if (root->reveal_strip == XCB_NONE) {
+		root->reveal_strip = xcb_generate_id(wdisp->conn);
+		xcb_create_window(wdisp->conn, XCB_COPY_FROM_PARENT, root->reveal_strip,
+				  scr->root_win, -10, -10, 1, 1, 0,
+				  XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT,
+				  XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK,
+				  (const uint32_t[]){ true, XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW });
+	}
+	dock_strip_rect(root, &x, &y, &w, &h);
+	xcb_configure_window(wdisp->conn, root->reveal_strip, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, (const uint32_t[]){ x, y, w, h });
+	xcb_map_window(wdisp->conn, root->reveal_strip);
+	wDockRevealRaise(scr);
+}
+
+static void dock_strip_destroy(WDock *root)
+{
+	if (root->reveal_strip == XCB_NONE)
+		return;
+
+	xcb_unmap_window(wdisp->conn, root->reveal_strip);
+	xcb_destroy_window(wdisp->conn, root->reveal_strip);
+	root->reveal_strip = XCB_NONE;
+}
+
+void wDockRevealRaise(WScreen *scr)
+{
+	if (scr->dock && scr->dock->reveal_strip != XCB_NONE)
+		xcb_configure_window(wdisp->conn, scr->dock->reveal_strip, XCB_CONFIG_WINDOW_STACK_MODE, (const uint32_t[]){ XCB_STACK_MODE_ABOVE });
+}
+
+void wDockAutoHideStripUpdate(WScreen *scr)
+{
+	WDock *root = scr->dock;
+
+	if (!root || !root->auto_hide)
+		return;
+
+	if (root->hidden)
+		dock_strip_create(root);
+	else
+		dock_strip_destroy(root);
+}
+
+static bool dock_chain_tile_at(WDock *chain, int px, int py)
+{
+	int i, x, y;
+
+	for (i = 0; i < chain->max_icons; i++) {
+		if (!chain->icon_array[i])
+			continue;
+		wDockAutoHideEffectivePosition(chain->icon_array[i], &x, &y);
+		if (px >= x && px < x + ICON_SIZE && py >= y && py < y + ICON_SIZE)
+			return true;
+	}
+
+	return false;
+}
+
+static bool dock_point_in_chain(WDock *root, int px, int py)
+{
+	WDrawerChain *dc;
+
+	if (root->reveal_strip != XCB_NONE) {
+		int sx, sy, sw, sh;
+
+		dock_strip_rect(root, &sx, &sy, &sw, &sh);
+		if (px >= sx && px < sx + sw && py >= sy && py < sy + sh)
+			return true;
+	}
+
+	if (dock_chain_tile_at(root, px, py))
+		return true;
+
+	for (dc = root->screen_ptr->drawers; dc != NULL; dc = dc->next)
+		if (dock_chain_tile_at(dc->adrawer, px, py))
+			return true;
+
+	return false;
+}
+
+static bool dock_pointer_in_chain(WDock *root)
+{
+	WScreen *scr = root->screen_ptr;
+	xcb_query_pointer_reply_t *reply;
+	bool inside;
+
+	reply = xcb_query_pointer_reply(wdisp->conn,
+					xcb_query_pointer(wdisp->conn, scr->root_win), NULL);
+	if (!reply)
+		return false;
+
+	inside = dock_point_in_chain(root, reply->root_x, reply->root_y);
+	free(reply);
+
+	return inside;
+}
+
+static bool dock_has_settings_panel(WScreen *scr)
+{
+	WDrawerChain *dc;
+	int i;
+
+	if (!scr->dock)
+		return false;
+
+	for (i = 0; i < scr->dock->max_icons; i++)
+		if (scr->dock->icon_array[i] && scr->dock->icon_array[i]->panel)
+			return true;
+
+	for (dc = scr->drawers; dc != NULL; dc = dc->next)
+		for (i = 0; i < dc->adrawer->max_icons; i++)
+			if (dc->adrawer->icon_array[i] && dc->adrawer->icon_array[i]->panel)
+				return true;
+
+	return false;
+}
+
+static bool dock_autohide_busy(WScreen *scr)
+{
+	return scr->dock_busy_count > 0 || scr->mapped_menu_count > 0 ||
+	       dock_has_settings_panel(scr);
+}
+
+void wDockAutoHideBusyPush(WScreen *scr)
+{
+	scr->dock_busy_count++;
+}
+
+void wDockAutoHideBusyPop(WScreen *scr)
+{
+	if (scr->dock_busy_count > 0)
+		scr->dock_busy_count--;
+}
+
+static void dockSlideStep(void *cdata);
+static void dockAutoHideDelay(void *cdata);
+
+static void dock_autohide_arm_delay(WDock *root)
+{
+	if (!root->auto_hide || root->auto_hide_magic)
+		return;
+
+	root->auto_hide_magic = WMAddTimerHandler(DOCK_AUTO_HIDE_DELAY, dockAutoHideDelay, root);
+}
+
+static void dock_slide_finish(WDock *root)
+{
+	WScreen *scr = root->screen_ptr;
+
+	WMDeleteTimerHandlerPtr(&root->slide_magic);
+	root->slide_offset = root->target_hidden ? dock_hide_delta(root) : 0;
+	root->hidden = root->target_hidden;
+	dock_apply_chain(root);
+	wDockAutoHideStripUpdate(scr);
+	wScreenUpdateUsableArea(scr);
+
+	if (!root->hidden)
+		if (!dock_pointer_in_chain(root))
+			dock_autohide_arm_delay(root);
+}
+
+static void dockAutoHideSlideTo(WDock *root, bool to_hidden)
+{
+	int dest;
+
+	if (!root->auto_hide)
+		return;
+
+	dest = to_hidden ? dock_hide_delta(root) : 0;
+	root->target_hidden = to_hidden;
+
+	if (!to_hidden)
+		WMDeleteTimerHandlerPtr(&root->auto_hide_magic);
+
+	if (!root->slide_magic && root->hidden == to_hidden) {
+		if (root->slide_offset != dest) {
+			root->slide_offset = dest;
+			dock_apply_chain(root);
+		}
+		return;
+	}
+
+	root->slide_from_offset = root->slide_offset;
+
+	if (dock_slide_instant()) {
+		dock_slide_finish(root);
+		return;
+	}
+
+	root->slide_started_ms = dock_monotonic_ms();
+	if (!root->slide_magic)
+		root->slide_magic = WMAddPersistentTimerHandler(DOCK_SLIDE_STEP_MS, dockSlideStep, root);
+}
+
+static void dockSlideStep(void *cdata)
+{
+	WDock *root = cdata;
+	int64_t elapsed, duration, target;
+	int offset;
+
+	if (!root->slide_magic)
+		return;
+
+	if (dock_slide_instant()) {
+		dock_slide_finish(root);
+		return;
+	}
+
+	duration = w_global.config->dock_auto_hide_speed;
+	target = root->target_hidden ? dock_hide_delta(root) : 0;
+	elapsed = dock_monotonic_ms() - root->slide_started_ms;
+
+	if (elapsed >= duration) {
+		root->slide_offset = target;
+		dock_slide_finish(root);
+		return;
+	}
+
+	offset = root->slide_from_offset +
+		 (int)((target - root->slide_from_offset) * elapsed / duration);
+	if (offset == root->slide_offset)
+		return;
+
+	root->slide_offset = offset;
+	dock_apply_chain(root);
+}
+
+static void dockAutoHideDelay(void *cdata)
+{
+	WDock *root = cdata;
+
+	root->auto_hide_magic = NULL;
+
+	if (!root->auto_hide || root->target_hidden)
+		return;
+
+	if (dock_autohide_busy(root->screen_ptr) || dock_pointer_in_chain(root)) {
+		dock_autohide_arm_delay(root);
+		return;
+	}
+
+	dockAutoHideSlideTo(root, true);
+}
+
+static bool dock_event_is_chain(WDock *root, xcb_window_t win)
+{
+	WObjDescriptor *desc;
+
+	if (win == root->reveal_strip)
+		return true;
+
+	desc = WMHashGet(wdisp->context.client_win, (void *)(uintptr_t)win);
+	if (!desc || desc->parent_type != WCLASS_DOCK_ICON)
+		return false;
+
+	return wDockAutoHideOwner(((WAppIcon *)desc->parent)->dock) == root;
+}
+
+static bool dock_chain_enter_queued(WDock *root)
+{
+	xcb_generic_event_t *held[8];
+	xcb_generic_event_t *event = NULL;
+	int n = 0, i;
+	bool found = false;
+
+	while (n < (int)(sizeof(held) / sizeof(held[0])) &&
+	       WXEvqTakeTyped(wdisp->conn, XCB_ENTER_NOTIFY, XCB_NONE, &event)) {
+		held[n++] = event;
+		if (dock_event_is_chain(root, ((xcb_enter_notify_event_t *)event)->event)) {
+			found = true;
+			break;
+		}
+	}
+	for (i = n - 1; i >= 0; i--)
+		WXEvqPutBack(held[i]);
+
+	return found;
+}
+
+static void dock_autohide_enter(WDock *dock)
+{
+	WDock *root = wDockAutoHideOwner(dock);
+
+	if (!root || !root->auto_hide)
+		return;
+
+	WMDeleteTimerHandlerPtr(&root->auto_hide_magic);
+	if (root->target_hidden)
+		dockAutoHideSlideTo(root, false);
+}
+
+static void dock_autohide_leave(WDock *dock)
+{
+	WDock *root = wDockAutoHideOwner(dock);
+
+	if (!root || !root->auto_hide)
+		return;
+
+	if (dock_chain_enter_queued(root))
+		return;
+
+	dock_autohide_arm_delay(root);
+}
+
+static void dockAutoHideDisable(WDock *root)
+{
+	WScreen *scr;
+
+	if (!root || root->type != WM_DOCK)
+		return;
+
+	scr = root->screen_ptr;
+	WMDeleteTimerHandlerPtr(&root->auto_hide_magic);
+	WMDeleteTimerHandlerPtr(&root->slide_magic);
+	root->auto_hide = 0;
+	root->target_hidden = 0;
+	root->hidden = 0;
+	root->slide_offset = 0;
+	root->slide_from_offset = 0;
+	dock_apply_chain(root);
+	dock_strip_destroy(root);
+	wScreenUpdateUsableArea(scr);
+}
+
+void wDockAutoHideDragBegin(WScreen *scr)
+{
+	WDock *root = scr->dock;
+
+	wDockAutoHideBusyPush(scr);
+	if (!root || !root->auto_hide)
+		return;
+
+	/* drag coordinates are canonical, settle to shown first */
+	WMDeleteTimerHandlerPtr(&root->auto_hide_magic);
+	if (root->hidden)
+		return;
+
+	WMDeleteTimerHandlerPtr(&root->slide_magic);
+	root->target_hidden = 0;
+	if (root->slide_offset != 0) {
+		root->slide_offset = 0;
+		root->slide_from_offset = 0;
+		dock_apply_chain(root);
+		wDockAutoHideStripUpdate(scr);
+		wScreenUpdateUsableArea(scr);
+	}
+}
+
+void wDockAutoHideDragEnd(WScreen *scr)
+{
+	WDock *root = scr->dock;
+
+	wDockAutoHideBusyPop(scr);
+	if (!root || !root->auto_hide)
+		return;
+
+	wDockAutoHideGeometryChanged(scr);
+	if (dock_pointer_in_chain(root))
+		WMDeleteTimerHandlerPtr(&root->auto_hide_magic);
+	else
+		dock_autohide_arm_delay(root);
+}
+
+void wDockAutoHideGeometryChanged(WScreen *scr)
+{
+	WDock *root = scr->dock;
+	int dest;
+
+	if (!root || !root->auto_hide)
+		return;
+
+	if (root->slide_magic) {
+		dockAutoHideSlideTo(root, root->target_hidden);
+		return;
+	}
+
+	dest = root->hidden ? dock_hide_delta(root) : 0;
+	if (root->slide_offset != dest) {
+		root->slide_offset = dest;
+		dock_apply_chain(root);
+	}
+	wDockAutoHideStripUpdate(scr);
+}
+
+void wDockAutoHideAnimationConfigChanged(WScreen *scr)
+{
+	WDock *root = scr->dock;
+
+	if (!root || !root->auto_hide || !root->slide_magic)
+		return;
+
+	if (dock_slide_instant())
+		dock_slide_finish(root);
+	else
+		dockAutoHideSlideTo(root, root->target_hidden);
+}
+
+void wDockAutoHideApplyInitial(WScreen *scr)
+{
+	WDock *root = scr->dock;
+
+	if (!root || !root->auto_hide)
+		return;
+
+	WMDeleteTimerHandlerPtr(&root->auto_hide_magic);
+	WMDeleteTimerHandlerPtr(&root->slide_magic);
+	root->target_hidden = 1;
+	root->hidden = 1;
+	root->slide_offset = dock_hide_delta(root);
+	dock_apply_chain(root);
+	dock_strip_create(root);
+}
+
+bool wDockRevealHandleCrossing(WScreen *scr, xcb_generic_event_t *ev, bool enter)
+{
+	WDock *root = scr->dock;
+	xcb_window_t win;
+
+	if (!root || !root->auto_hide || root->reveal_strip == XCB_NONE)
+		return false;
+
+	win = enter ? ((xcb_enter_notify_event_t *)ev)->event
+		    : ((xcb_leave_notify_event_t *)ev)->event;
+	if (win != root->reveal_strip)
+		return false;
+
+	if (enter)
+		dock_autohide_enter(root);
+	else
+		dock_autohide_leave(root);
+
+	return true;
+}
+
+static void dock_apply_lowered(WDock *dock, bool lowered)
+{
+	int newlevel = lowered ? WMNormalLevel : WMDockLevel;
+	WAppIcon *tmp;
+	int i;
+
+	dock->lowered = lowered;
+	for (i = 0; i < dock->max_icons; i++) {
+		tmp = dock->icon_array[i];
+		if (!tmp)
+			continue;
+
+		ChangeStackingLevel(tmp->icon->core, newlevel);
+		if (lowered)
+			wLowerFrame(tmp->icon->core);
+	}
+}
+
+void dockSetLowered(WDock *dock, bool lowered)
+{
+	WDrawerChain *dc;
+
+	dock_apply_lowered(dock, lowered);
+
+	if (dock->type == WM_DOCK) {
+		for (dc = dock->screen_ptr->drawers; dc != NULL; dc = dc->next)
+			dock_apply_lowered(dc->adrawer, lowered);
+		wScreenUpdateUsableArea(dock->screen_ptr);
+	}
+}
+
+static void toggleAutoHide(WDock *dock)
+{
+	WDock *root = wDockAutoHideOwner(dock);
+
+	if (!root)
+		return;
+
+	if (root->auto_hide) {
+		dockAutoHideDisable(root);
+	} else {
+		root->auto_hide = 1;
+		root->hidden = 0;
+		root->target_hidden = 0;
+		root->slide_offset = 0;
+		if (dock_pointer_in_chain(root))
+			dock_autohide_arm_delay(root);
+		else
+			dockAutoHideSlideTo(root, true);
+	}
+}
+
 static void moveDockOne(WDock *dock, int new_x, int new_y)
 {
 	WAppIcon *btn;
@@ -3592,7 +4314,7 @@ static void moveDockOne(WDock *dock, int new_x, int new_y)
 		if (btn) {
 			btn->x_pos = new_x + btn->xindex * ICON_SIZE;
 			btn->y_pos = new_y + btn->yindex * ICON_SIZE;
-			xcb_configure_window(wdisp->conn, btn->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ btn->x_pos, btn->y_pos });
+			wDockApplyIconPosition(btn);
 		}
 	}
 }
@@ -3653,6 +4375,7 @@ void wDockApplyIconSize(WScreen *scr)
 		else
 			y = scr->dock->y_pos;
 		moveDock(scr->dock, x, y);
+		wDockAutoHideGeometryChanged(scr);
 	}
 
 	if (!wdisp->flags.noclip && scr->workspaces)
@@ -3702,6 +4425,7 @@ void wDockReanchor(WDock *dock)
 		y = dock_clamp_along_pixel(scr, dock->edge, dock->y_pos, neg, pos);
 
 	moveDock(dock, x, y);
+	wDockAutoHideGeometryChanged(scr);
 	wScreenUpdateUsableArea(scr);
 }
 
@@ -3744,7 +4468,7 @@ static void dock_along_span(const WDock *dock, const int *drawer_off,
 		}
 	}
 	for (i = 0; i < ndrawers; i++) {
-		int cell = (drawer_off[i] + ICON_SIZE / 2) / ICON_SIZE;
+		int cell = wDockGeomFloorDiv(drawer_off[i] + ICON_SIZE / 2, ICON_SIZE);
 		int e;
 
 		if (cell >= 0) {
@@ -3870,7 +4594,7 @@ void wDockSetEdge(WDock *dock, WDockEdge new_edge)
 	}
 	m_dock = m;
 	for (i = 0; i < n; i++) {
-		cells[m] = (drawer_off[i] + ICON_SIZE / 2) / ICON_SIZE;
+		cells[m] = wDockGeomFloorDiv(drawer_off[i] + ICON_SIZE / 2, ICON_SIZE);
 		idx[m] = m_dock + i;
 		m++;
 	}
@@ -3961,6 +4685,7 @@ void wDockSetEdge(WDock *dock, WDockEdge new_edge)
 		}
 	}
 
+	wDockAutoHideGeometryChanged(scr);
 	wArrangeIcons(scr, false);
 	wScreenUpdateUsableArea(scr);
 }
@@ -4095,6 +4820,7 @@ void wDockHideIcons(WDock *dock)
 	dock->mapped = 0;
 
 	dockIconPaint(dock->icon_array[0]);
+	wDockAutoHideGeometryChanged(dock->screen_ptr);
 }
 
 void wDockShowIcons(WDock *dock)
@@ -4106,7 +4832,10 @@ void wDockShowIcons(WDock *dock)
 		return;
 
 	btn = dock->icon_array[0];
-	moveDock(dock, btn->x_pos, btn->y_pos);
+	/* canonical fields: an offset coordinate here would drift the chain */
+	assert(btn->x_pos == dock->x_pos + btn->xindex * ICON_SIZE &&
+	       btn->y_pos == dock->y_pos + btn->yindex * ICON_SIZE);
+	moveDock(dock, dock->x_pos, dock->y_pos);
 
 	/* Deleting any change in stacking level, this function is now only about
 	   mapping icons */
@@ -4120,6 +4849,7 @@ void wDockShowIcons(WDock *dock)
 	dock->mapped = 1;
 
 	dockIconPaint(btn);
+	wDockAutoHideGeometryChanged(dock->screen_ptr);
 }
 
 void wDockLower(WDock *dock)
@@ -4429,47 +5159,28 @@ static void trackDeadProcess(pid_t pid, unsigned int status, void *cdata)
 
 		snprintf(msg, sizeof(msg), _("Could not execute command \"%s\""), cmd);
 
-		wMessageDialog(scr, _("Error"), msg, _("OK"), NULL, NULL);
+		dockMessageDialog(scr, _("Error"), msg, _("OK"), NULL, NULL);
 	}
 }
 
 /* This function is called when the dock switches state between
- * "normal" (including auto-raise/lower) and "keep on top". It is
+ * "normal" (including auto-raise) and "keep on top". It is
  * therefore clearly distinct from wDockLower/Raise, which are called
  * each time a not-kept-on-top dock is lowered/raised. */
 static void toggleLowered(WDock *dock)
 {
-	WAppIcon *tmp;
-	WDrawerChain *dc;
-	int newlevel, i;
+	WDock *root;
 
+	dockSetLowered(dock, !dock->lowered);
+
+	/* Keep on Top and Auto Raise are mutually exclusive */
 	if (!dock->lowered) {
-		newlevel = WMNormalLevel;
-		dock->lowered = 1;
-	} else {
-		newlevel = WMDockLevel;
-		dock->lowered = 0;
-	}
-
-	for (i = 0; i < dock->max_icons; i++) {
-		tmp = dock->icon_array[i];
-		if (!tmp)
-			continue;
-
-		ChangeStackingLevel(tmp->icon->core, newlevel);
-
-		/* When the dock is no longer "on top", explicitly lower it as well.
-		 * It saves some CPU cycles (probably) to do it ourselves here
-		 * rather than calling wDockLower at the end of toggleLowered */
-		if (dock->lowered)
-			wLowerFrame(tmp->icon->core);
-	}
-
-	if (dock->type == WM_DOCK) {
-		for (dc = dock->screen_ptr->drawers; dc != NULL; dc = dc->next) {
-			toggleLowered(dc->adrawer);
-		}
-		wScreenUpdateUsableArea(dock->screen_ptr);
+		root = wDockAutoHideOwner(dock);
+		if (!root)
+			root = dock;
+		WMDeleteTimerHandlerPtr(&root->auto_raise_magic);
+		WMDeleteTimerHandlerPtr(&root->auto_lower_magic);
+		dockSetAutoRaiseLower(root, false);
 	}
 }
 
@@ -4497,8 +5208,8 @@ static void openDockMenu(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *even
 	int appIsRunning = aicon->running && aicon->icon && aicon->icon->owner;
 
 	if (dock->type == WM_DOCK) {
-		/* Dock position menu */
-		updateDockPositionMenu(scr->dock_pos_menu, dock);
+		/* Dock Options menu */
+		updateDockOptionsMenu(scr->dock_options_menu, dock);
 		dock->menu->flags.realized = 0;
 		if (!wdisp->flags.nodrawer) {
 			/* add a drawer */
@@ -4918,6 +5629,8 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *ev
 	xcb_pixmap_t ghost = XCB_NONE;
 	int superfluous = w_global.config->superfluous;	/* we catch it to avoid problems */
 
+	wDockAutoHideDragBegin(scr);
+
 	if (wXGrabPointer(wdisp->conn, aicon->icon->core->window, true, XCB_EVENT_MASK_BUTTON_MOTION
 			 | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_BUTTON_PRESS, XCB_GRAB_MODE_ASYNC,
 			 XCB_GRAB_MODE_ASYNC, XCB_NONE, XCB_NONE, XCB_CURRENT_TIME) != WXGrabSuccess)
@@ -5091,6 +5804,7 @@ static void handleDockMove(WDock *dock, WAppIcon *aicon, xcb_generic_event_t *ev
 			xcb_free_pixmap(wdisp->conn, ghost);
 		xcb_change_window_attributes(wdisp->conn, scr->dock_shadow, XCB_CW_BACK_PIXEL, (const uint32_t[]){ scr->white_pixel });
 	}
+	wDockAutoHideDragEnd(scr);
 }
 
 
@@ -5297,6 +6011,8 @@ static void clipEnterNotify(WObjDescriptor *desc, xcb_generic_event_t *event)
 	if (dock == NULL)
 		return;
 
+	dock_autohide_enter(dock);
+
 	/* The auto raise/lower code */
 	tmp = (dock->type == WM_DRAWER ? scr->dock : dock);
 	WMDeleteTimerHandlerPtr(&tmp->auto_lower_magic);
@@ -5362,6 +6078,7 @@ static void clipLeaveNotify(WObjDescriptor *desc, xcb_generic_event_t *event)
 	if (desc->parent_type != WCLASS_DOCK_ICON)
 		return;
 
+	dock_autohide_leave(btn->dock);
 	clipLeave(btn->dock);
 }
 
@@ -5642,7 +6359,8 @@ static int addADrawer(WScreen *scr)
 	drawer->icon_array[0]->yindex = 0;
 	drawer->icon_array[0]->x_pos = drawer->x_pos;
 	drawer->icon_array[0]->y_pos = drawer->y_pos;
-	xcb_configure_window(wdisp->conn, drawer->icon_array[0]->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ drawer->icon_array[0]->x_pos, drawer->icon_array[0]->y_pos });
+	wDockApplyIconPosition(drawer->icon_array[0]);
+	wDockAutoHideGeometryChanged(scr);
 
 	return 0;
 }
@@ -5694,7 +6412,7 @@ static void drawerDestroy(WDock *drawer)
 			else
 				wDockMoveIconBetweenDocks(drawer, scr->dock, aicon,
 						0, (drawer->y_pos - scr->dock->y_pos) / ICON_SIZE);
-			xcb_configure_window(wdisp->conn, aicon->icon->core->window, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, (const uint32_t[]){ drawer->x_pos, drawer->y_pos });
+			wDockApplyIconPosition(aicon);
 			xcb_map_window(wdisp->conn, aicon->icon->core->window);
 		}
 	} else if (drawer->icon_count > 2) {
@@ -5724,6 +6442,7 @@ static void drawerDestroy(WDock *drawer)
 		scr->attracting_drawer = NULL;
 
 	wfree(drawer);
+	wDockAutoHideGeometryChanged(scr);
 }
 
 
@@ -5737,7 +6456,7 @@ static void removeDrawerCallback(WMenu *menu, WMenuEntry *entry)
 	assert(dock != NULL);
 
 	if (dock->icon_count > 2) {
-		if (wMessageDialog(dock->screen_ptr, _("Drawer"),
+		if (dockMessageDialog(dock->screen_ptr, _("Drawer"),
 					_("All icons in this drawer will be detached!"),
 					_("OK"), _("Cancel"), NULL) != WAPRDefault)
 			return;
@@ -5984,12 +6703,17 @@ void wSlideAppiconsDelta(WAppIcon **appicons, int n, int dx_cells, int dy_cells,
 {
 	int i;
 	int min_index = 9999, from_x = -1, from_y = -1, first = 0;
+	int off_x, off_y, ex, ey;
 	WAppIcon *aicon;
 
 	if (n < 1)
 		return;
 
 	xcb_window_t wins[n];
+
+	wDockAutoHideEffectivePosition(appicons[0], &ex, &ey);
+	off_x = ex - appicons[0]->x_pos;
+	off_y = ey - appicons[0]->y_pos;
 
 	memset(wins, 0, sizeof(wins)); /* XCB_NONE, skipped by slide_windows */
 
@@ -6025,7 +6749,9 @@ void wSlideAppiconsDelta(WAppIcon **appicons, int n, int dx_cells, int dy_cells,
 		wins[idx] = aicon->icon->core->window;
 	}
 	aicon = appicons[first];
-	slide_windows(wins, n, from_x, from_y, aicon->x_pos, aicon->y_pos, axis);
+	slide_windows(wins, n, from_x + off_x, from_y + off_y,
+		      aicon->x_pos + off_x, aicon->y_pos + off_y, axis);
+	wDockAutoHideGeometryChanged(aicon->icon->core->screen_ptr);
 }
 
 void wSlideAppiconsAcross(WAppIcon **appicons, int n, const WDock *drawer,
@@ -6309,7 +7035,7 @@ static WDock * drawerRestoreState(WScreen *scr, WMPropList *drawer_state)
 			else
 				ChangeStackingLevel(aicon->icon->core, WMNormalLevel);
 
-			wCoreConfigure(aicon->icon->core, aicon->x_pos, aicon->y_pos, 0, 0);
+			wDockApplyIconPosition(aicon);
 
 			if (!drawer->collapsed)
 				xcb_map_window(wdisp->conn, aicon->icon->core->window);

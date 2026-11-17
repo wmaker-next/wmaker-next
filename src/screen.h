@@ -321,7 +321,7 @@ typedef struct _WScreen {
     struct WMenu *workspace_submenu;   /* workspace list for window_menu */
 
     struct WDock *dock;		       /* the application dock */
-    struct WMenu *dock_pos_menu;       /* Dock position menu */
+    struct WMenu *dock_options_menu;   /* Options for the Dock */
     struct WPixmap *dock_dots;	       /* 3 dots for the Dock */
     xcb_window_t dock_shadow;		       /* shadow for dock buttons */
     struct WAppIcon *clip_icon;        /* The clip main icon, or the dock's, if they are merged */
@@ -407,6 +407,7 @@ typedef struct _WScreen {
     int mapped_menu_count;             /* WMenu with flags.mapped set, gates
                                         * PointerMotionMask on the root window
                                         * for ScrollableMenus */
+    int dock_busy_count;               /* modal dock drag or dialog */
 
 #ifdef USE_RANDR
     WMHandlerID randr_debounce_timer;

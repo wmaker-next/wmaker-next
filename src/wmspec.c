@@ -493,6 +493,11 @@ void wDockPublishStrut(WScreen *scr)
 		return;
 	}
 
+	if (scr->dock->auto_hide && scr->dock->hidden) {
+		wDockClearStrut(scr);
+		return;
+	}
+
 	for (h = 0; h < wXineramaHeads(scr); h++) {
 		if (!wAppIconTouchesHead(scr->dock->icon_array[0], h))
 			continue;

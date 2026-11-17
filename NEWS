@@ -3,6 +3,30 @@ NEWS for veteran Window Maker users
 
 -- next
 
+Dock auto-hide
+--------------
+
+The dock's Dock Options menu now holds independent checkboxes in the
+Clip Options style: Auto Hide, Auto Raise and Keep on Top. Keep on Top
+and Auto Raise are mutually exclusive, as on the Clip, and with both
+off the dock sits at the normal level and is raised on click. Auto
+Hide is independent of the two and works with either: the dock and its
+drawers slide off the screen edge and back, revealed by touching a
+thin strip at the edge or any dock tile. While shown the chain keeps
+the configured stacking, so with Keep on Top it stays over maximised
+windows, and while hidden it reserves no placement space and
+publishes no `_NET_WM_STRUT`, so windows can use the freed edge.
+`_NET_WORKAREA` is unchanged by hide and show, it never included the
+dock. The settings are saved in `WMState` and a restored session with
+Auto Hide starts hidden. `DockAutoHideVisiblePercent` keeps a slice of
+the dock on screen instead of sliding it out completely, 0 by default
+and 100 showing the full dock strip. `DockAutoHideSpeed` sets the slide
+duration in milliseconds, 0 makes the transition instant, and
+`DisableAnimations` forces instant completion. The slide is not
+applied retroactively to windows maximised while the dock was
+hidden, except on workspaces that use a window layout, which reflow
+as usual.
+
 Dock state across resolution changes
 ------------------------------------
 

@@ -419,6 +419,10 @@
 	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(ICON_SLIDE_SPEED, "IconSlideSpeed", ENUM, icon_slide_speed, "fast", \
 	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
+	_(DOCK_AUTO_HIDE_SPEED, "DockAutoHideSpeed", INT, dock_auto_hide_speed, "200", \
+	  NULL, 0, 5000, WCFG_RUNTIME_RELOAD, 0) \
+	_(DOCK_AUTO_HIDE_VISIBLE_PERCENT, "DockAutoHideVisiblePercent", INT, \
+	  dock_auto_hide_visible_percent, "0", NULL, 0, 100, WCFG_RUNTIME_RELOAD, 0) \
 	_(SHADE_SPEED, "ShadeSpeed", ENUM, shade_speed, "fast", \
 	  speeds, INT_MIN, INT_MAX, WCFG_RUNTIME_RELOAD, 0) \
 	_(BOUNCE_APPICONS_WHEN_URGENT, "BounceAppIconsWhenUrgent", BOOL, \

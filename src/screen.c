@@ -1086,6 +1086,7 @@ void wScreenRestoreState(WScreen * scr)
 	/* the per-clip restore leaves the shared tile on the last clip */
 	wClipUpdateForWorkspaceChange(scr, scr->current_workspace);
 
+	wDockAutoHideApplyInitial(scr);
 	wScreenUpdateUsableArea(scr);
 }
 

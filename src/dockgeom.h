@@ -95,4 +95,20 @@ void wDockGeomStrut(WMRect rect, int root_w, int root_h, WDockEdge edge,
 
 bool wDockHeadOnEdge(WMRect head, int root_w, int root_h, WDockEdge edge);
 
+/* Integer division rounding toward minus infinity, den > 0. Plain C
+ * division truncates toward zero and maps -icon_size to cell zero. */
+int wDockGeomFloorDiv(int num, int den);
+
+/* Signed outward delta along the edge-normal axis that places a chain
+ * outside the root [root_lo, root_hi), leaving at most keep_visible
+ * pixels of the near tile inside it. keep_visible 0 hides completely
+ * and is clamped to the chain depth. shown_origin is the canonical
+ * main-tile origin on that axis, max_across the largest across-index
+ * magnitude over the dock and its drawers, 0 for a lone column.
+ * Drawer indices are normally negative on right and bottom, so the
+ * depth is the magnitude on both sides. */
+int wDockGeomHideDelta(WDockEdge edge, int root_lo, int root_hi,
+		       int shown_origin, int max_across, int icon_size,
+		       int keep_visible);
+
 #endif /* WMDOCKGEOM_H_ */

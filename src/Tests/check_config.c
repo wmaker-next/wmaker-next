@@ -242,6 +242,21 @@ void wDockSetEdge(struct WDock *dock, WDockEdge edge)
 	dock_swaps++;
 }
 
+static int dock_autohide_anim_changes;
+static int dock_autohide_geom_changes;
+
+void wDockAutoHideAnimationConfigChanged(WScreen *scr)
+{
+	(void)scr;
+	dock_autohide_anim_changes++;
+}
+
+void wDockAutoHideGeometryChanged(WScreen *scr)
+{
+	(void)scr;
+	dock_autohide_geom_changes++;
+}
+
 static void replace_test_string(char **target, const char *value)
 {
 	if (*target)
@@ -912,6 +927,8 @@ static void test_defaults(void)
 	CHECK(config->keep_dock_on_primary_head == 0);
 	CHECK(config->dock_per_resolution == 0);
 	CHECK(config->dock_edge == WDOCK_EDGE_RIGHT);
+	CHECK(config->dock_auto_hide_speed == 200);
+	CHECK(config->dock_auto_hide_speed == 200);
 	CHECK(strcmp(config->screenshot_filename_template,
 		     "screenshot_%Y-%m-%d_at_%H:%M:%S") == 0);
 	CHECK_STR(config->clipboard_filename_template, "clipboard_%Y-%m-%d_at_%H:%M:%S");
@@ -1201,6 +1218,7 @@ static void test_valid_parse(void)
 			      "WindowPlaceOrigin = (600, \"-3\"); "
 			      "KeepDockOnPrimaryHead = YES; "
 			      "DockPerResolution = YES; "
+			      "DockAutoHideSpeed = 150; "
 			      "ScreenshotFilenameTemplate = \"shot_%H\"; "
 			      "ClipboardFilenameTemplate = \"clip_%H\"; "
 			      "MenuStyle = flat; TitleJustify = Right; "
@@ -1333,6 +1351,7 @@ static void test_valid_parse(void)
 	CHECK(config->window_place_origin.y == -3);
 	CHECK(config->keep_dock_on_primary_head == 1);
 	CHECK(config->dock_per_resolution == 1);
+	CHECK(config->dock_auto_hide_speed == 150);
 	CHECK(strcmp(config->screenshot_filename_template, "shot_%H") == 0);
 	CHECK_STR(config->clipboard_filename_template, "clip_%H");
 	CHECK(config->menu_style == MS_FLAT);
@@ -1540,6 +1559,7 @@ static void test_invalid_fallback(void)
 			      "KeepDockOnPrimaryHead = maybe; "
 			      "DockPerResolution = maybe; "
 			      "DockEdge = nowhere; "
+			      "DockAutoHideSpeed = 5001; "
 			      "ScreenshotFilenameTemplate = (bad); "
 			      "ClipboardFilenameTemplate = (bad); "
 			      "MenuStyle = diagonal; TitleJustify = middle; "
@@ -3504,6 +3524,146 @@ static void test_titlebar_layout_build(void)
 	WMReleasePropList(pl);
 }
 
+static void test_dock_auto_hide_speed(void)
+{
+	static const struct {
+		const char *desc;
+		int want;
+	} parse[] = {
+		{ "{ DockAutoHideSpeed = 0; }", 0 },
+		{ "{ DockAutoHideSpeed = 1; }", 1 },
+		{ "{ DockAutoHideSpeed = 200; }", 200 },
+		{ "{ DockAutoHideSpeed = 5000; }", 5000 },
+		{ "{ DockAutoHideSpeed = 5001; }", 200 },
+		{ "{ DockAutoHideSpeed = \"-1\"; }", 200 },
+		{ "{ DockAutoHideSpeed = bad; }", 200 },
+	};
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	unsigned int refresh;
+	WConfig *config;
+	size_t i;
+
+	for (i = 0; i < sizeof(parse) / sizeof(parse[0]); i++) {
+		WMPropList *dict = dict_from_desc(parse[i].desc);
+
+		if (!dict)
+			return;
+		config = wConfigReadWindowMaker(dict);
+		CHECK(config->dock_auto_hide_speed == parse[i].want);
+		wConfigDestroy(config);
+		WMReleasePropList(dict);
+	}
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	dock_autohide_anim_changes = 0;
+	old_dict = dict_from_desc("{ DockAutoHideSpeed = 200; }");
+	new_dict = dict_from_desc("{ DockAutoHideSpeed = 0; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(w_global.config->dock_auto_hide_speed == 0);
+	CHECK(dock_autohide_anim_changes == 1);
+	CHECK(refresh == 0);
+
+	WMReleasePropList(old_dict);
+	WMReleasePropList(new_dict);
+	old_dict = dict_from_desc("{ DockAutoHideSpeed = 0; }");
+	new_dict = dict_from_desc("{ DockAutoHideSpeed = 900; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(w_global.config->dock_auto_hide_speed == 900);
+	CHECK(dock_autohide_anim_changes == 2);
+	CHECK(refresh == 0);
+
+	WMReleasePropList(old_dict);
+	WMReleasePropList(new_dict);
+	old_dict = dict_from_desc("{ DisableAnimations = NO; }");
+	new_dict = dict_from_desc("{ DisableAnimations = YES; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(w_global.config->no_animations == 1);
+	CHECK(dock_autohide_anim_changes == 3);
+	CHECK(refresh == 0);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	reset_preferences();
+}
+
+static void test_dock_auto_hide_visible_percent(void)
+{
+	static const struct {
+		const char *desc;
+		int want;
+	} parse[] = {
+		{ "{ DockAutoHideVisiblePercent = 0; }", 0 },
+		{ "{ DockAutoHideVisiblePercent = 1; }", 1 },
+		{ "{ DockAutoHideVisiblePercent = 50; }", 50 },
+		{ "{ DockAutoHideVisiblePercent = 100; }", 100 },
+		{ "{ DockAutoHideVisiblePercent = 101; }", 0 },
+		{ "{ DockAutoHideVisiblePercent = \"-1\"; }", 0 },
+		{ "{ DockAutoHideVisiblePercent = bad; }", 0 },
+	};
+	WMPropList *old_dict, *new_dict;
+	WScreen screen;
+	unsigned int refresh;
+	WConfig *config;
+	size_t i;
+
+	for (i = 0; i < sizeof(parse) / sizeof(parse[0]); i++) {
+		WMPropList *dict = dict_from_desc(parse[i].desc);
+
+		if (!dict)
+			return;
+		config = wConfigReadWindowMaker(dict);
+		CHECK(config->dock_auto_hide_visible_percent == parse[i].want);
+		wConfigDestroy(config);
+		WMReleasePropList(dict);
+	}
+
+	reset_preferences();
+	memset(&screen, 0, sizeof(screen));
+	dock_autohide_geom_changes = 0;
+	dock_autohide_anim_changes = 0;
+	old_dict = dict_from_desc("{ DockAutoHideVisiblePercent = 0; }");
+	new_dict = dict_from_desc("{ DockAutoHideVisiblePercent = 25; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(w_global.config->dock_auto_hide_visible_percent == 25);
+	CHECK(dock_autohide_geom_changes == 1);
+	CHECK(refresh == 0);
+
+	WMReleasePropList(old_dict);
+	WMReleasePropList(new_dict);
+	old_dict = dict_from_desc("{ DockAutoHideVisiblePercent = 25; }");
+	new_dict = dict_from_desc("{ DockAutoHideSpeed = 400; }");
+	if (!old_dict || !new_dict)
+		goto out;
+
+	refresh = apply_runtime_defaults_for_test(&screen, new_dict, old_dict);
+	CHECK(dock_autohide_geom_changes == 1);
+	CHECK(dock_autohide_anim_changes == 1);
+
+out:
+	if (old_dict)
+		WMReleasePropList(old_dict);
+	if (new_dict)
+		WMReleasePropList(new_dict);
+	reset_preferences();
+}
+
 int main(void)
 {
 	WMPLSetCaseSensitive(false);
@@ -3550,6 +3710,8 @@ int main(void)
 	test_deleted_key_keeps_current();
 	test_string_array_range();
 	test_titlebar_layout_build();
+	test_dock_auto_hide_speed();
+	test_dock_auto_hide_visible_percent();
 
 	reset_preferences();
 	return check_report("check_config");
