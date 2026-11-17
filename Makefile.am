@@ -6,8 +6,6 @@ BUILT_SOURCES = config-paths.h
 
 DISTCLEANFILES = config-paths.h
 
-config.h: config-paths.h
-
 config-paths.h: Makefile
 	@echo "Generating $@"
 	@echo '/* this is a generated file - do not edit */' > $@
