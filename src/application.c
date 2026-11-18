@@ -125,6 +125,43 @@ WWindow *wApplicationUrgentWindow(WApplication *wapp)
 	return NULL;
 }
 
+/* Window of the application to activate after cur, wrapping in manage
+ * order, NULL when cur is not one of the application's windows or when
+ * the application has no other window to go to. */
+WWindow *wApplicationNextWindow(WApplication *wapp, WWindow *cur)
+{
+	WScreen *scr;
+	WWindow *wlist, *next = NULL, *first = NULL;
+
+	if (!wapp || !wapp->main_window_desc || !cur)
+		return NULL;
+	if (cur->main_window != wapp->main_window)
+		return NULL;
+
+	scr = wapp->main_window_desc->screen_ptr;
+	wlist = scr->focused_window;
+	if (!wlist)
+		return NULL;
+	while (wlist->prev)
+		wlist = wlist->prev;
+
+	for (; wlist; wlist = wlist->next) {
+		if (wlist == cur || wlist->flags.internal_window)
+			continue;
+		if (wlist->main_window != wapp->main_window)
+			continue;
+		if (WFLAGP(wlist, no_focusable))
+			continue;
+		if (!first || wlist->creation_id < first->creation_id)
+			first = wlist;
+		if (wlist->creation_id > cur->creation_id
+		    && (!next || wlist->creation_id < next->creation_id))
+			next = wlist;
+	}
+
+	return next ? next : first;
+}
+
 WApplication *wApplicationCreate(WWindow * wwin)
 {
 	WScreen *scr = wwin->screen_ptr;

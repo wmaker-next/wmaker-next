@@ -50,6 +50,7 @@ WApplication *wApplicationCreate(struct WWindow *wwin);
 WApplication *wApplicationOf(xcb_window_t window);
 void wApplicationDestroy(WApplication *wapp);
 struct WWindow *wApplicationUrgentWindow(WApplication *wapp);
+struct WWindow *wApplicationNextWindow(WApplication *wapp, struct WWindow *cur);
 
 void wAppBounce(WApplication *);
 void wAppBounceWhileUrgent(WApplication *);

@@ -1966,6 +1966,17 @@ focus changes. With PointerFollowsFocus enabled, honored window-
 activation requests from applications (e.g. pagers and taskbars) can
 move the pointer, since they change focus to that window.
 
+Application icon activation
+---------------------------
+
+Double-clicking the icon of a running application raises its windows
+and gives the keyboard focus to one of them. When one of the
+application's windows already holds the focus, the same gesture now
+moves on to another window of the application instead of staying on
+it, so repeated double-clicks walk through all of the windows of the
+application in the order they were created. A window that is
+miniaturized or hidden is restored when the walk reaches it.
+
 
 -- 0.97.0
 

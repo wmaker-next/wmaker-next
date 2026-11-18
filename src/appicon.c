@@ -777,11 +777,22 @@ static void iconDblClick(WObjDescriptor *desc, xcb_generic_event_t *event)
 		/* activate the window asking for attention */
 		wWindowSingleFocus(uwin);
 	} else {
-		/* go to the last workspace that the user worked on the app */
-		if (!unhideHere && wapp->last_workspace != scr->current_workspace)
-			wWorkspaceChangeFromPointer(scr, wapp->last_workspace);
+		WWindow *next = NULL;
 
-		wUnhideApplication(wapp, ((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_2, unhideHere);
+		/* an activation that already holds focus walks through
+		 * the windows of the application */
+		if (!unhideHere)
+			next = wApplicationNextWindow(wapp, scr->focused_window);
+
+		if (next) {
+			wWindowSingleFocus(next);
+		} else {
+			/* go to the last workspace that the user worked on the app */
+			if (!unhideHere && wapp->last_workspace != scr->current_workspace)
+				wWorkspaceChangeFromPointer(scr, wapp->last_workspace);
+
+			wUnhideApplication(wapp, ((xcb_button_press_event_t *)event)->detail == XCB_BUTTON_INDEX_2, unhideHere);
+		}
 	}
 
 	if (((xcb_button_press_event_t *)event)->state & MOD_MASK)
