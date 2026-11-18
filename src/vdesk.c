@@ -401,7 +401,8 @@ void wVdeskDragPan(WScreen *scr, xcb_generic_event_t *event)
 	while (!done) {
 		free(ev);
 		ev = NULL;
-		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE, &ev);
+		WMMaskEvent(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_BUTTON_RELEASE
+			    | XCB_EVENT_MASK_EXPOSURE, &ev);
 		if (!ev)
 			break;
 
@@ -424,6 +425,9 @@ void wVdeskDragPan(WScreen *scr, xcb_generic_event_t *event)
 			}
 		} else if ((ev->response_type & 0x7f) == XCB_BUTTON_RELEASE) {
 			done = true;
+		} else {
+			/* pan steps uncover chrome, repaint mid-drag */
+			WMHandleEvent(ev);
 		}
 	}
 	free(ev);
@@ -518,9 +522,17 @@ void wVdeskMouseMoveDesktop(xcb_generic_event_t *event, WMPoint direction)
 		 * fires, each iteration owns one event */
 		free(ev);
 		ev = NULL;
-		while (!timed_out &&
-		       !WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION, XCB_NONE, &ev))
+		while (!timed_out) {
+			if (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_EXPOSURE, XCB_NONE, &ev)) {
+				WMHandleEvent(ev);
+				free(ev);
+				ev = NULL;
+				continue;
+			}
+			if (WXEvqTakeMask(wdisp->conn, XCB_EVENT_MASK_POINTER_MOTION, XCB_NONE, &ev))
+				break;
 			W_HandleInputEvents(true, xcb_get_file_descriptor(wdisp->conn));
+		}
 		if (timed_out) {
 			free(ev);
 			ev = NULL;
