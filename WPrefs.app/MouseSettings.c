@@ -352,7 +352,7 @@ static void fillModifierPopUp(WMPopUpButton * pop)
 	xcb_keycode_t *codes;
 	int i, j;
 	char *str;
-	char buffer[64];
+	char buffer[128];
 
 	mapping = xcb_get_modifier_mapping_reply(xc, xcb_get_modifier_mapping(xc),
 						 NULL);
@@ -376,7 +376,7 @@ static void fillModifierPopUp(WMPopUpButton * pop)
 		xkb_keysym_t ksym;
 		int k;
 		char *ptr;
-		char *tmp;
+		bool first;
 
 			a = 0;
 			memset(array, 0, sizeof(char *) * 8);
@@ -398,35 +398,40 @@ static void fillModifierPopUp(WMPopUpButton * pop)
 				} else
 					str = NULL;
 				if (str && !strstr(str, "_Lock") && !strstr(str, "Shift")
-				    && !strstr(str, "Control")) {
+				    && !strstr(str, "Control") && a < wlengthof(array)) {
 					array[a++] = wstrdup(str);
 				}
 			}
 		}
 
 		for (k = 0; k < a; k++) {
+			ptr = strstr(array[k], "_L");
+			if (ptr)
+				*ptr = 0;
+			ptr = strstr(array[k], "_R");
+			if (ptr)
+				*ptr = 0;
+		}
+
+		snprintf(buffer, sizeof(buffer), "%s (", modifierNames[j]);
+		first = true;
+		for (k = 0; k < a; k++) {
 			if (array[k] == NULL)
 				continue;
-			tmp = wstrdup(array[k]);
-			ptr = strstr(tmp, "_L");
-			if (ptr)
-				*ptr = 0;
-			ptr = strstr(tmp, "_R");
-			if (ptr)
-				*ptr = 0;
-			snprintf(buffer, sizeof(buffer), "%s (%s)", modifierNames[j], tmp);
-			/*snprintf(buffer, sizeof(buffer), "%s", tmp); */
-			WMAddPopUpButtonItem(pop, buffer);
+			if (!first)
+				wstrlcat(buffer, ", ", sizeof(buffer));
+			wstrlcat(buffer, array[k], sizeof(buffer));
+			first = false;
 			for (i = k + 1; i < a; i++) {
-				if (array[i] == NULL)
-					continue;
-				if (strstr(array[i], tmp)) {
+				if (array[i] != NULL && strcmp(array[i], array[k]) == 0) {
 					wfree(array[i]);
 					array[i] = NULL;
-					break;
 				}
 			}
-			wfree(tmp);
+		}
+		if (!first) {
+			wstrlcat(buffer, ")", sizeof(buffer));
+			WMAddPopUpButtonItem(pop, buffer);
 		}
 
 		while (a--) {
