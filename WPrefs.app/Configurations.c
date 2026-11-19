@@ -264,6 +264,8 @@ static void createPanel(Panel *p)
 		}
 		wfree(path);
 	}
+	WMSetBalloonTextForView(_("Old Style: square buttons inside the titlebar,\n"
+				  "the original Window Maker look."), WMWidgetView(panel->oldsB));
 
 	panel->newsB = WMCreateButton(panel->titlF, WBTOnOff);
 	WMResizeWidget(panel->newsB, 50, 40);
@@ -278,6 +280,9 @@ static void createPanel(Panel *p)
 		}
 		wfree(path);
 	}
+	WMSetBalloonTextForView(_("New Style: full height buttons at the ends of\n"
+				  "the titlebar, with the title in between.\n"
+				  "This is the default."), WMWidgetView(panel->newsB));
 
 	panel->nextB = WMCreateButton(panel->titlF, WBTOnOff);
 	WMResizeWidget(panel->nextB, 50, 40);
@@ -292,6 +297,8 @@ static void createPanel(Panel *p)
 		}
 		wfree(path);
 	}
+	WMSetBalloonTextForView(_("NeXT Style: round buttons inside the titlebar,\n"
+				  "as in NeXTSTEP."), WMWidgetView(panel->nextB));
 
 	panel->flatB = WMCreateButton(panel->titlF, WBTOnOff);
 	WMResizeWidget(panel->flatB, 50, 40);
@@ -306,6 +313,9 @@ static void createPanel(Panel *p)
 		}
 		wfree(path);
 	}
+	WMSetBalloonTextForView(_("Flat Style: like New Style but with no bevels,\n"
+				  "so the title texture runs unbroken behind\n"
+				  "the buttons."), WMWidgetView(panel->flatB));
 
 	WMGroupButtons(panel->newsB, panel->oldsB);
 	WMGroupButtons(panel->newsB, panel->nextB);
