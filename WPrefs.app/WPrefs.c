@@ -817,9 +817,61 @@ void SetButtonAlphaImage(WMScreen *scr, WMButton *bPtr, const char *file)
 		wfree(iconPath);
 }
 
+static WMPixmap *createSectionIcon(WMScreen *scr, const char *file)
+{
+	RImage *image, *card;
+	WMPixmap *pix;
+	RColor page = { 0xa0, 0x9c, 0xa0, 255 };
+	unsigned char *p;
+	char *path;
+	int x, y;
+
+	path = LocateImage(file);
+	if (!path)
+		return NULL;
+
+	image = RLoadImage(WMScreenRContext(scr), path, 0);
+	if (!image) {
+		wwarning(_("could not load icon file %s"), path);
+		wfree(path);
+		return NULL;
+	}
+
+	card = RCreateImage(image->width, image->height, 0);
+	if (!card) {
+		RReleaseImage(image);
+		wfree(path);
+		return NULL;
+	}
+	RClearImage(card, &page);
+	for (x = 0; x < image->width - 1; x++) {
+		p = card->data + 3 * x;
+		p[0] = p[1] = p[2] = 0x2c;
+	}
+	for (y = 0; y < image->height - 1; y++) {
+		p = card->data + 3 * y * image->width;
+		p[0] = p[1] = p[2] = 0x2c;
+	}
+	for (y = 0; y < image->height; y++) {
+		p = card->data + 3 * (y * image->width + image->width - 1);
+		p[0] = p[1] = p[2] = 0xfe;
+	}
+	for (x = 0; x < image->width; x++) {
+		p = card->data + 3 * ((image->height - 1) * image->width + x);
+		p[0] = p[1] = p[2] = 0xfe;
+	}
+	RCombineImages(card, image);
+	pix = WMCreatePixmapFromRImage(scr, card, 0);
+	RReleaseImage(card);
+	RReleaseImage(image);
+	wfree(path);
+	return pix;
+}
+
 void AddSection(Panel * panel, const char *iconFile)
 {
 	WMButton *bPtr;
+	WMPixmap *icon;
 
 	assert(WPrefs.sectionCount < MAX_SECTIONS);
 
@@ -831,7 +883,10 @@ void AddSection(Panel * panel, const char *iconFile)
 	WMHangData(bPtr, panel);
 
 	WMSetBalloonTextForView(((PanelRec *) panel)->description, WMWidgetView(bPtr));
-	SetButtonAlphaImage(WMWidgetScreen(bPtr), bPtr, iconFile);
+	icon = createSectionIcon(WMWidgetScreen(bPtr), iconFile);
+	WMSetButtonImage(bPtr, icon);
+	if (icon)
+		WMReleasePixmap(icon);
 	WMMapWidget(bPtr);
 
 	WPrefs.sectionB[WPrefs.sectionCount] = bPtr;
