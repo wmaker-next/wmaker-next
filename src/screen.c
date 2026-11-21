@@ -208,8 +208,12 @@ static bool replace_existing_wm(WScreen *scr)
 				return false;
 			}
 
-			if ((event->response_type & 0x7f) == XCB_DESTROY_NOTIFY)
+			if ((event->response_type & 0x7f) == XCB_DESTROY_NOTIFY) {
+				free(event);
 				break;
+			}
+			free(event);
+			event = NULL;
 		}
 
 		wmessage(_("replacing the other window manager"));

@@ -188,4 +188,8 @@ wait_for 50 pid_gone "$B_PID"          || fatal "wmaker B did not exit after the
 wait_for 120 ipc_answers_pid "$C_PID"  || fatal "wmaker C IPC did not come up"
 record_pass "second handoff replaced a live owner and converged on C"
 
+grep -q "ERROR: LeakSanitizer" "$LOG" \
+	&& record_fail "replacement reported a memory leak" \
+	|| record_pass "replacement reported no memory leaks"
+
 exit $([ "$FAILED" -eq 0 ] && echo 0 || echo 1)
