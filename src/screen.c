@@ -679,6 +679,30 @@ static void createInternalWindows(WScreen * scr)
  *	The program can be aborted if some fatal error occurs.
  *----------------------------------------------------------------------
  */
+
+/* Free resources allocated before an early wScreenInit() failure */
+static void screen_early_destroy(WScreen *scr)
+{
+	if (scr->info_window != XCB_WINDOW_NONE) {
+		xcb_destroy_window(wdisp->conn, scr->info_window);
+		scr->info_window = XCB_WINDOW_NONE;
+	}
+#ifdef USE_RANDR
+	wRandRTeardown(scr);
+#endif
+	if (scr->xine_info.screens)
+		wfree(scr->xine_info.screens);
+	scr->xine_info.screens = NULL;
+	WMFreeArray(scr->fakeGroupLeaders);
+	scr->fakeGroupLeaders = NULL;
+	wfree(scr->totalUsableArea);
+	scr->totalUsableArea = NULL;
+	wfree(scr->usableArea);
+	scr->usableArea = NULL;
+	WMFreeBag(scr->stacking_list);
+	scr->stacking_list = NULL;
+}
+
 WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 		     const struct WConfigChanges *changes)
 {
@@ -726,7 +750,7 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 
 	/* Do we need to replace an existing window manager? */
 	if (!replace_existing_wm(scr)) {
-		xcb_destroy_window(wdisp->conn, scr->info_window);
+		screen_early_destroy(scr);
 		wfree(scr);
 		return NULL;
 	}
@@ -744,8 +768,9 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	event_mask = EVENT_MASK;
 	if (!WXCheckVoid(wdisp->conn,
 			 xcb_change_window_attributes_checked(wdisp->conn, scr->root_win,
-							      XCB_CW_EVENT_MASK,
-							      &event_mask))) {
+						      XCB_CW_EVENT_MASK,
+						      &event_mask))) {
+		screen_early_destroy(scr);
 		wfree(scr);
 		return NULL;
 	}
@@ -795,11 +820,8 @@ WScreen *wScreenInit(int screen_number, const struct WConfig *config,
 	if (!scr->wmscreen) {
 		wfatal(_("could not initialize WINGs widget set"));
 		RDestroyContext(scr->rcontext);
-	abort_no_context:
-		WMFreeArray(scr->fakeGroupLeaders);
-		wfree(scr->totalUsableArea);
-		wfree(scr->usableArea);
-		WMFreeBag(scr->stacking_list);
+abort_no_context:
+		screen_early_destroy(scr);
 		wfree(scr);
 		return NULL;
 	}
