@@ -1,28 +1,40 @@
 
 
 The file named menu is the menu in the plain text file format. The files
-named menu.?? (?? are 2 characters, such as pt) are translations of the
-same menu. Plain text menus are preprocessed using cpp (the C Pre-Processor),
-so you can use cpp macros in it.
+named menu.?? (?? is usually a two-letter language code such as pt, but
+longer names such as zh_CN are also used) are translations of the same
+menu. Localized menus are picked automatically from the locale: for a
+locale like fr_FR, Window Maker tries menu.fr_FR and then menu.fr (the
+.encoding suffix is stripped before the lookup). The locale can also be
+set with the -locale command line option.
+
+The plain text format is not run through an external cpp. It is parsed
+by a built-in parser that supports a cpp-like subset of directives:
+#include, #define (including function-like macros), #ifdef, #ifndef,
+#else and #endif. The predefined macros live in the wmmacros file
+(generated from wmmacros.in).
 
 The plmenu file is the same menu, but in the property list format.
-This menu can be edited with WPrefs.app, but since WPrefs.app does not
-support XIM, it will not allow you to make menus in languages such as
-Japanese.
+This menu can be edited with WPrefs.app, which supports input methods
+(fcitx5/ibus through xcb-imdkit, or a compose table for dead keys), so
+it can also be used for menus in languages such as Japanese.
 
-To use the menu in the property list format (plmenu), just replace the
-$WMAKER_USER_ROOT/Defaults/WMRootMenu with it. To use the plain text menu,
-place the path for the menu in $WMAKER_USER_ROOT/Defaults/WMRootMenu, enclosed
-in double quotes ("). Ex: "$WMAKER_USER_DATA/menu"
+The default WMRootMenu installed by "make install" is generated from
+plmenu. To use the menu in the property list format (plmenu) as your
+root menu, just copy plmenu over $WMAKER_USER_ROOT/Defaults/WMRootMenu.
+To use the plain text menu, place the path for the menu in
+$WMAKER_USER_ROOT/Defaults/WMRootMenu, enclosed in double quotes (").
+Ex: "$WMAKER_USER_DATA/menu"
 
 Instructions for editing the plain text menus can be found in the menu
 file itself, kindly translated to your tongue for your convenience, by
 the translation contributors.
 
 There is a script to convert plain text menus to property list menus
-in the utils directory, named wm-oldmenu2new.
+in the util directory, named wm-oldmenu2new. It is installed on PATH
+by "make install".
 
-If you are unsure to wich format to use, stick with the plain text menus
+If you are unsure which format to use, stick with the plain text menus
 as they are more flexible. If for some psychological reason you are
 scared by text based configuration, use the property list menu.
 
@@ -36,7 +48,7 @@ menu.ja Japanese        MANOME Tomonori <manome@itlb.te.noda.sut.ac.jp>
 				ABE Shige <sabe@ibm.net>
 menu.pt Portuguese      Alfredo K. Kojima <kojima@inf.ufrgs.br>
 menu.de	German		Carsten Schaar <nhadcasc@fs-maphy.uni-hannover.de>
-menu.cz	Czech		David ©auer <xsauer@hwlab.felk.cvut.cz>
+menu.cz	Czech		David Sauer <xsauer@hwlab.felk.cvut.cz>
 menu.ko	Korean		Chae-Yong Chong <cychong@metro.telecom.samsung.co.kr>
 			Byeong-Chan Kim <redhands@linux.sarang.net>
 menu.gl	Galician	Xose Vazquez <xose@arrakis.es>
@@ -49,15 +61,15 @@ menu.he	Hebrew		Please send me your name/email if you wrote this
 			We unfortunately lost that info :(
 menu.tr Turkish         F. Kagan Gurkaynak <kgf@wpi.edu>
 menu.fi Finnish		Ville Hautamaki <villeh@photon.joensuu.fi>
-menu.se Swdish		Andreas Persenius <andreas@alfaskop.net>
+menu.se Swedish		Andreas Persenius <andreas@alfaskop.net>
 menu.hr	Croatian	Toni Bilic <tbilic@efos.hr>
 menu.el Greek		Nikolaos Papagrigoriou <papanikos@usa.net>
-menu.dk Danish		John M. Lockard <jlockard@math.lsa.umich.edu>
+menu.da Danish		John M. Lockard <jlockard@math.lsa.umich.edu>
 			Jacob Sparre Andersen <sparre@cats.nbi.dk>
 menu.sl Slovene		Alen Salamun <snowman@hal9000.medinet.si>
 menu.hu Hungarian	Csanaki Csaba <prew@mail.matav.hu>
-menu.ca Català		Carles Amig<F3> dj_fr3nd@hotmail.com
-menu.zh_TW.Big5 Chinese Li Wei Jih <lwj83@cs.ccu.edu.tw>
+menu.ca Català		Carles Amigó <dj_fr3nd@hotmail.com>
+menu.zh_TW Chinese	Li Wei Jih <lwj83@cs.ccu.edu.tw>
 menu.zh_CN Chinese	Wang Jian <wangjian2@asiainfo.com>
 menu.pl Polish		Maciej Friedel <tytus@tytus.itma.pwr.wroc.pl>
 menu.bg	Bulgarian	Slavei Karadjov <slaff@exco.net>
@@ -67,7 +79,6 @@ menu.fy Frisian		Alwin <translations@ziggo.nl>
 menu.sr	Serbian		Strahinya Radich <sr@strahinja.org>
 
 
-
 plmenu.da Danish 	Birger Langkjer <birger.langkjer@image.dk>
 plmenu.zh_CN Chinese	Wang Jian <wangjian2@asiainfo.com>
 plmenu.hr Croatian	Toni Bilic <tbilic@efos.hr>
@@ -75,11 +86,15 @@ plmenu.it Italian	Michele Campeotto <micampe@tv.record.unipd.it>
 plmenu.de German 	Matthias Warkus <mawarkus@t-online.de>
 plmenu.pl Polish	Maciej Friedel <tytus@tytus.itma.pwr.wroc.pl>
 plmenu.ko Korean	Byeong-Chan Kim <redhands@linux.sarang.net>
-plemnu.es Spanish	David A. Schekaiban <nb@zaz.net>
+plmenu.es Spanish	David A. Schekaiban <nb@zaz.net>
 plmenu.bg Bulgarian	Slavei Karadjov <slaff@exco.net>
 plmenu.sk Slovak      	judas@hell <tomka@oalevice.sk>
 plmenu.ja Japanese	Seiichi SATO <sato@cvs-net.co.jp>
 plmenu.nl Dutch		Alwin <translations@ziggo.nl>
 plmenu.fy Frisian	Alwin <translations@ziggo.nl>
 plmenu.sr Serbian	Strahinya Radich <sr@strahinja.org>
+
+The following menu files ship without a listed translator:
+menu.no (Norwegian), menu.ro (Romanian), plmenu.fi (Finnish),
+plmenu.fr (French), plmenu.ro (Romanian) and plmenu.zh_TW (Chinese).
 
