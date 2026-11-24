@@ -173,7 +173,9 @@ static int compare_family(const void *a, const void *b)
 {
 	FontFamily *fa = (FontFamily *) a;
 	FontFamily *fb = (FontFamily *) b;
-	return strcmp(fa->name, fb->name);
+	int compare = strcasecmp(fa->name, fb->name);
+
+	return compare ? compare : strcmp(fa->name, fb->name);
 }
 
 static int compare_styles(const void *a, const void *b)
@@ -189,6 +191,40 @@ static int compare_styles(const void *a, const void *b)
 	if (compare != 0)
 		return compare;
 	return (sa->width - sb->width);
+}
+
+static const char * const fontGenerics[] = {
+	"monospace",
+	"sans serif",
+	"serif",
+};
+
+static void appendGenericFamilies(_Panel *panel)
+{
+	int i, j;
+
+	for (i = 0; i < wlengthof(fontGenerics); i++) {
+		FontFamily *family;
+		bool dup = false;
+
+		for (j = 0; j < panel->fonts->familyn; j++)
+			if (strcasecmp(panel->fonts->families[j].name, fontGenerics[i]) == 0) {
+				dup = true;
+				break;
+			}
+		if (dup)
+			continue;
+		panel->fonts->families[panel->fonts->familyn++].name = wstrdup(fontGenerics[i]);
+		family = panel->fonts->families + panel->fonts->familyn - 1;
+		family->stylen = 2;
+		family->styles = wmalloc(sizeof(FontStyle) * 2);
+		family->styles[0].weight = FC_WEIGHT_MEDIUM;
+		family->styles[0].slant = FC_SLANT_ROMAN;
+		family->styles[0].width = FC_WIDTH_NORMAL;
+		family->styles[1].weight = FC_WEIGHT_BOLD;
+		family->styles[1].slant = FC_SLANT_ROMAN;
+		family->styles[1].width = FC_WIDTH_NORMAL;
+	}
 }
 
 static void lookup_available_fonts(_Panel * panel)
@@ -207,7 +243,7 @@ static void lookup_available_fonts(_Panel * panel)
 
 		panel->fonts = wmalloc(sizeof(FontList));
 		panel->fonts->familyn = 0;
-		panel->fonts->families = wmalloc(sizeof(FontFamily) * (fonts->nfont + 2));
+		panel->fonts->families = wmalloc(sizeof(FontFamily) * (fonts->nfont + wlengthof(fontGenerics)));
 
 		for (i = 0; i < fonts->nfont; i++) {
 			char *name;
@@ -232,13 +268,21 @@ static void lookup_available_fonts(_Panel * panel)
 				if (strcasecmp(panel->fonts->families[j].name, name) == 0)
 					found = j;
 
-			if (found < 0) {
+			if (found >= 0) {
+				family = panel->fonts->families + found;
+				for (j = 0; j < family->stylen; j++)
+					if (family->styles[j].weight == weight
+					    && family->styles[j].slant == slant
+					    && family->styles[j].width == width)
+						break;
+				if (j < family->stylen)
+					continue;
+			} else {
 				panel->fonts->families[panel->fonts->familyn++].name = wstrdup(name);
 				family = panel->fonts->families + panel->fonts->familyn - 1;
 				family->stylen = 0;
 				family->styles = NULL;
-			} else
-				family = panel->fonts->families + found;
+			}
 
 			family->stylen++;
 			family->styles = wrealloc(family->styles, sizeof(FontStyle) * family->stylen);
@@ -246,8 +290,6 @@ static void lookup_available_fonts(_Panel * panel)
 			family->styles[family->stylen - 1].slant = slant;
 			family->styles[family->stylen - 1].width = width;
 		}
-		qsort(panel->fonts->families, panel->fonts->familyn, sizeof(FontFamily), compare_family);
-
 		for (i = 0; i < panel->fonts->familyn; i++) {
 			qsort(panel->fonts->families[i].styles, panel->fonts->families[i].stylen,
 			      sizeof(FontStyle), compare_styles);
@@ -257,34 +299,15 @@ static void lookup_available_fonts(_Panel * panel)
 	} else {
 		panel->fonts = wmalloc(sizeof(FontList));
 		panel->fonts->familyn = 0;
-		panel->fonts->families = wmalloc(sizeof(FontFamily) * 2);
+		panel->fonts->families = wmalloc(sizeof(FontFamily) * (wlengthof(fontGenerics) + 1));
 	}
 	if (os)
 		FcObjectSetDestroy(os);
 	if (pat)
 		FcPatternDestroy(pat);
 
-	panel->fonts->families[panel->fonts->familyn++].name = wstrdup("sans serif");
-	family = panel->fonts->families + panel->fonts->familyn - 1;
-	family->styles = wmalloc(sizeof(FontStyle) * 2);
-	family->stylen = 2;
-	family->styles[0].weight = FC_WEIGHT_MEDIUM;
-	family->styles[0].slant = FC_SLANT_ROMAN;
-	family->styles[0].width = FC_WIDTH_NORMAL;
-	family->styles[1].weight = FC_WEIGHT_BOLD;
-	family->styles[1].slant = FC_SLANT_ROMAN;
-	family->styles[1].width = FC_WIDTH_NORMAL;
-
-	panel->fonts->families[panel->fonts->familyn++].name = wstrdup("serif");
-	family = panel->fonts->families + panel->fonts->familyn - 1;
-	family->styles = wmalloc(sizeof(FontStyle) * 2);
-	family->stylen = 2;
-	family->styles[0].weight = FC_WEIGHT_MEDIUM;
-	family->styles[0].slant = FC_SLANT_ROMAN;
-	family->styles[0].width = FC_WIDTH_NORMAL;
-	family->styles[1].weight = FC_WEIGHT_BOLD;
-	family->styles[1].slant = FC_SLANT_ROMAN;
-	family->styles[1].width = FC_WIDTH_NORMAL;
+	appendGenericFamilies(panel);
+	qsort(panel->fonts->families, panel->fonts->familyn, sizeof(FontFamily), compare_family);
 }
 
 static char *getSelectedFont(_Panel * panel, FcChar8 * curfont)
@@ -432,6 +455,35 @@ static void selectedFamily(WMWidget * w, void *data)
 	}
 }
 
+static int findFamilyRow(_Panel *panel, const char *name)
+{
+	int i;
+
+	if (!name)
+		return -1;
+	for (i = 0; i < WMGetListNumberOfRows(panel->familyL); i++) {
+		WMListItem *item = WMGetListItem(panel->familyL, i);
+		FontFamily *family = (FontFamily *) item->clientData;
+
+		if (!family)
+			continue;
+		if (strcasecmp(family->name, name) == 0)
+			return i;
+	}
+	return -1;
+}
+
+static void selectFamilyRow(_Panel *panel, const char *name)
+{
+	int i = findFamilyRow(panel, name);
+
+	if (i >= 0) {
+		WMSelectListItem(panel->familyL, i);
+		WMSetListPosition(panel->familyL, i);
+	} else
+		WMSelectListItem(panel->familyL, -1);
+}
+
 static void selected(WMWidget * w, void *data)
 {
 	_Panel *panel = (_Panel *) data;
@@ -477,24 +529,29 @@ static void selectedOption(WMWidget * w, void *data)
 
 			FcDefaultSubstitute(pat);
 
-			if (FcPatternGetString(pat, FC_FAMILY, 0, (FcChar8 **) & name) != FcResultMatch)
-				name = "sans serif";
-
 			found = 0;
-			/* select family */
-			for (i = 0; i < WMGetListNumberOfRows(panel->familyL); i++) {
-				WMListItem *item = WMGetListItem(panel->familyL, i);
-				FontFamily *family = (FontFamily *) item->clientData;
-
-				if (strcasecmp(family->name, name) == 0) {
-					found = 1;
-					WMSelectListItem(panel->familyL, i);
-					WMSetListPosition(panel->familyL, i);
-					break;
-				}
+			for (i = 0; FcPatternGetString(pat, FC_FAMILY, i, (FcChar8 **) &name) == FcResultMatch;
+			     i++) {
+				if (findFamilyRow(panel, name) < 0)
+					continue;
+				selectFamilyRow(panel, name);
+				found = 1;
+				break;
 			}
-			if (!found)
-				WMSelectListItem(panel->familyL, -1);
+			if (!found) {
+				FcPattern *match;
+				FcResult result;
+
+				match = FcFontMatch(NULL, pat, &result);
+				if (match) {
+					if (FcPatternGetString(match, FC_FAMILY, 0, (FcChar8 **) &name) == FcResultMatch)
+						selectFamilyRow(panel, name);
+					else
+						WMSelectListItem(panel->familyL, -1);
+					FcPatternDestroy(match);
+				} else
+					WMSelectListItem(panel->familyL, -1);
+			}
 			selectedFamily(panel->familyL, panel);
 
 			/* select style */
